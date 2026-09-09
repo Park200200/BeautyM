@@ -1,7 +1,5 @@
-// BeautyM - 파일 업로드 API
+// BeautyM - 파일 업로드 API (Vercel Blob + 로컬 fallback)
 import { NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 
 export async function POST(req: Request) {
   try {
@@ -12,14 +10,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: '파일이 없습니다.' }, { status: 400 });
     }
 
+    // Vercel 환경: Blob Storage 사용
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      const { put } = await import('@vercel/blob');
+      const ext = file.name.split('.').pop() || 'png';
+      const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      
+      const blob = await put(filename, file, {
+        access: 'public',
+      });
+
+      return NextResponse.json({
+        success: true,
+        url: blob.url,
+        filename: file.name,
+      });
+    }
+
+    // 로컬 환경: 파일 시스템 사용
+    const { writeFile, mkdir } = await import('fs/promises');
+    const path = await import('path');
+    
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // 업로드 디렉토리 생성
     const uploadDir = path.join(process.cwd(), 'public', 'uploads');
     await mkdir(uploadDir, { recursive: true });
 
-    // 파일명 생성 (타임스탬프 + 원본명)
     const ext = path.extname(file.name);
     const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
     const filepath = path.join(uploadDir, filename);
