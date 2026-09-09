@@ -1,0 +1,971 @@
+'use client';
+import { useState, useEffect, useCallback, useRef, use } from 'react';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
+import { useThemeStore } from '@/stores/theme-store';
+import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
+import { useIsMobile } from '@/hooks/useMediaQuery';
+
+interface ReservationEvent {
+  id: string;
+  customer?: { user?: { name: string; phone?: string | null } };
+  menu?: { name: string };
+  staff?: { user?: { name: string } };
+  startTime: string;
+  endTime: string;
+  status: string;
+  currentSession?: number;
+  totalSessions?: number;
+}
+
+interface DaySummary {
+  count: number;
+  firstTime: string;
+  lastTime: string;
+  freeH: number;
+  freeM: number;
+  workH: number;
+  workM: number;
+}
+
+interface CalEvent {
+  id: string; title: string; start: string; end: string;
+  backgroundColor: string; borderColor: string; textColor: string;
+  extendedProps: { menu: string; customer: string; phone: string; staff: string; status: string; session: string };
+}
+
+export default function CalendarPage({ params }: { params: Promise<{ shopSlug: string }> }) {
+  const { shopSlug } = use(params);
+  const [events, setEvents] = useState<CalEvent[]>([]);
+  const [rawEvents, setRawEvents] = useState<ReservationEvent[]>([]);
+  const [mounted, setMounted] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<{ id: string; menu: string; customer: string; phone: string; staff: string; status: string; session: string; start: string; end: string } | null>(null);
+  const [activeDate, setActiveDate] = useState<string>(''); // 클릭한 날짜 (YYYY-MM-DD)
+  const [popupDate, setPopupDate] = useState<string | null>(null); // 월간 클릭 팝업
+  const calendarRef = useRef<FullCalendar>(null);
+  const store = useThemeStore();
+  useEffect(() => setMounted(true), []);
+  const theme = mounted ? store.theme : getTheme(DEFAULT_THEME_ID);
+  const c = theme.colors;
+  const mob = useIsMobile();
+
+  const OPEN_HOUR = 8;
+  const CLOSE_HOUR = 22;
+
+  // 매장 영업시간 + 휴무일
+  const [closedDays, setClosedDays] = useState<string[]>([]); // 요일별 정기휴무 ['sun']
+  const [holidays, setHolidays] = useState<string[]>([]); // 특정 날짜 휴무 ['2026-09-15']
+
+  useEffect(() => {
+    fetch(`/api/shops/${shopSlug}/settings`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d?.businessHours) return;
+        try {
+          const bh = JSON.parse(d.businessHours);
+          const closed: string[] = [];
+          const dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+          dayKeys.forEach(k => { if (bh[k]?.closed) closed.push(k); });
+          setClosedDays(closed);
+          if (Array.isArray(bh._holidays)) setHolidays(bh._holidays);
+        } catch {}
+      }).catch(() => {});
+  }, [shopSlug]);
+
+  // 날짜가 휴무일인지 체크
+  const isHoliday = useCallback((dateStr: string) => {
+    if (holidays.includes(dateStr)) return true;
+    const d = new Date(dateStr + 'T00:00:00');
+    const dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    return closedDays.includes(dayKeys[d.getDay()]);
+  }, [closedDays, holidays]);
+
+  const fmtPhone = (ph: string) => {
+    const n = ph.replace(/\D/g, '');
+    if (n.startsWith('02')) return n.length === 10 ? `${n.slice(0,2)}-${n.slice(2,6)}-${n.slice(6)}` : `${n.slice(0,2)}-${n.slice(2,5)}-${n.slice(5)}`;
+    if (n.length === 11) return `${n.slice(0,3)}-${n.slice(3,7)}-${n.slice(7)}`;
+    if (n.length === 10) return `${n.slice(0,3)}-${n.slice(3,6)}-${n.slice(6)}`;
+    return ph;
+  };
+
+  // 상태별 컬러 (좌측 바 + 연한 배경)
+  const STATUS_COLORS: Record<string, { bar: string; bg: string; text: string }> = {
+    CONFIRMED: { bar: c.primary, bg: `${c.primary}18`, text: c.text },
+    PENDING:   { bar: '#F59E0B', bg: '#FEF3C7',  text: '#92400E' },
+    COMPLETED: { bar: '#6B7280', bg: '#F3F4F6',  text: '#374151' },
+    CANCELLED: { bar: '#EF4444', bg: '#FEE2E2',  text: '#991B1B' },
+    NO_SHOW:   { bar: '#DC2626', bg: '#FEE2E2',  text: '#991B1B' },
+  };
+
+  useEffect(() => {
+    fetch(`/api/shops/${shopSlug}/reservations`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.reservations) {
+          setRawEvents(data.reservations);
+          setEvents(data.reservations.map((r: ReservationEvent) => {
+            const sc = STATUS_COLORS[r.status] || STATUS_COLORS.CONFIRMED;
+            const custName = r.customer?.user?.name || '미정';
+            const custPhone = r.customer?.user?.phone || '';
+            const menuName = r.menu?.name || '';
+            const staffName = r.staff?.user?.name || '';
+            const session = `${r.currentSession || 1}/${r.totalSessions || 1}`;
+            return {
+              id: r.id,
+              title: menuName,
+              start: r.startTime, end: r.endTime,
+              backgroundColor: sc.bg, borderColor: sc.bar, textColor: sc.text,
+              extendedProps: { menu: menuName, customer: custName, phone: custPhone, staff: staffName, status: r.status, session },
+            };
+          }));
+        }
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shopSlug]);
+
+  // 일별 요약 맵
+  const summaryMap = useCallback((): Record<string, DaySummary> => {
+    const dayMap: Record<string, ReservationEvent[]> = {};
+    rawEvents
+      .filter((r) => r.status !== 'CANCELLED')
+      .forEach((r) => {
+        const d = new Date(r.startTime);
+        const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        if (!dayMap[day]) dayMap[day] = [];
+        dayMap[day].push(r);
+      });
+
+    const result: Record<string, DaySummary> = {};
+    Object.entries(dayMap).forEach(([date, evts]) => {
+      const starts = evts.map((e) => new Date(e.startTime).getTime());
+      const ends = evts.map((e) => new Date(e.endTime).getTime());
+      const first = new Date(Math.min(...starts));
+      const last = new Date(Math.max(...ends));
+
+      const totalMin = (CLOSE_HOUR - OPEN_HOUR) * 60;
+      const sorted = evts
+        .map((e) => ({ s: new Date(e.startTime), e: new Date(e.endTime) }))
+        .sort((a, b) => a.s.getTime() - b.s.getTime());
+      const merged: { s: Date; e: Date }[] = [];
+      for (const slot of sorted) {
+        if (merged.length && slot.s <= merged[merged.length - 1].e) {
+          merged[merged.length - 1].e = new Date(Math.max(merged[merged.length - 1].e.getTime(), slot.e.getTime()));
+        } else {
+          merged.push({ s: new Date(slot.s), e: new Date(slot.e) });
+        }
+      }
+      const busyMin = merged.reduce((sum, m) => sum + (m.e.getTime() - m.s.getTime()) / 60000, 0);
+      const freeMin = Math.max(0, totalMin - busyMin);
+
+      const fmt = (d: Date) => `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+      const workMin = Math.round((last.getTime() - first.getTime()) / 60000);
+
+      result[date] = {
+        count: evts.length,
+        firstTime: fmt(first),
+        lastTime: fmt(last),
+        freeH: Math.floor(freeMin / 60),
+        freeM: Math.round(freeMin % 60),
+        workH: Math.floor(workMin / 60),
+        workM: Math.round(workMin % 60),
+      };
+    });
+    return result;
+  }, [rawEvents, CLOSE_HOUR, OPEN_HOUR]);
+
+  // 월간 뷰 날짜 셀에 요약 주입
+  const handleDayCellDidMount = useCallback((arg: { date: Date; el: HTMLElement; view: { type: string } }) => {
+    if (arg.view.type !== 'dayGridMonth') return;
+
+    const dateStr = `${arg.date.getFullYear()}-${String(arg.date.getMonth() + 1).padStart(2, '0')}-${String(arg.date.getDate()).padStart(2, '0')}`;
+    const map = summaryMap();
+    const s = map[dateStr];
+
+    const existing = arg.el.querySelector('.bm-day-summary');
+    if (existing) existing.remove();
+
+    arg.el.style.cursor = 'pointer';
+    arg.el.style.position = 'relative';
+
+    // 휴무일 표시
+    if (isHoliday(dateStr)) {
+      arg.el.style.background = 'repeating-linear-gradient(135deg, transparent, transparent 6px, rgba(200,200,200,0.13) 6px, rgba(200,200,200,0.13) 7px)';
+      const existingHol = arg.el.querySelector('.bm-holiday-badge');
+      if (!existingHol) {
+        const badge = document.createElement('div');
+        badge.className = 'bm-holiday-badge';
+        badge.style.cssText = `position:absolute;top:${mob ? '24px' : '32px'};left:50%;transform:translateX(-50%);font-size:${mob ? '8px' : '10px'};font-weight:700;color:#EF4444;background:rgba(239,68,68,0.08);padding:1px 6px;border-radius:4px;white-space:nowrap;z-index:3;letter-spacing:1px;`;
+        badge.textContent = '휴무';
+        arg.el.appendChild(badge);
+      }
+    }
+
+    if (!s) return;
+
+    const totalMin = (CLOSE_HOUR - OPEN_HOUR) * 60;
+    const busyMin = totalMin - (s.freeH * 60 + s.freeM);
+    const util = Math.round((busyMin / totalMin) * 100);
+    // 5단계 효율 구간: 색상, 배경색, 라벨
+    const UTIL_LEVELS = [
+      { min: 0,  max: 20,  color: '#93C5FD', bg: 'rgba(147,197,253,0.10)', label: '여유' },
+      { min: 20, max: 40,  color: '#6EE7B7', bg: 'rgba(110,231,183,0.10)', label: '보통' },
+      { min: 40, max: 60,  color: '#FCD34D', bg: 'rgba(252,211,77,0.12)',  label: '적정' },
+      { min: 60, max: 80,  color: '#FB923C', bg: 'rgba(251,146,60,0.12)',  label: '바쁨' },
+      { min: 80, max: 101, color: '#EF4444', bg: 'rgba(239,68,68,0.12)',   label: '풀' },
+    ];
+    const level = UTIL_LEVELS.find(l => util >= l.min && util < l.max) || UTIL_LEVELS[4];
+    const utilColor = level.color;
+    const cellBg = level.bg;
+    const fmtT = (t: string) => { const p = t.split(':'); return `${p[0].padStart(2,'0')}:${p[1]}`; };
+    const workStr = `${String(s.workH).padStart(2,'0')}:${String(s.workM).padStart(2,'0')}`;
+
+    // 셀 배경색 적용
+    arg.el.style.background = cellBg;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'bm-day-summary';
+    wrapper.style.cssText = `
+      position:absolute; bottom:4px; left:4px; right:4px;
+      display:flex; flex-direction:column; gap:2px;
+      pointer-events:none; font-size:9px; line-height:1.3;
+    `;
+
+    // 5단계 프로그레스 바 세그먼트 생성
+    const segColors = UTIL_LEVELS.map(l => l.color);
+    const filledSegments = UTIL_LEVELS.findIndex(l => util >= l.min && util < l.max);
+    const activeIdx = filledSegments >= 0 ? filledSegments : 4;
+    const segmentsHtml = segColors.map((col, i) => {
+      const filled = i <= activeIdx;
+      const bgColor = filled ? utilColor : col;
+      const opacity = filled ? '1' : '0.15';
+      return `<div style="flex:1;height:100%;background:${bgColor};opacity:${opacity};${i === 0 ? 'border-radius:3px 0 0 3px;' : ''}${i === 4 ? 'border-radius:0 3px 3px 0;' : ''}"></div>`;
+    }).join('');
+
+    // 아이콘 SVG (모바일용)
+    const ico = (path: string, color: string) => `<svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg>`;
+    const icoBook = ico('M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', c.primary); // 예약
+    const icoStart = ico('M12 2v20M2 12l10-10M22 12l-10-10', '#10B981'); // 시작 (▶)
+    const icoEnd = ico('M18 6L6 18M6 6l12 12', '#EF4444'); // 종료 (✕)
+    const icoWork = ico('M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 6v6l4 2', '#6366F1'); // 근무 (시계)
+    const icoEff = ico('M18 20V10M12 20V4M6 20v-6', utilColor); // 효율 (차트)
+
+    const lbl = (icon: string, label: string) => mob ? icon : `<span>${label}</span>`;
+
+    wrapper.innerHTML = `
+      <div style="display:flex;justify-content:space-between;font-weight:700;color:${c.primary};align-items:center">
+        ${lbl(icoBook, '예약')}<span>${s.count}건</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;color:${c.textLight};align-items:center">
+        ${lbl(icoStart, '시작')}<span>${fmtT(s.firstTime)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;color:${c.textLight};align-items:center">
+        ${lbl(icoEnd, '종료')}<span>${fmtT(s.lastTime)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;color:${c.text};align-items:center">
+        ${lbl(icoWork, '근무')}<span>${workStr}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        ${lbl(icoEff, '효율')}
+        <span style="font-weight:800;color:${utilColor};font-size:10px">${util}% <span style="font-size:8px;font-weight:600;opacity:0.8">${level.label}</span></span>
+      </div>
+      <div style="width:100%;height:6px;border-radius:3px;background:${c.borderLight};overflow:hidden;margin-top:2px;display:flex;gap:1px">
+        ${segmentsHtml}
+      </div>
+    `;
+
+    arg.el.appendChild(wrapper);
+  }, [summaryMap, c.primary, c.primaryLight, c.textOnPrimary, c.borderLight, c.text, c.textLight, CLOSE_HOUR, OPEN_HOUR, mob, isHoliday]);
+
+  // 주간/일간 요일 헤더에 뱃지+바 주입
+  const injectHeaderSummary = useCallback((el: HTMLElement, dateStr: string) => {
+    const existing = el.querySelector('.bm-header-summary');
+    if (existing) existing.remove();
+
+    // 휴무일이면 휴무 뱃지만 표시
+    if (isHoliday(dateStr)) {
+      const badge = document.createElement('div');
+      badge.className = 'bm-header-summary';
+      badge.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:4px 0;';
+      badge.innerHTML = `<span style="font-size:10px;font-weight:700;color:#EF4444;background:rgba(239,68,68,0.08);padding:1px 8px;border-radius:10px;letter-spacing:1px;">휴무</span>`;
+      el.appendChild(badge);
+      return;
+    }
+
+    const map = summaryMap();
+    const s = map[dateStr];
+    if (!s) return;
+
+    const totalMin = (CLOSE_HOUR - OPEN_HOUR) * 60;
+    const busyMin = totalMin - (s.freeH * 60 + s.freeM);
+    const util = Math.round((busyMin / totalMin) * 100);
+    const UTIL_LEVELS = [
+      { min: 0,  max: 20,  color: '#93C5FD' },
+      { min: 20, max: 40,  color: '#6EE7B7' },
+      { min: 40, max: 60,  color: '#FCD34D' },
+      { min: 60, max: 80,  color: '#FB923C' },
+      { min: 80, max: 101, color: '#EF4444' },
+    ];
+    const activeIdx = UTIL_LEVELS.findIndex(l => util >= l.min && util < l.max);
+    const idx = activeIdx >= 0 ? activeIdx : 4;
+    const activeColor = UTIL_LEVELS[idx].color;
+    const segmentsHtml = UTIL_LEVELS.map((l, i) => {
+      const filled = i <= idx;
+      const bgColor = filled ? activeColor : l.color;
+      const opacity = filled ? '1' : '0.15';
+      return `<div style="flex:1;height:100%;background:${bgColor};opacity:${opacity};${i === 0 ? 'border-radius:2px 0 0 2px;' : ''}${i === 4 ? 'border-radius:0 2px 2px 0;' : ''}"></div>`;
+    }).join('');
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'bm-header-summary';
+    wrapper.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 8px 6px;';
+
+    wrapper.innerHTML = `
+      <div style="
+        display:inline-flex;align-items:center;gap:4px;
+        background:${s.count >= 5 ? c.primary : c.primaryLight};
+        color:${s.count >= 5 ? c.textOnPrimary : c.primary};
+        border-radius:10px;padding:1px 8px;
+        font-size:10px;font-weight:700;
+      ">${s.count}건 <span style="font-weight:400;opacity:.7">${s.firstTime}~${s.lastTime}</span></div>
+      <div style="width:80%;height:4px;border-radius:2px;background:${c.borderLight};overflow:hidden;display:flex;gap:1px">
+        ${segmentsHtml}
+      </div>
+    `;
+    el.appendChild(wrapper);
+  }, [summaryMap, c.primary, c.primaryLight, c.textOnPrimary, c.borderLight, CLOSE_HOUR, OPEN_HOUR, isHoliday]);
+
+  const handleDayHeaderDidMount = useCallback((arg: { date: Date; el: HTMLElement; view: { type: string } }) => {
+    if (arg.view.type === 'dayGridMonth') return;
+    const dateStr = `${arg.date.getFullYear()}-${String(arg.date.getMonth() + 1).padStart(2, '0')}-${String(arg.date.getDate()).padStart(2, '0')}`;
+    injectHeaderSummary(arg.el, dateStr);
+
+    // 클릭 시 해당 날짜 컬럼 활성화
+    arg.el.style.cursor = 'pointer';
+    arg.el.onclick = () => {
+      setActiveDate(prev => prev === dateStr ? '' : dateStr);
+    };
+  }, [injectHeaderSummary]);
+
+  // rawEvents 변경 시 기존 셀+헤더에 요약 재주입
+  useEffect(() => {
+    if (rawEvents.length === 0) return;
+    // 월간 셀
+    const cells = document.querySelectorAll('.fc-daygrid-day');
+    cells.forEach((el) => {
+      const dateStr = (el as HTMLElement).dataset.date;
+      if (!dateStr) return;
+      handleDayCellDidMount({
+        date: new Date(dateStr + 'T00:00:00'),
+        el: el as HTMLElement,
+        view: { type: 'dayGridMonth' },
+      });
+    });
+    // 주간/일간 헤더
+    const headers = document.querySelectorAll('.fc-col-header-cell');
+    headers.forEach((el) => {
+      const dateStr = (el as HTMLElement).dataset.date;
+      if (!dateStr) return;
+      injectHeaderSummary(el as HTMLElement, dateStr);
+    });
+    // 주간/일간 뷰 td 셀에 휴무 배경 적용
+    const tdCells = document.querySelectorAll('.fc-timegrid-col[data-date]');
+    tdCells.forEach((el) => {
+      const dateStr = (el as HTMLElement).dataset.date;
+      if (!dateStr) return;
+      if (isHoliday(dateStr)) {
+        (el as HTMLElement).style.background = 'repeating-linear-gradient(135deg, transparent, transparent 8px, rgba(239,68,68,0.04) 8px, rgba(239,68,68,0.04) 9px)';
+      }
+    });
+  }, [rawEvents, handleDayCellDidMount, injectHeaderSummary, isHoliday]);
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const adjustColWidths = useCallback(() => {}, []);
+
+  // dateClick: 싱글클릭 → 셀 강조, 더블클릭 → 일간 뷰
+  const lastClickRef = useRef<{ date: string; time: number }>({ date: '', time: 0 });
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleDateClick = useCallback((info: { dateStr: string; view: { type: string } }) => {
+    const now = Date.now();
+    const last = lastClickRef.current;
+    const isDoubleClick = last.date === info.dateStr && (now - last.time) < 350;
+    lastClickRef.current = { date: info.dateStr, time: now };
+
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
+
+    if (isDoubleClick) {
+      // 더블클릭 → 일간 뷰
+      setPopupDate(null);
+      const api = calendarRef.current?.getApi();
+      if (api) {
+        api.changeView('timeGridDay', info.dateStr);
+        setActiveDate('');
+      }
+    } else {
+      // 싱글클릭
+      clickTimerRef.current = setTimeout(() => {
+        clickTimerRef.current = null;
+        if (info.view.type === 'dayGridMonth') {
+          // 월간 뷰 → 팝업
+          setPopupDate(prev => prev === info.dateStr ? null : info.dateStr);
+          setActiveDate(info.dateStr);
+        } else {
+          // 주간/일간 → 셀 강조만
+          setActiveDate(prev => prev === info.dateStr ? '' : info.dateStr);
+        }
+      }, 300);
+    }
+  }, []);
+
+  // 클릭한 날짜 컬럼/셀 활성화
+  useEffect(() => {
+    // 주간 뷰
+    const allTh = document.querySelectorAll('.fc-col-header-cell');
+    const allTd = document.querySelectorAll('.fc-timegrid-col');
+    allTh.forEach(el => el.classList.remove('bm-col-active'));
+    allTd.forEach(el => el.classList.remove('bm-col-active'));
+    // 월간 뷰
+    const allDayCells = document.querySelectorAll('.fc-daygrid-day');
+    allDayCells.forEach(el => el.classList.remove('bm-cell-active'));
+
+    if (!activeDate) return;
+
+    allTh.forEach(el => {
+      if ((el as HTMLElement).dataset.date === activeDate) el.classList.add('bm-col-active');
+    });
+    allTd.forEach(el => {
+      if ((el as HTMLElement).dataset.date === activeDate) el.classList.add('bm-col-active');
+    });
+    allDayCells.forEach(el => {
+      if ((el as HTMLElement).dataset.date === activeDate) el.classList.add('bm-cell-active');
+    });
+  }, [activeDate]);
+
+  // 선택 회원의 방문 이력
+  const customerHistory = selectedEvent
+    ? rawEvents
+        .filter((r) => r.customer?.user?.name === selectedEvent.customer && r.status !== 'CANCELLED')
+        .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+    : [];
+
+  const STATUS_LABEL: Record<string, string> = {
+    CONFIRMED: '확정', PENDING: '대기', COMPLETED: '완료', CANCELLED: '취소', NO_SHOW: '노쇼',
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: mob ? 'column' : 'row', gap: mob ? 10 : 16 }}>
+      {/* 캘린더 */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="rounded-2xl border overflow-hidden" style={{ background: c.surface, borderColor: c.borderLight }}>
+          <style>{`
+            .fc {
+              --fc-border-color: ${c.borderLight};
+              --fc-today-bg-color: transparent;
+              --fc-page-bg-color: transparent;
+              --fc-neutral-bg-color: ${c.secondaryLight};
+              --fc-event-border-color: transparent;
+              font-family: 'Pretendard','Noto Sans KR',sans-serif;
+            }
+            /* 주간 뷰: 오늘 컬럼 넓고 밝게, 나머지 좁고 약간 어둡게 */
+            .fc-timeGridWeek-view .fc-col-header-cell { position:relative; }
+            .fc-timeGridWeek-view th.fc-day-today::before {
+              content:'✦ TODAY ✦'; display:block; position:absolute; top:0; left:0; right:0;
+              background:linear-gradient(135deg, ${c.primary}, ${c.primary}DD); color:#fff;
+              font-size:11px; font-weight:900; letter-spacing:2px;
+              text-align:center; padding:4px 0; z-index:5;
+              box-shadow: 0 3px 10px ${c.primary}60;
+            }
+            .fc-timeGridWeek-view .fc-day-today .fc-col-header-cell-cushion { color:${c.primary}!important; font-weight:800!important; font-size:13px!important; padding-top:24px!important; }
+            .fc-timeGridWeek-view td.fc-day-today,
+            .fc-timeGridWeek-view th.fc-day-today { background:transparent!important; opacity:1!important; }
+            .fc-timeGridWeek-view td.fc-day-today .fc-timegrid-event { opacity:1!important; }
+            .fc-timeGridWeek-view td:not(.fc-day-today):not(.fc-timegrid-axis),
+            .fc-timeGridWeek-view th:not(.fc-day-today):not(.fc-timegrid-axis) { opacity:1!important; }
+            .fc-timeGridWeek-view td:not(.fc-day-today) .fc-timegrid-event { opacity:1!important; }
+            /* 날짜 클릭 시 해당 컬럼 활성화 */
+            .fc-timeGridWeek-view th.bm-col-active,
+            .fc-timeGridWeek-view td.bm-col-active { opacity:1!important; background:#fff!important; }
+            .fc-timeGridWeek-view th.bm-col-active .fc-col-header-cell-cushion { color:${c.primary}!important; font-weight:800!important; }
+            /* 오늘 컬럼 너비 확대 (colgroup) */
+            .fc-timeGridWeek-view table { table-layout:fixed!important; }
+            .fc-timeGridWeek-view .fc-timegrid-axis { width:52px!important; min-width:52px!important; max-width:52px!important; }
+            .fc-timeGridWeek-view col { width:12%!important; }
+            .fc-timeGridWeek-view .fc-scrollgrid-sync-table col:nth-child(2),
+            .fc-timeGridWeek-view .fc-col-header col:nth-child(2) { width:12%!important; }
+            .fc-timeGridWeek-view th.fc-day-today,
+            .fc-timeGridWeek-view td.fc-day-today { width:20%!important; min-width:20%!important; }
+            .fc .fc-toolbar { padding:16px 20px 12px; margin-bottom:0!important; gap:12px; }
+            .fc .fc-toolbar-title { font-size:18px!important; font-weight:700!important; color:${c.text}!important; }
+            .fc .fc-button {
+              border:1px solid ${c.borderLight}!important; background:transparent!important;
+              color:${c.text}!important; font-size:12px!important; font-weight:500!important;
+              padding:6px 14px!important; border-radius:8px!important; box-shadow:none!important;
+              transition:all .15s!important; text-transform:none!important;
+            }
+            .fc .fc-button:hover { background:${c.primaryLight}!important; border-color:${c.primary}!important; color:${c.primary}!important; }
+            .fc .fc-button-active { background:${c.primary}!important; border-color:${c.primary}!important; color:${c.textOnPrimary}!important; }
+            .fc .fc-button-active:hover { background:${c.primary}!important; color:${c.textOnPrimary}!important; }
+            .fc .fc-prev-button,.fc .fc-next-button { padding:6px 8px!important; border-radius:8px!important; }
+            .fc .fc-today-button { border-radius:8px!important; }
+            .fc .fc-today-button:disabled { opacity:.4!important; }
+            .fc .fc-col-header-cell { padding:10px 0!important; background:${c.secondaryLight}!important; border-color:${c.borderLight}!important; }
+            .fc .fc-col-header-cell-cushion { font-size:12px!important; font-weight:600!important; color:${c.textLight}!important; text-decoration:none!important; }
+            .fc .fc-day-sun .fc-col-header-cell-cushion { color:#EF4444!important; }
+            .fc .fc-day-sat .fc-col-header-cell-cushion { color:#3B82F6!important; }
+            .fc .fc-daygrid-day-number { font-size:13px!important; font-weight:500!important; color:${c.text}!important; padding:6px 8px!important; text-decoration:none!important; }
+            .fc .fc-day-today {
+              background: linear-gradient(135deg, ${c.primaryLight}90 0%, ${c.primaryLight}50 100%)!important;
+            }
+            .fc .fc-day-today .fc-daygrid-day-number {
+              background:${c.primary}!important; color:${c.textOnPrimary}!important;
+              border-radius:8px!important; padding:2px 10px!important;
+              font-weight:800!important; font-size:14px!important;
+              margin:4px 4px 0!important; display:inline-block!important;
+              box-shadow: 0 2px 8px ${c.primary}50;
+            }
+            .fc .fc-day-today .fc-daygrid-day-top::after {
+              content:'TODAY'; display:block;
+              font-size:9px; font-weight:800; letter-spacing:1px;
+              color:${c.primary}; padding:0 8px; margin-top:2px;
+            }
+            .fc .fc-day-sun .fc-daygrid-day-number { color:#EF4444!important; }
+            .fc .fc-day-sat .fc-daygrid-day-number { color:#3B82F6!important; }
+            .fc .fc-event { border-radius:6px!important; border:none!important; border-left:3px solid!important; cursor:pointer!important; overflow:hidden!important; }
+            .fc .fc-timegrid-event .fc-event-main { padding:4px 8px!important; }
+            .fc .fc-timegrid-slot-label-cushion { font-size:11px!important; color:${c.textLight}!important; }
+            .fc .fc-timegrid-slot { height:56px!important; }
+            .fc .fc-timegrid-now-indicator-line { display:none!important; }
+            .fc .fc-timegrid-now-indicator-arrow { display:none!important; }
+            .fc .fc-scroller::-webkit-scrollbar { width:4px; }
+            .fc .fc-scroller::-webkit-scrollbar-thumb { background:${c.borderLight}; border-radius:4px; }
+            .fc .fc-day-other .fc-daygrid-day-number { opacity:.3!important; }
+            .fc .fc-day-other .bm-day-summary { display:none!important; }
+            .fc td,.fc th { border-color:${c.borderLight}!important; }
+            .fc .fc-daygrid-day-frame { min-height:140px!important; }
+            .fc-dayGridMonth-view .fc-daygrid-event-harness { display:none!important; }
+            .fc-dayGridMonth-view .fc-daygrid-more-link { display:none!important; }
+            .fc-dayGridMonth-view .fc-daygrid-day-events { display:none!important; }
+            /* 월간 뷰: 클릭한 셀 활성화 */
+            .fc-dayGridMonth-view .fc-daygrid-day.bm-cell-active {
+              background:#fff!important; opacity:1!important;
+              z-index:10; position:relative;
+              box-shadow: inset 0 0 0 2px ${c.primary}, 0 4px 16px rgba(0,0,0,.1);
+              transition: all .2s ease;
+            }
+            .fc-dayGridMonth-view .fc-daygrid-day.bm-cell-active .bm-day-summary {
+              transform: scale(1.1); transform-origin: center bottom;
+            }
+            .fc-dayGridMonth-view .fc-daygrid-day.bm-cell-active .fc-daygrid-day-number {
+              color:${c.primary}!important; font-weight:800!important; font-size:15px!important;
+            }
+            .fc-dayGridMonth-view:has(.bm-cell-active) .fc-daygrid-day:not(.bm-cell-active) {
+              opacity:.5!important; transition: opacity .2s;
+            }
+            .bm-popup-scroll::-webkit-scrollbar { display:none!important; width:0!important; }
+            @media (max-width:768px) {
+              .fc .fc-toolbar {
+                flex-direction:row!important; flex-wrap:nowrap!important;
+                gap:4px!important; padding:8px 10px 6px!important;
+                align-items:center!important; justify-content:space-between!important;
+              }
+              .fc .fc-toolbar-chunk { display:flex; gap:3px; align-items:center; flex-shrink:0; }
+              .fc .fc-toolbar-chunk:nth-child(2) { flex:1; min-width:0; justify-content:center; }
+              .fc .fc-toolbar-title { font-size:13px!important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+              .fc .fc-button { font-size:10px!important; padding:4px 7px!important; border-radius:6px!important; }
+              .fc .fc-prev-button,.fc .fc-next-button { padding:4px 5px!important; }
+              .fc .fc-today-button { font-size:9px!important; padding:3px 6px!important; }
+              .fc .fc-col-header-cell { padding:6px 0!important; }
+              .fc .fc-col-header-cell-cushion { font-size:10px!important; }
+              .fc .fc-daygrid-day-number { font-size:11px!important; padding:3px 5px!important; }
+              .fc .fc-daygrid-day-frame { min-height:100px!important; }
+              .fc .fc-day-today .fc-daygrid-day-number { font-size:11px!important; padding:2px 6px!important; margin:2px 2px 0!important; }
+              .fc .fc-day-today .fc-daygrid-day-top::after { font-size:7px!important; }
+              .bm-day-summary { bottom:2px!important; left:2px!important; right:2px!important; gap:1px!important; font-size:7px!important; }
+              .bm-day-summary > div:last-child { height:2px!important; }
+              .fc .fc-timegrid-slot { height:40px!important; }
+              .fc .fc-timegrid-slot-label-cushion { font-size:9px!important; }
+              .fc .fc-timegrid-event .fc-event-main { padding:2px 4px!important; }
+              .fc-timeGridWeek-view col { width:auto!important; }
+              .fc-timeGridWeek-view .fc-scrollgrid-sync-table col:nth-child(2),
+              .fc-timeGridWeek-view .fc-col-header col:nth-child(2) { width:auto!important; }
+              .fc-timeGridWeek-view th.fc-day-today,
+              .fc-timeGridWeek-view td.fc-day-today { width:auto!important; min-width:auto!important; }
+              .fc-timeGridWeek-view .fc-timegrid-axis { width:36px!important; min-width:36px!important; max-width:36px!important; }
+              .fc-timeGridWeek-view th.fc-day-today::before { font-size:8px!important; letter-spacing:1px!important; padding:2px 0!important; }
+              .fc-timeGridWeek-view .fc-day-today .fc-col-header-cell-cushion { padding-top:18px!important; font-size:10px!important; }
+              .bm-header-summary { gap:2px!important; margin-top:2px!important; }
+              .bm-header-summary > div:first-child { font-size:8px!important; padding:1px 4px!important; }
+              .bm-header-summary > div:last-child { height:2px!important; }
+            }
+            /* 주간 뷰 이벤트 선명도 개선 */
+            .fc-timeGridWeek-view .fc-timegrid-event .fc-event-main {
+              padding:3px 5px!important;
+              font-size:11px!important;
+            }
+            .fc-timeGridWeek-view .fc-timegrid-event {
+              border-radius:6px!important;
+              border-width:0!important;
+              border-left:3px solid rgba(0,0,0,0.15)!important;
+              box-shadow:0 1px 3px rgba(0,0,0,0.08)!important;
+            }
+          `}</style>
+          <FullCalendar
+            ref={calendarRef}
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            initialView={mob ? 'timeGridDay' : 'dayGridMonth'}
+            locale="ko"
+            headerToolbar={mob
+              ? { left: 'prev,next,today', center: 'title', right: 'dayGridMonth,timeGrid3Day,timeGridDay' }
+              : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }
+            }
+            views={{
+              timeGrid3Day: {
+                type: 'timeGrid',
+                duration: { days: 3 },
+                buttonText: '3일',
+              },
+            }}
+            buttonText={mob
+              ? { today: '\uC624\uB298', month: '\uC6D4', week: '\uC8FC', day: '\uC77C' }
+              : { today: '\uC624\uB298', month: '\uC6D4\uAC04', week: '\uC8FC\uAC04', day: '\uC77C\uAC04' }
+            }
+            titleFormat={mob ? { year: 'numeric', month: 'short' } : { year: 'numeric', month: 'long', day: 'numeric' }}
+            dayHeaderFormat={mob
+              ? { month: 'numeric', day: 'numeric', weekday: 'narrow', omitCommas: true }
+              : { weekday: 'short', month: 'numeric', day: 'numeric', omitCommas: true }
+            }
+            slotLabelFormat={{ hour: 'numeric', minute: '2-digit', hour12: true }}
+            events={events}
+            height="auto"
+            nowIndicator editable={false}
+            allDaySlot={false}
+            slotMinTime="08:00:00" slotMaxTime="22:00:00" scrollTime="09:00:00"
+            expandRows stickyHeaderDates firstDay={0} eventDisplay="block"
+            dayCellDidMount={handleDayCellDidMount}
+            dayHeaderDidMount={handleDayHeaderDidMount}
+            fixedWeekCount={false}
+            datesSet={adjustColWidths}
+            dateClick={handleDateClick}
+            navLinks
+            navLinkDayClick={(date) => {
+              const api = calendarRef.current?.getApi();
+              if (api) api.changeView('timeGridDay', date);
+            }}
+            eventClick={(info) => {
+              const p = info.event.extendedProps;
+              const fmt = (d: Date | null) => d ? `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}` : '';
+              setSelectedEvent({
+                id: info.event.id,
+                menu: p.menu, customer: p.customer, phone: p.phone,
+                staff: p.staff, status: p.status, session: p.session,
+                start: fmt(info.event.start), end: fmt(info.event.end),
+              });
+            }}
+            eventContent={(arg) => {
+              const p = arg.event.extendedProps;
+              const fmt = (d: Date | null) => {
+                if (!d) return '';
+                return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+              };
+              const start = arg.event.start ? fmt(arg.event.start) : '';
+              const end = arg.event.end ? fmt(arg.event.end) : '';
+              const phone = p.phone ? fmtPhone(p.phone) : '';
+              const isSelected = selectedEvent?.id === arg.event.id;
+
+              if (mob) {
+                // 모바일: 간결한 표시
+                return {
+                  html: `
+                    <div style="display:flex;flex-direction:column;gap:0;padding:1px 0;overflow:hidden;${isSelected ? 'opacity:1;' : ''}">
+                      <div style="font-size:9px;opacity:.6;font-weight:500">${start}-${end}</div>
+                      <div style="font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.menu}</div>
+                      <div style="font-size:9px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.customer}</div>
+                    </div>
+                  `
+                };
+              }
+
+              return {
+                html: `
+                  <div style="display:flex;flex-direction:column;gap:1px;padding:2px 0;overflow:hidden;${isSelected ? 'opacity:1;' : ''}">
+                    <div style="font-size:11px;opacity:.7;font-weight:600">${start} - ${end}</div>
+                    <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.menu} <span style="font-weight:500;opacity:.7">(${p.session})</span></div>
+                    <div style="font-size:11px;opacity:.85">${p.customer}${phone ? ' ' + phone : ''}</div>
+                  </div>
+                `
+              };
+            }}
+          />
+        </div>
+      </div>
+
+      {/* 월간 날짜 클릭 팝업 */}
+      {popupDate && (() => {
+        const map = summaryMap();
+        const s = map[popupDate];
+        const d = new Date(popupDate + 'T00:00:00');
+        const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+        const dateLabel = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${dayNames[d.getDay()]})`;
+        const dayEvents = rawEvents
+          .filter(r => {
+            const sd = new Date(r.startTime);
+            const localDate = `${sd.getFullYear()}-${String(sd.getMonth() + 1).padStart(2, '0')}-${String(sd.getDate()).padStart(2, '0')}`;
+            return localDate === popupDate && r.status !== 'CANCELLED';
+          })
+          .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+        const fmtTime = (iso: string) => { const dt = new Date(iso); return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`; };
+
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            onClick={() => { setPopupDate(null); setActiveDate(''); }}>
+            {/* 블러 배경 */}
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)' }} />
+            {/* 팝업 */}
+            <div
+              style={{
+                position: 'relative', width: '60%', maxWidth: 520, minWidth: 300,
+                maxHeight: '70vh', overflow: 'hidden',
+                background: c.surface, borderRadius: 20,
+                boxShadow: '0 20px 60px rgba(0,0,0,0.25)', padding: 0,
+                display: 'flex', flexDirection: 'column',
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* 헤더 */}
+              <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${c.borderLight}`, flexShrink: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: c.text }}>{dateLabel}</div>
+                  <button onClick={() => { setPopupDate(null); setActiveDate(''); }}
+                    style={{ background: 'none', border: 'none', fontSize: 20, color: c.textLight, cursor: 'pointer', padding: 4 }}>✕</button>
+                </div>
+              </div>
+
+              {/* 요약 정보 */}
+              {(() => {
+                const totalMin = (CLOSE_HOUR - OPEN_HOUR) * 60;
+                const busyMin = s ? totalMin - (s.freeH * 60 + s.freeM) : 0;
+                const util = s ? Math.round((busyMin / totalMin) * 100) : 0;
+                const workStr = s ? `${String(s.workH).padStart(2,'0')}:${String(s.workM).padStart(2,'0')}` : '-';
+                const UTIL_LEVELS = [
+                  { min: 0,  max: 20,  color: '#93C5FD', label: '여유' },
+                  { min: 20, max: 40,  color: '#6EE7B7', label: '보통' },
+                  { min: 40, max: 60,  color: '#FCD34D', label: '적정' },
+                  { min: 60, max: 80,  color: '#FB923C', label: '바쁨' },
+                  { min: 80, max: 101, color: '#EF4444', label: '풀' },
+                ];
+                const level = UTIL_LEVELS.find(l => util >= l.min && util < l.max) || UTIL_LEVELS[4];
+                const items = [
+                  { label: '예약', value: s ? `${s.count}건` : '0건', color: c.primary },
+                  { label: '시작', value: s ? s.firstTime : '-', color: c.text },
+                  { label: '종료', value: s ? s.lastTime : '-', color: c.text },
+                  { label: '근무', value: workStr, color: c.text },
+                  { label: '효율', value: `${util}% ${level.label}`, color: level.color },
+                ];
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, padding: '16px 24px', flexShrink: 0 }}>
+                    {items.map((item, i) => (
+                      <div key={i} style={{ background: c.secondaryLight, borderRadius: 12, padding: '10px 6px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 10, color: c.textLight, fontWeight: 600, marginBottom: 4 }}>{item.label}</div>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: item.color }}>{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* 예약 리스트 - 이 영역만 스크롤 */}
+              {dayEvents.length > 0 && (
+                <div style={{ padding: '0 24px 20px', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: c.textLight, marginBottom: 8, flexShrink: 0 }}>예약 목록</div>
+                  <div
+                    className="bm-popup-scroll"
+                    style={{
+                      display: 'flex', flexDirection: 'column', gap: 6,
+                      flex: 1, minHeight: 0, overflowY: 'auto',
+                      scrollbarWidth: 'none', msOverflowStyle: 'none',
+                      cursor: 'grab',
+                      paddingRight: 2,
+                    }}
+                    onMouseDown={e => {
+                      const el = e.currentTarget;
+                      el.dataset.dragging = 'true';
+                      el.dataset.startY = String(e.clientY);
+                      el.dataset.scrollTop = String(el.scrollTop);
+                      el.style.cursor = 'grabbing';
+                      el.style.userSelect = 'none';
+                    }}
+                    onMouseMove={e => {
+                      const el = e.currentTarget;
+                      if (el.dataset.dragging !== 'true') return;
+                      const dy = e.clientY - Number(el.dataset.startY);
+                      el.scrollTop = Number(el.dataset.scrollTop) - dy;
+                    }}
+                    onMouseUp={e => {
+                      const el = e.currentTarget;
+                      el.dataset.dragging = 'false';
+                      el.style.cursor = 'grab';
+                      el.style.userSelect = '';
+                    }}
+                    onMouseLeave={e => {
+                      const el = e.currentTarget;
+                      el.dataset.dragging = 'false';
+                      el.style.cursor = 'grab';
+                      el.style.userSelect = '';
+                    }}
+                  >
+                    {dayEvents.map(ev => {
+                      const sc = STATUS_COLORS[ev.status] || STATUS_COLORS.CONFIRMED;
+                      return (
+                        <div key={ev.id} style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '10px 12px', borderRadius: 10, border: `1px solid ${c.borderLight}`,
+                          background: 'white', cursor: 'pointer', flexShrink: 0,
+                        }}
+                        onClick={() => {
+                          setPopupDate(null); setActiveDate('');
+                          const api = calendarRef.current?.getApi();
+                          if (api) api.changeView('timeGridDay', popupDate);
+                        }}>
+                          <div style={{ width: 4, height: 36, borderRadius: 2, background: sc.bar, flexShrink: 0 }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: c.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {ev.menu?.name || '시술'}
+                            </div>
+                            <div style={{ fontSize: 11, color: c.textLight }}>
+                              {fmtTime(ev.startTime)} - {fmtTime(ev.endTime)} · {ev.customer?.user?.name || '미정'} · {ev.staff?.user?.name || ''}
+                            </div>
+                          </div>
+                          <span style={{
+                            fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 6,
+                            background: sc.bg, color: sc.text,
+                          }}>{STATUS_LABEL[ev.status] || ev.status}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button onClick={() => {
+                    setPopupDate(null); setActiveDate('');
+                    const api = calendarRef.current?.getApi();
+                    if (api) api.changeView('timeGridDay', popupDate);
+                  }} style={{
+                    width: '100%', marginTop: 12, padding: '10px', borderRadius: 10,
+                    background: c.primary, color: c.textOnPrimary,
+                    fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', flexShrink: 0,
+                  }}>일간 뷰에서 자세히 보기</button>
+                </div>
+              )}
+              {dayEvents.length === 0 && (
+                <div style={{ padding: '20px 24px 28px', textAlign: 'center', color: c.textLight, fontSize: 13 }}>
+                  예약이 없습니다
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 회원 상세 패널 */}
+      {selectedEvent && (
+        <div style={{ width: mob ? '100%' : 320, flexShrink: 0 }}>
+          <div className="rounded-2xl border overflow-hidden" style={{ background: c.surface, borderColor: c.borderLight, position: mob ? 'relative' : 'sticky', top: mob ? 0 : 16 }}>
+            {/* 헤더 */}
+            <div style={{ padding: '16px 20px', borderBottom: `1px solid ${c.borderLight}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>회원 정보</span>
+              <button onClick={() => setSelectedEvent(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: c.textLight, padding: 4 }}>✕</button>
+            </div>
+
+            {/* 프로필 */}
+            <div style={{ padding: '20px', textAlign: 'center', borderBottom: `1px solid ${c.borderLight}` }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: '50%', margin: '0 auto 10px',
+                background: c.primaryLight, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 20, fontWeight: 700, color: c.primary,
+              }}>{selectedEvent.customer.charAt(0)}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: c.text }}>{selectedEvent.customer}</div>
+              <div style={{ fontSize: 13, color: c.textLight, marginTop: 4 }}>
+                {selectedEvent.phone ? fmtPhone(selectedEvent.phone) : '연락처 없음'}
+              </div>
+            </div>
+
+            {/* 선택된 예약 */}
+            <div style={{ padding: '16px 20px', borderBottom: `1px solid ${c.borderLight}` }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: c.textLight, marginBottom: 8 }}>선택된 예약</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                  <span style={{ color: c.textLight }}>시술</span>
+                  <span style={{ fontWeight: 600, color: c.text }}>{selectedEvent.menu}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                  <span style={{ color: c.textLight }}>시간</span>
+                  <span style={{ fontWeight: 600, color: c.text }}>{selectedEvent.start} - {selectedEvent.end}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                  <span style={{ color: c.textLight }}>횟수</span>
+                  <span style={{ fontWeight: 700, color: c.primary }}>{selectedEvent.session}회</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                  <span style={{ color: c.textLight }}>담당</span>
+                  <span style={{ fontWeight: 600, color: c.text }}>{selectedEvent.staff || '-'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                  <span style={{ color: c.textLight }}>상태</span>
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, borderRadius: 8, padding: '2px 8px',
+                    background: (STATUS_COLORS[selectedEvent.status] || STATUS_COLORS.CONFIRMED).bg,
+                    color: (STATUS_COLORS[selectedEvent.status] || STATUS_COLORS.CONFIRMED).text,
+                  }}>{STATUS_LABEL[selectedEvent.status] || selectedEvent.status}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 방문 이력 */}
+            <div style={{ padding: '16px 20px' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: c.textLight, marginBottom: 8 }}>
+                방문 이력 ({customerHistory.length}건)
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 300, overflowY: 'auto' }}>
+                {customerHistory.map((h) => {
+                  const d = new Date(h.startTime);
+                  const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
+                  const time = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+                  const isCurrent = h.id === selectedEvent.id;
+                  return (
+                    <div key={h.id} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '6px 10px', borderRadius: 8, fontSize: 12,
+                      background: isCurrent ? c.primaryLight : 'transparent',
+                      border: isCurrent ? `1px solid ${c.primary}30` : '1px solid transparent',
+                    }}>
+                      <div>
+                        <span style={{ fontWeight: 600, color: c.text }}>{dateStr}</span>
+                        <span style={{ color: c.textLight, marginLeft: 4 }}>{time}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 11, color: c.text }}>{h.menu?.name}</span>
+                        <span style={{
+                          fontSize: 10, borderRadius: 6, padding: '1px 6px',
+                          background: h.status === 'COMPLETED' ? '#F3F4F6' : h.status === 'CONFIRMED' ? `${c.primary}18` : '#FEF3C7',
+                          color: h.status === 'COMPLETED' ? '#6B7280' : h.status === 'CONFIRMED' ? c.primary : '#92400E',
+                        }}>{STATUS_LABEL[h.status] || h.status}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {customerHistory.length === 0 && (
+                  <div style={{ fontSize: 12, color: c.textLight, textAlign: 'center', padding: 12 }}>이력 없음</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

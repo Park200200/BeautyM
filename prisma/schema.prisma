@@ -1,0 +1,618 @@
+// BeautyM - Prisma Schema
+// 뷰티샵 SaaS 솔루션 전체 데이터베이스 스키마
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// 플랫폼 & 모듈 관리
+// ============================================
+
+model FeatureModule {
+  id           String   @id // reservation, customer, sales...
+  name         String
+  description  String
+  icon         String
+  target       String   @default("ADMIN") // ADMIN | CUSTOMER
+  configSchema String?  // JSON: 세부 설정 스키마 정의
+  sortOrder    Int      @default(0)
+
+  planModules  PlanModule[]
+  shopFeatures ShopFeature[]
+  staffPermissions StaffPermission[]
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  name        String   // Free | Standard | Premium
+  price       Int      @default(0)
+  description String?
+  createdAt   DateTime @default(now())
+
+  planModules   PlanModule[]
+  subscriptions Subscription[]
+}
+
+model PlanModule {
+  id            String   @id @default(cuid())
+  planId        String
+  moduleId      String
+  isDefault     Boolean  @default(true)
+  defaultConfig String?  // JSON: 플랜 기본 세부 설정값
+
+  plan   Plan          @relation(fields: [planId], references: [id])
+  module FeatureModule @relation(fields: [moduleId], references: [id])
+
+  @@unique([planId, moduleId])
+}
+
+model ShopFeature {
+  id        String   @id @default(cuid())
+  shopId    String
+  moduleId  String
+  isEnabled Boolean  @default(false)
+  config    String?  // JSON: 본사가 설정한 세부값 {"maxStaff": 10}
+  enabledBy String?  // SuperAdmin User ID
+  updatedAt DateTime @updatedAt
+
+  shop   Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  module FeatureModule @relation(fields: [moduleId], references: [id])
+
+  @@unique([shopId, moduleId])
+}
+
+model StaffPermission {
+  id        String   @id @default(cuid())
+  memberId  String
+  moduleId  String
+  isAllowed Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  member ShopMember    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  module FeatureModule @relation(fields: [moduleId], references: [id])
+
+  @@unique([memberId, moduleId])
+}
+
+// ============================================
+// 매장 & 구독
+// ============================================
+
+model Shop {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  customDomain  String?
+  phone         String?
+  ownerName     String?  // 대표자명
+  ownerTitle    String?  // 대표자 직함
+  ownerPhone    String?  // 대표자 전화번호
+  salesPerson   String?  // 영업담당자 (유입경로+담당자)
+  address       String?
+  description   String?
+  businessHours String?  // JSON
+  logoUrl       String?
+  bizNumber     String?  // 사업자등록번호
+  bizType       String?  // 업태
+  bizCategory   String?  // 업종
+  taxEmail      String?  // 세금계산서 이메일
+  bizLicenseUrl String?  // 사업자등록증 파일 경로
+  parentShopId  String?  // 다중 매장 시 본점 ID
+  customerFields String?  // JSON: 고객 정보 커스텀 항목 [{name, sortOrder}]
+  sidebarConfig  String?  // JSON: 사이드바 메뉴 설정 [{moduleId, name, visible, sortOrder}]
+  pointRate      Int      @default(3)   // 포인트 적립률 (결제금액의 N%)
+  gradeSettings  String?  // JSON: 등급별 승급 기준
+  paymentRates   String?  // JSON: 결제수단별 적립률 {CARD: 3, CASH: 5, TRANSFER: 4}
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  parentShop    Shop?    @relation("ShopBranches", fields: [parentShopId], references: [id])
+  branches      Shop[]   @relation("ShopBranches")
+
+  subscription  Subscription?
+  members       ShopMember[]
+  features      ShopFeature[]
+  menus         Menu[]
+  categories    Category[]
+  treatments    Treatment[]
+  products      Product[]
+  reservations  Reservation[]
+  payments      Payment[]
+  customerRecords CustomerRecord[]
+  pointHistories  PointHistory[]
+  coupons       Coupon[]
+  reviews       Review[]
+  notificationTemplates NotificationTemplate[]
+  notificationLogs      NotificationLog[]
+  announcementTargets   AnnouncementTarget[]
+  campaignTargets       CampaignTarget[]
+  campaignLogs          CampaignLog[]
+  portfolios            Portfolio[]
+}
+
+model Subscription {
+  id                 String   @id @default(cuid())
+  shopId             String   @unique
+  planId             String
+  status             String   @default("ACTIVE") // ACTIVE | PAST_DUE | CANCELLED
+  currentPeriodStart DateTime @default(now())
+  currentPeriodEnd   DateTime
+  createdAt          DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  plan Plan @relation(fields: [planId], references: [id])
+}
+
+// ============================================
+// 사용자 & 매장 멤버
+// ============================================
+
+model User {
+  id              String   @id @default(cuid())
+  name            String
+  phone           String?  @unique
+  email           String?  @unique
+  passwordHash    String?
+  simplePin       String?  // 고객용 4~6자리 해시
+  globalRole      String   @default("USER") // SUPER_ADMIN | USER
+  authType        String   @default("EMAIL") // EMAIL | PHONE
+  profileImage    String?
+  birthday        DateTime? // 생년월일
+  isPhoneVerified Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  memberships ShopMember[]
+}
+
+model ShopMember {
+  id          String   @id @default(cuid())
+  userId      String
+  shopId      String
+  role        String   @default("CUSTOMER") // OWNER | STAFF | CUSTOMER
+  skinType    String?  // 건성 | 지성 | 복합성 | 민감성
+  allergies   String?
+  memo        String?
+  memberGrade String   @default("일반") // 일반 | 실버 | 골드 | VIP
+  totalPoints Int      @default(0)
+  totalSpent  Int      @default(0)
+  visitCount  Int      @default(0)
+  specialties String?  // 관리사 전문 분야
+  jobTitle    String?  // 직함: 실장, 부원장, 디자이너 등
+  customData  String?  // JSON: 커스텀 항목 값 {항목명: 값}
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  permissions       StaffPermission[]
+  reservationsAsCustomer Reservation[] @relation("CustomerReservations")
+  reservationsAsStaff    Reservation[] @relation("StaffReservations")
+  customerRecords   CustomerRecord[] @relation("CustomerRecordCustomer")
+  staffRecords      CustomerRecord[] @relation("CustomerRecordStaff")
+  pointHistories    PointHistory[]
+  coupons           Coupon[]
+  reviews           Review[]
+  notificationLogs  NotificationLog[]
+
+  @@unique([userId, shopId])
+}
+
+// ============================================
+// 시술 메뉴
+// ============================================
+
+model Category {
+  id        String   @id @default(cuid())
+  shopId    String
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  shop       Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  menus      Menu[]
+  treatments Treatment[]
+
+  @@unique([shopId, name])
+}
+
+// 시술 상세
+model Treatment {
+  id         String   @id @default(cuid())
+  shopId     String
+  categoryId String   // 상위그룹
+  name       String   // 시술명
+  duration   Int      @default(60)  // 기본시간(분)
+  features   String?  // 특징
+  equipment  String?  // 사용장비 및 케어상품
+  photos     String?  // JSON: 사진 URL 배열
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  shop           Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  category       Category        @relation(fields: [categoryId], references: [id])
+  menuTreatments MenuTreatment[]
+}
+
+// 뷰티 상품 - 시술 연결
+model MenuTreatment {
+  id          String @id @default(cuid())
+  menuId      String
+  treatmentId String
+  sortOrder   Int    @default(0)
+
+  menu      Menu      @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  treatment Treatment @relation(fields: [treatmentId], references: [id], onDelete: Cascade)
+
+  @@unique([menuId, treatmentId])
+}
+
+model Menu {
+  id          String   @id @default(cuid())
+  shopId      String
+  name        String
+  description String?
+  price       Int
+  duration    Int      // 분 단위
+  sessions    Int?     // 시술 횟수 (예: 10회)
+  sessionInterval Int? // 회차 간격 (일 단위, 예: 7일)
+  categoryId  String?
+  isActive    Boolean  @default(true)
+  isPublic    Boolean  @default(true)
+  managementFields String? // JSON: 시술 관리항목
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  shop           Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  category       Category?       @relation(fields: [categoryId], references: [id])
+  menuTreatments MenuTreatment[]
+
+  reservations Reservation[]
+}
+
+// ============================================
+// 예약
+// ============================================
+
+model Reservation {
+  id         String   @id @default(cuid())
+  shopId     String
+  customerId String
+  staffId    String?
+  menuId     String
+  startTime  DateTime
+  endTime    DateTime
+  status     String   @default("REQUESTED") // REQUESTED | CONFIRMED | IN_PROGRESS | COMPLETED | CANCELLED | NO_SHOW
+  source     String   @default("ADMIN") // ADMIN | WEBSITE
+  memo       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  shop     Shop       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  customer ShopMember @relation("CustomerReservations", fields: [customerId], references: [id])
+  staff    ShopMember? @relation("StaffReservations", fields: [staffId], references: [id])
+  menu     Menu       @relation(fields: [menuId], references: [id])
+
+  payment         Payment?
+  customerRecord  CustomerRecord?
+  notificationLogs NotificationLog[]
+  review          Review?
+}
+
+// ============================================
+// 결제
+// ============================================
+
+model Payment {
+  id            String   @id @default(cuid())
+  shopId        String
+  reservationId String   @unique
+  amount        Int
+  discount      Int      @default(0)
+  pointUsed     Int      @default(0)
+  pointEarned   Int      @default(0)
+  method        String   @default("CARD") // CARD | CASH | TRANSFER | POINT | MIXED | PG_ONLINE
+  pgPaymentKey  String?  // 토스페이먼츠 결제키
+  pgStatus      String?  // PENDING | DONE | CANCELLED | REFUNDED
+  paidAt        DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  shop        Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  reservation Reservation @relation(fields: [reservationId], references: [id])
+}
+
+// ============================================
+// 고객 시술 기록
+// ============================================
+
+model CustomerRecord {
+  id            String   @id @default(cuid())
+  shopId        String
+  customerId    String
+  staffId       String?
+  reservationId String?  @unique
+  content       String?  // 시술 내용 메모
+  productsUsed  String?  // 사용 제품
+  skinCondition String?
+  managementData String? // JSON: 메뉴별 관리항목 값 {"수분도":"45"}
+  sessionNumber  Int?    // 회차 (예: 3)
+  nextReservationDate DateTime? // 다음회차 예약일시
+  createdAt     DateTime @default(now())
+
+  shop        Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  customer    ShopMember  @relation("CustomerRecordCustomer", fields: [customerId], references: [id])
+  staff       ShopMember? @relation("CustomerRecordStaff", fields: [staffId], references: [id])
+  reservation Reservation? @relation(fields: [reservationId], references: [id])
+
+  photos RecordPhoto[]
+}
+
+model RecordPhoto {
+  id       String @id @default(cuid())
+  recordId String
+  url      String
+  type     String @default("BEFORE") // BEFORE | AFTER
+
+  record CustomerRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+}
+
+// ============================================
+// 재고
+// ============================================
+
+model Product {
+  id        String   @id @default(cuid())
+  shopId    String
+  name      String
+  category  String?
+  supplier  String?  // 매입처
+  stock     Int      @default(0)
+  minStock  Int      @default(0)
+  costPrice Int      @default(0)
+  sellPrice Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+// ============================================
+// 포인트 & 쿠폰
+// ============================================
+
+model PointHistory {
+  id          String   @id @default(cuid())
+  shopId      String
+  memberId    String
+  amount      Int
+  type        String   // EARN | USE
+  description String?
+  createdAt   DateTime @default(now())
+
+  shop   Shop       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  member ShopMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+model Coupon {
+  id              String    @id @default(cuid())
+  shopId          String
+  memberId        String
+  name            String
+  discountPercent Int?
+  discountAmount  Int?
+  validFrom       DateTime
+  validUntil      DateTime
+  isUsed          Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+
+  shop   Shop       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  member ShopMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+// ============================================
+// 리뷰
+// ============================================
+
+model Review {
+  id            String   @id @default(cuid())
+  shopId        String
+  customerId    String
+  reservationId String   @unique
+  rating        Int      // 1~5
+  content       String?
+  isPublic      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  shop        Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  customer    ShopMember  @relation(fields: [customerId], references: [id])
+  reservation Reservation @relation(fields: [reservationId], references: [id])
+}
+
+// ============================================
+// 알림
+// ============================================
+
+model NotificationTemplate {
+  id       String  @id @default(cuid())
+  shopId   String
+  type     String  // RESERVATION_CONFIRM | RESERVATION_REMIND | COMPLETE | BIRTHDAY | REVISIT | MARKETING
+  channel  String  // KAKAO | SMS | PUSH
+  title    String
+  content  String  // 변수 포함 템플릿
+  isActive Boolean @default(true)
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+model NotificationLog {
+  id            String   @id @default(cuid())
+  shopId        String
+  recipientId   String?
+  reservationId String?
+  channel       String   // KAKAO | SMS | PUSH | IN_APP
+  type          String   @default("SYSTEM") // RESERVATION | PAYMENT | CUSTOMER | MEMBERSHIP | SYSTEM | CAMPAIGN | REMINDER
+  title         String   @default("")
+  status        String   @default("PENDING") // PENDING | SENT | FAILED
+  content       String
+  readAt        DateTime?
+  sentAt        DateTime?
+  errorMessage  String?
+  createdAt     DateTime @default(now())
+
+  shop        Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  member      ShopMember? @relation(fields: [recipientId], references: [id])
+  reservation Reservation? @relation(fields: [reservationId], references: [id])
+}
+
+// ============================================
+// 본사 공지
+// ============================================
+
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String
+  content     String   // 마크다운 지원
+  type        String   @default("NORMAL") // URGENT | NORMAL | INFO
+  targetScope String   @default("ALL") // ALL | SELECTED | REGION
+  createdBy   String   // SuperAdmin User ID
+  isActive    Boolean  @default(true)
+  publishAt   DateTime @default(now())
+  expireAt    DateTime?
+  createdAt   DateTime @default(now())
+
+  targets AnnouncementTarget[]
+}
+
+model AnnouncementTarget {
+  id              String    @id @default(cuid())
+  announcementId  String
+  shopId          String
+  isRead          Boolean   @default(false)
+  readAt          DateTime?
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  shop         Shop         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, shopId])
+}
+
+// ============================================
+// 마케팅 캠페인
+// ============================================
+
+model Campaign {
+  id              String    @id @default(cuid())
+  title           String
+  description     String?
+  channel         String    // KAKAO | SMS
+  templateContent String    // 변수 치환 템플릿
+  targetScope     String    @default("ALL") // ALL | SELECTED | REGION
+  status          String    @default("DRAFT") // DRAFT | SCHEDULED | SENDING | COMPLETED | CANCELLED
+  scheduledAt     DateTime?
+  createdBy       String    // SuperAdmin User ID
+  totalSent       Int       @default(0)
+  totalDelivered  Int       @default(0)
+  totalFailed     Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  targets CampaignTarget[]
+  logs    CampaignLog[]
+}
+
+model CampaignTarget {
+  id         String @id @default(cuid())
+  campaignId String
+  shopId     String
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, shopId])
+}
+
+model CampaignLog {
+  id             String    @id @default(cuid())
+  campaignId     String
+  shopId         String
+  recipientPhone String
+  channel        String    // KAKAO | SMS
+  status         String    @default("PENDING") // PENDING | SENT | DELIVERED | FAILED
+  sentAt         DateTime?
+  errorMessage   String?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+// ============================================
+// 매장 가입 신청
+// ============================================
+
+model ShopRegistration {
+  id             String   @id @default(cuid())
+  shopName       String   // 매장명
+  ownerName      String   // 대표자명
+  phone          String   // 연락처
+  email          String   // 이메일
+  planId         String?  // 희망 플랜
+  address        String?  // 매장 주소
+  bizNumber      String?  // 사업자등록번호
+  bizType        String?  // 업태
+  bizCategory    String?  // 업종
+  taxEmail       String?  // 세금계산서 이메일
+  bizLicenseUrl  String?  // 사업자등록증 파일 경로
+  memo           String?  // 메모/요청사항
+
+  // 영업 관리
+  salesPerson    String?  // 영업 담당자
+
+  // 처리 정보
+  status         String   @default("PENDING") // PENDING | APPROVED | REJECTED | PENDING_SETUP
+  reviewedBy     String?  // 처리 담당자
+  reviewedAt     DateTime?
+  approvalType   String?  // 승인구분: 정규신청 | 영업유치 | 제휴 | 전환
+  createdShopId  String?  // 승인 후 생성된 매장 ID
+
+  // 거절 정보
+  rejectionType  String?  // 거절구분: 서류미비 | 지역제한 | 중복신청 | 기타
+  rejectedReason String?  // 거절 상세 사유
+  isReusable     Boolean  @default(true) // 영업자료 재활용 가능 여부
+
+  // 알림
+  notifiedAt     DateTime? // 알림 발송 시각
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// ============================================
+// 포트폴리오
+// ============================================
+
+model Portfolio {
+  id          String   @id @default(cuid())
+  shopId      String
+  title       String
+  category    String?  // 시술 카테고리
+  description String?
+  beforeImage String?  // 시술 전 사진 URL
+  afterImage  String?  // 시술 후 사진 URL
+  staffName   String?  // 담당 관리사
+  isPublic    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
