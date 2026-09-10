@@ -8,9 +8,16 @@ import { useIsMobile } from '@/hooks/useMediaQuery';
 import { Bell, CheckCheck, Calendar, CreditCard, Users, Gift, AlertCircle, Megaphone, Clock } from 'lucide-react';
 
 type Noti = {
-  id: string; type: string; title: string; content: string;
+  id: string; type: string; channel?: string; title: string; content: string;
   readAt: string | null; createdAt: string;
   member?: { user: { name: string } } | null;
+};
+
+const CHANNEL_BADGE: Record<string, { label: string; color: string; bg: string }> = {
+  IN_APP: { label: '앱', color: '#6B7280', bg: '#F3F4F6' },
+  EMAIL: { label: '이메일', color: '#3B82F6', bg: '#DBEAFE' },
+  SMS: { label: 'SMS', color: '#10B981', bg: '#D1FAE5' },
+  KAKAO: { label: '카카오톡', color: '#F59E0B', bg: '#FEF3C7' },
 };
 
 const TYPE_CONFIG: Record<string, { icon: any; color: string; bg: string }> = {
@@ -121,7 +128,12 @@ export default function NotificationsPage() {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                    <span style={{ fontSize: mob ? 12.5 : 13, fontWeight: isUnread ? 700 : 500, color: c.text }}>{n.title}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: mob ? 12.5 : 13, fontWeight: isUnread ? 700 : 500, color: c.text }}>{n.title}</span>
+                      {(() => { const ch = CHANNEL_BADGE[n.channel || 'IN_APP'] || CHANNEL_BADGE.IN_APP; return (
+                        <span style={{ fontSize: 9, fontWeight: 600, color: ch.color, background: ch.bg, padding: '1px 6px', borderRadius: 6 }}>{ch.label}</span>
+                      ); })()}
+                    </div>
                     {isUnread && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444', flexShrink: 0 }} />}
                   </div>
                   <div style={{ fontSize: mob ? 11.5 : 12, color: c.textLight, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.content}</div>
