@@ -319,8 +319,8 @@ export default function Header() {
             style={{
               position: 'absolute', left: 0, zIndex: 2, border: 'none',
               cursor: 'pointer', fontSize: 16, fontWeight: 900, color: colors.primary,
-              padding: '4px 10px 4px 2px', letterSpacing: 1,
-              background: `linear-gradient(90deg, ${colors.surface} 50%, transparent)`,
+              padding: '4px 14px 4px 0', letterSpacing: 1,
+              background: `linear-gradient(90deg, ${colors.surface} 60%, transparent)`,
               height: '100%', display: 'flex', alignItems: 'center',
             }}>
             ···
@@ -331,8 +331,8 @@ export default function Header() {
             style={{
               position: 'absolute', right: 0, zIndex: 2, border: 'none',
               cursor: 'pointer', fontSize: 16, fontWeight: 900, color: colors.primary,
-              padding: '4px 2px 4px 10px', letterSpacing: 1,
-              background: `linear-gradient(270deg, ${colors.surface} 50%, transparent)`,
+              padding: '4px 0 4px 18px', letterSpacing: 1,
+              background: `linear-gradient(270deg, ${colors.surface} 60%, transparent)`,
               height: '100%', display: 'flex', alignItems: 'center',
             }}>
             ···
@@ -342,7 +342,7 @@ export default function Header() {
           style={{
             display: 'flex', gap: 4, overflowX: 'auto', scrollbarWidth: 'none',
             WebkitOverflowScrolling: 'touch', userSelect: 'none',
-            paddingLeft: canLeft ? 20 : 0, paddingRight: canRight ? 20 : 0,
+            paddingLeft: canLeft ? 30 : 0, paddingRight: canRight ? 30 : 0,
             transition: 'padding .2s',
           }}
           onMouseDown={e => {
