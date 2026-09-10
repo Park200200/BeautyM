@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useRef, use } from 'react';
+import { createPortal } from 'react-dom';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -871,101 +872,54 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       })()}
 
       {/* 회원 상세 패널 */}
-      {selectedEvent && (
-        <div style={{ width: mob ? '100%' : 320, flexShrink: 0 }}>
-          <div className="rounded-2xl border overflow-hidden" style={{ background: c.surface, borderColor: c.borderLight, position: mob ? 'relative' : 'sticky', top: mob ? 0 : 16 }}>
-            {/* 헤더 */}
+      {selectedEvent && (() => {
+        const panelContent = (
+          <>
             <div style={{ padding: '16px 20px', borderBottom: `1px solid ${c.borderLight}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>회원 정보</span>
-              <button onClick={() => setSelectedEvent(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: c.textLight, padding: 4 }}>✕</button>
+              <button onClick={() => setSelectedEvent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: c.textLight, padding: 4 }}>✕</button>
             </div>
-
-            {/* 프로필 */}
             <div style={{ padding: '20px', textAlign: 'center', borderBottom: `1px solid ${c.borderLight}` }}>
-              <div style={{
-                width: 56, height: 56, borderRadius: '50%', margin: '0 auto 10px',
-                background: c.primaryLight, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 20, fontWeight: 700, color: c.primary,
-              }}>{selectedEvent.customer.charAt(0)}</div>
+              <div style={{ width: 56, height: 56, borderRadius: '50%', margin: '0 auto 10px', background: c.primaryLight, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, color: c.primary }}>{selectedEvent.customer.charAt(0)}</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: c.text }}>{selectedEvent.customer}</div>
-              <div style={{ fontSize: 13, color: c.textLight, marginTop: 4 }}>
-                {selectedEvent.phone ? fmtPhone(selectedEvent.phone) : '연락처 없음'}
-              </div>
+              <div style={{ fontSize: 13, color: c.textLight, marginTop: 4 }}>{selectedEvent.phone ? fmtPhone(selectedEvent.phone) : '연락처 없음'}</div>
             </div>
-
-            {/* 선택된 예약 */}
             <div style={{ padding: '16px 20px', borderBottom: `1px solid ${c.borderLight}` }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: c.textLight, marginBottom: 8 }}>선택된 예약</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                  <span style={{ color: c.textLight }}>시술</span>
-                  <span style={{ fontWeight: 600, color: c.text }}>{selectedEvent.menu}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                  <span style={{ color: c.textLight }}>시간</span>
-                  <span style={{ fontWeight: 600, color: c.text }}>{selectedEvent.start} - {selectedEvent.end}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                  <span style={{ color: c.textLight }}>횟수</span>
-                  <span style={{ fontWeight: 700, color: c.primary }}>{selectedEvent.session}회</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                  <span style={{ color: c.textLight }}>담당</span>
-                  <span style={{ fontWeight: 600, color: c.text }}>{selectedEvent.staff || '-'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                  <span style={{ color: c.textLight }}>상태</span>
-                  <span style={{
-                    fontSize: 11, fontWeight: 600, borderRadius: 8, padding: '2px 8px',
-                    background: (STATUS_COLORS[selectedEvent.status] || STATUS_COLORS.CONFIRMED).bg,
-                    color: (STATUS_COLORS[selectedEvent.status] || STATUS_COLORS.CONFIRMED).text,
-                  }}>{STATUS_LABEL[selectedEvent.status] || selectedEvent.status}</span>
-                </div>
+                {[['시술', selectedEvent.menu], ['시간', `${selectedEvent.start} - ${selectedEvent.end}`], ['담당', selectedEvent.staff || '-']].map(([l, v]) => (
+                  <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: c.textLight }}>{l}</span><span style={{ fontWeight: 600, color: c.text }}>{v}</span></div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: c.textLight }}>횟수</span><span style={{ fontWeight: 700, color: c.primary }}>{selectedEvent.session}회</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: c.textLight }}>상태</span><span style={{ fontSize: 11, fontWeight: 600, borderRadius: 8, padding: '2px 8px', background: (STATUS_COLORS[selectedEvent.status] || STATUS_COLORS.CONFIRMED).bg, color: (STATUS_COLORS[selectedEvent.status] || STATUS_COLORS.CONFIRMED).text }}>{STATUS_LABEL[selectedEvent.status] || selectedEvent.status}</span></div>
               </div>
             </div>
-
-            {/* 방문 이력 */}
             <div style={{ padding: '16px 20px' }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: c.textLight, marginBottom: 8 }}>
-                방문 이력 ({customerHistory.length}건)
-              </div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: c.textLight, marginBottom: 8 }}>방문 이력 ({customerHistory.length}건)</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 300, overflowY: 'auto' }}>
                 {customerHistory.map((h) => {
-                  const d = new Date(h.startTime);
-                  const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
-                  const time = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+                  const d = new Date(h.startTime); const dateStr = `${d.getMonth()+1}/${d.getDate()}`; const time = `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
                   const isCurrent = h.id === selectedEvent.id;
-                  return (
-                    <div key={h.id} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '6px 10px', borderRadius: 8, fontSize: 12,
-                      background: isCurrent ? c.primaryLight : 'transparent',
-                      border: isCurrent ? `1px solid ${c.primary}30` : '1px solid transparent',
-                    }}>
-                      <div>
-                        <span style={{ fontWeight: 600, color: c.text }}>{dateStr}</span>
-                        <span style={{ color: c.textLight, marginLeft: 4 }}>{time}</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 11, color: c.text }}>{h.menu?.name}</span>
-                        <span style={{
-                          fontSize: 10, borderRadius: 6, padding: '1px 6px',
-                          background: h.status === 'COMPLETED' ? '#F3F4F6' : h.status === 'CONFIRMED' ? `${c.primary}18` : '#FEF3C7',
-                          color: h.status === 'COMPLETED' ? '#6B7280' : h.status === 'CONFIRMED' ? c.primary : '#92400E',
-                        }}>{STATUS_LABEL[h.status] || h.status}</span>
-                      </div>
-                    </div>
-                  );
+                  return (<div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', borderRadius: 8, fontSize: 12, background: isCurrent ? c.primaryLight : 'transparent', border: isCurrent ? `1px solid ${c.primary}30` : '1px solid transparent' }}>
+                    <div><span style={{ fontWeight: 600, color: c.text }}>{dateStr}</span><span style={{ color: c.textLight, marginLeft: 4 }}>{time}</span></div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ fontSize: 11, color: c.text }}>{h.menu?.name}</span><span style={{ fontSize: 10, borderRadius: 6, padding: '1px 6px', background: h.status==='COMPLETED'?'#F3F4F6':h.status==='CONFIRMED'?`${c.primary}18`:'#FEF3C7', color: h.status==='COMPLETED'?'#6B7280':h.status==='CONFIRMED'?c.primary:'#92400E' }}>{STATUS_LABEL[h.status]||h.status}</span></div>
+                  </div>);
                 })}
-                {customerHistory.length === 0 && (
-                  <div style={{ fontSize: 12, color: c.textLight, textAlign: 'center', padding: 12 }}>이력 없음</div>
-                )}
+                {customerHistory.length === 0 && <div style={{ fontSize: 12, color: c.textLight, textAlign: 'center', padding: 12 }}>이력 없음</div>}
               </div>
             </div>
+          </>
+        );
+        if (mob) return createPortal(<>
+          <div onClick={() => setSelectedEvent(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9998 }} />
+          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, maxHeight: '85vh', overflowY: 'auto', background: c.surface, borderRadius: '20px 20px 0 0', zIndex: 9999, boxShadow: '0 -10px 40px rgba(0,0,0,0.15)', animation: 'slideUp .25s ease-out' }}>
+            <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}><div style={{ width: 36, height: 4, borderRadius: 2, background: '#D1D5DB' }} /></div>
+            {panelContent}
           </div>
-        </div>
-      )}
+        </>, document.body);
+        return (<div style={{ width: 320, flexShrink: 0 }}><div className="rounded-2xl border overflow-hidden" style={{ background: c.surface, borderColor: c.borderLight, position: 'sticky', top: 16 }}>{panelContent}</div></div>);
+      })()}
     </div>
   );
 }
