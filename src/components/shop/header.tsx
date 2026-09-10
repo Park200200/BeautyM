@@ -47,6 +47,7 @@ export default function Header() {
   const [mounted, setMounted] = useState(false);
   const [notiCount, setNotiCount] = useState(0);
   const [notiList, setNotiList] = useState<any[]>([]);
+  const [notiMyId, setNotiMyId] = useState<string | null>(null);
   const [showNotiPanel, setShowNotiPanel] = useState(false);
   const store = useThemeStore();
   useEffect(() => setMounted(true), []);
@@ -58,7 +59,7 @@ export default function Header() {
     if (!shopSlug) return;
     try {
       const res = await fetch(`/api/shops/${shopSlug}/notifications`);
-      if (res.ok) { const d = await res.json(); setNotiCount(d.unreadCount || 0); setNotiList(d.notifications || []); }
+      if (res.ok) { const d = await res.json(); setNotiCount(d.myUnreadCount ?? d.unreadCount ?? 0); setNotiList(d.notifications || []); if (d.myMemberId) setNotiMyId(d.myMemberId); }
     } catch {}
   };
   useEffect(() => {
@@ -387,10 +388,10 @@ export default function Header() {
 
                 {/* 알림 목록 */}
                 <div style={{ maxHeight: 380, overflowY: 'auto' }}>
-                  {notiList.filter(n => !n.readAt).length === 0 ? (
+                  {notiList.filter(n => !n.readAt && (!notiMyId || n.recipientId === notiMyId)).length === 0 ? (
                     <div style={{ padding: 40, textAlign: 'center', color: c.textLight, fontSize: 13 }}>{'새 알림이 없습니다'}</div>
                   ) : (
-                    notiList.filter(n => !n.readAt).slice(0, 8).map(n => {
+                    notiList.filter(n => !n.readAt && (!notiMyId || n.recipientId === notiMyId)).slice(0, 8).map(n => {
                       const nc = NOTI_COLORS[n.type] || NOTI_COLORS.SYSTEM;
                       const isUnread = !n.readAt;
                       return (

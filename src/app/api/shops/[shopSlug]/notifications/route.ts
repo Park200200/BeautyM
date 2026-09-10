@@ -41,7 +41,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ shopSlug
     where: { ...whereFilter, readAt: null },
   });
 
-  return NextResponse.json({ notifications, unreadCount, myMemberId: myMember?.id || null, isOwner });
+  // OWNER: 개인 안읽음 카운트 (헤더 배지용)
+  const myUnreadCount = isOwner && myMember
+    ? await prisma.notificationLog.count({ where: { shopId: shop.id, recipientId: myMember.id, readAt: null } })
+    : unreadCount;
+
+  return NextResponse.json({ notifications, unreadCount, myUnreadCount, myMemberId: myMember?.id || null, isOwner });
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ shopSlug: string }> }) {
