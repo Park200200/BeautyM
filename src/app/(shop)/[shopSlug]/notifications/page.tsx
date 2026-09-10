@@ -13,11 +13,11 @@ type Noti = {
   member?: { user: { name: string } } | null;
 };
 
-const CHANNEL_CONFIG: Record<string, { icon: any; color: string; label: string }> = {
-  IN_APP: { icon: Smartphone, color: '#6B7280', label: '앱' },
-  EMAIL: { icon: Mail, color: '#3B82F6', label: '이메일' },
-  SMS: { icon: Send, color: '#10B981', label: '문자' },
-  KAKAO: { icon: MessageCircle, color: '#F59E0B', label: '카톡' },
+const CHANNEL_CONFIG: Record<string, { icon: any; color: string; bg: string; label: string }> = {
+  IN_APP: { icon: Smartphone, color: '#6B7280', bg: '#F3F4F6', label: '앱' },
+  EMAIL: { icon: Mail, color: '#3B82F6', bg: '#DBEAFE', label: '이메일' },
+  SMS: { icon: Send, color: '#059669', bg: '#D1FAE5', label: '문자' },
+  KAKAO: { icon: MessageCircle, color: '#B45309', bg: '#FEF3C7', label: '카톡' },
 };
 
 const TYPE_CONFIG: Record<string, { icon: any; color: string; bg: string }> = {
@@ -130,18 +130,17 @@ export default function NotificationsPage() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {/* 1줄: 제목 + 채널 아이콘 + 안읽음 표시 */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: mob ? 12.5 : 13, fontWeight: isUnread ? 700 : 500, color: c.text }}>{n.title}</span>
                       {(() => {
                         const ch = CHANNEL_CONFIG[n.channel || 'IN_APP'] || CHANNEL_CONFIG.IN_APP;
                         const ChIcon = ch.icon;
+                        const emailAddr = n.channel === 'EMAIL' && n.content?.match(/[\w.-]+@[\w.-]+/)?.[0];
                         return (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }} title={ch.label}>
-                            <ChIcon style={{ width: 12, height: 12, color: ch.color }} />
-                            {n.channel === 'EMAIL' && n.content?.includes('@') && (
-                              <span style={{ fontSize: 9, color: ch.color }}>{n.content.match(/[\w.-]+@[\w.-]+/)?.[0] || ''}</span>
-                            )}
-                          </div>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 600, color: ch.color, background: ch.bg, padding: '2px 7px', borderRadius: 10, whiteSpace: 'nowrap' }}>
+                            <ChIcon style={{ width: 11, height: 11 }} />
+                            {emailAddr || ch.label}
+                          </span>
                         );
                       })()}
                     </div>

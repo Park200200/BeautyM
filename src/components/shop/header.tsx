@@ -405,15 +405,20 @@ export default function Header() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                                 <span style={{ fontSize: 12, fontWeight: isUnread ? 700 : 500, color: c.text }}>{n.title}</span>
                                 {(() => {
-                                  const chMap: Record<string, { icon: any; color: string }> = {
-                                    IN_APP: { icon: Smartphone, color: '#6B7280' },
-                                    EMAIL: { icon: Mail, color: '#3B82F6' },
-                                    SMS: { icon: Send, color: '#10B981' },
-                                    KAKAO: { icon: MessageCircle, color: '#F59E0B' },
+                                  const chMap: Record<string, { icon: any; color: string; bg: string; label: string }> = {
+                                    IN_APP: { icon: Smartphone, color: '#6B7280', bg: '#F3F4F6', label: '앱' },
+                                    EMAIL: { icon: Mail, color: '#3B82F6', bg: '#DBEAFE', label: '이메일' },
+                                    SMS: { icon: Send, color: '#059669', bg: '#D1FAE5', label: '문자' },
+                                    KAKAO: { icon: MessageCircle, color: '#B45309', bg: '#FEF3C7', label: '카톡' },
                                   };
                                   const ch = chMap[n.channel || 'IN_APP'] || chMap.IN_APP;
                                   const ChIcon = ch.icon;
-                                  return <ChIcon style={{ width: 11, height: 11, color: ch.color }} />;
+                                  return (
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 9, fontWeight: 600, color: ch.color, background: ch.bg, padding: '1px 5px', borderRadius: 8 }}>
+                                      <ChIcon style={{ width: 9, height: 9 }} />
+                                      {ch.label}
+                                    </span>
+                                  );
                                 })()}
                               </div>
                               {isUnread && <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#EF4444', flexShrink: 0 }} />}
