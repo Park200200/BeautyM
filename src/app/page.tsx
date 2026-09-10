@@ -108,14 +108,14 @@ export default function LandingPage() {
               <span style={{ color: theme.logo.accentColor }}>M</span>
             </span>
           </div>
-          <div className="hidden items-center gap-8 md:flex">
-            <a href="#features" className="text-sm transition-colors hover:opacity-70">기능</a>
-            <a href="#pricing" className="text-sm transition-colors hover:opacity-70">가격</a>
-            <Link href="/auth/login" className="text-sm transition-colors hover:opacity-70">로그인</Link>
+          <div className="flex items-center gap-4 md:gap-8">
+            <a href="#features" className="hidden text-sm transition-colors hover:opacity-70 md:block">기능</a>
+            <a href="#pricing" className="hidden text-sm transition-colors hover:opacity-70 md:block">가격</a>
+            <Link href="/auth/login" className="hidden text-sm transition-colors hover:opacity-70 md:block">로그인</Link>
             <button
               onClick={handleDemoLogin}
               disabled={loggingIn}
-              className="px-5 py-2 text-sm font-semibold transition-all hover:opacity-90"
+              className="px-4 py-2 text-sm font-semibold transition-all hover:opacity-90 md:px-5"
               style={{
                 background: c.primary,
                 color: c.textOnPrimary,
