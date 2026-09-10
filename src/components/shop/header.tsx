@@ -318,33 +318,31 @@ export default function Header() {
         {canLeft && (
           <div onClick={() => setTabsExpanded(true)}
             style={{
-              position: 'absolute', left: 0, top: 0, bottom: 0, zIndex: 2,
+              position: 'absolute', left: 0, top: -2, bottom: -2, zIndex: 5,
               display: 'flex', alignItems: 'center', cursor: 'pointer',
-              paddingRight: 4,
-              background: `linear-gradient(90deg, ${colors.surface} 70%, ${colors.surface}00)`,
-              width: 36,
+              background: `linear-gradient(90deg, ${colors.surface} 80%, transparent)`,
+              width: 50, paddingLeft: 2,
             }}>
-            <span style={{ fontSize: 18, fontWeight: 900, color: colors.primary, letterSpacing: 1 }}>···</span>
+            <span style={{ fontSize: 20, fontWeight: 900, color: colors.primary, letterSpacing: 2, textShadow: `0 0 8px ${colors.surface}` }}>···</span>
           </div>
         )}
         {/* 오른쪽 오버플로우: 그라데이션 + ··· */}
         {canRight && (
           <div onClick={() => setTabsExpanded(true)}
             style={{
-              position: 'absolute', right: 0, top: 0, bottom: 0, zIndex: 2,
+              position: 'absolute', right: 0, top: -2, bottom: -2, zIndex: 5,
               display: 'flex', alignItems: 'center', justifyContent: 'flex-end', cursor: 'pointer',
-              paddingLeft: 4,
-              background: `linear-gradient(270deg, ${colors.surface} 70%, ${colors.surface}00)`,
-              width: 36,
+              background: `linear-gradient(270deg, ${colors.surface} 80%, transparent)`,
+              width: 50, paddingRight: 2,
             }}>
-            <span style={{ fontSize: 18, fontWeight: 900, color: colors.primary, letterSpacing: 1 }}>···</span>
+            <span style={{ fontSize: 20, fontWeight: 900, color: colors.primary, letterSpacing: 2, textShadow: `0 0 8px ${colors.surface}` }}>···</span>
           </div>
         )}
         <div ref={scrollRef}
           style={{
             display: 'flex', gap: 4, overflowX: 'auto', scrollbarWidth: 'none',
             WebkitOverflowScrolling: 'touch', userSelect: 'none',
-            paddingLeft: canLeft ? 36 : 0, paddingRight: canRight ? 36 : 0,
+            paddingLeft: canLeft ? 46 : 0, paddingRight: canRight ? 46 : 0,
             transition: 'padding .2s',
           }}
           onMouseDown={e => {
