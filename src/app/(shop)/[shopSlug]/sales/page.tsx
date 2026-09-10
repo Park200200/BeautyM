@@ -495,80 +495,39 @@ export default function SalesPage() {
                     type="text"
                     placeholder="고객 이름 또는 전화번호 검색"
                     value={payCustomerSearch}
-                    onChange={e => { setPayCustomerSearch(e.target.value); setShowQuickReg(false); }}
+                    onChange={e => {
+                      const raw = e.target.value;
+                      const digits = raw.replace(/[^0-9]/g, '');
+                      // 숫자만 입력된 경우 전화번호 자동 포맷팅
+                      if (digits.length > 0 && digits.length === raw.replace(/[-\s]/g, '').length) {
+                        let formatted = digits;
+                        if (digits.length <= 3) formatted = digits;
+                        else if (digits.length <= 7) formatted = digits.slice(0, 3) + '-' + digits.slice(3);
+                        else formatted = digits.slice(0, 3) + '-' + digits.slice(3, 7) + '-' + digits.slice(7, 11);
+                        setPayCustomerSearch(formatted);
+                      } else {
+                        setPayCustomerSearch(raw);
+                      }
+                      setShowQuickReg(false);
+                    }}
                     style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${c.borderLight}`, fontSize: 13, outline: 'none' }}
                   />
                   {(() => {
                     const q = payCustomerSearch.trim().toLowerCase();
+                    const qDigits = q.replace(/[-\s]/g, '');
+                    const isPhone = /^\d[\d-]*$/.test(q) && qDigits.length >= 2;
                     const filtered = q
-                      ? payCustomers.filter(cu => cu.user?.name?.toLowerCase().includes(q) || cu.user?.phone?.includes(q))
+                      ? payCustomers.filter(cu => {
+                          if (isPhone) {
+                            const custPhone = (cu.user?.phone || '').replace(/[-\s]/g, '');
+                            return custPhone.includes(qDigits);
+                          }
+                          return cu.user?.name?.toLowerCase().includes(q) || (cu.user?.phone || '').replace(/[-\s]/g, '').includes(qDigits);
+                        })
                       : payCustomers;
-                    if (filtered.length === 0 && q) return (
-                      <div style={{ marginTop: 6 }}>
-                        <div style={{ padding: 10, textAlign: 'center', fontSize: 12, color: c.textLight }}>{'검색 결과가 없습니다'}</div>
-                        {!showQuickReg ? (
-                          <button onClick={() => { setShowQuickReg(true); setQuickName(q); setQuickPhone(''); }}
-                            style={{ width: '100%', padding: '10px', borderRadius: 10, border: `1.5px dashed ${c.primary}`, background: c.primaryLight + '20', color: c.primary, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                            + 신규 고객 등록
-                          </button>
-                        ) : (
-                          <div style={{ padding: 14, borderRadius: 10, border: `1.5px solid ${c.primary}`, background: c.primaryLight + '15' }}>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: c.text, marginBottom: 10 }}>{'신규 고객 빠른 등록'}</div>
-                            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                              <input type="text" placeholder="이름" value={quickName} onChange={e => setQuickName(e.target.value)}
-                                style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `1px solid ${c.borderLight}`, fontSize: 13, outline: 'none' }} />
-                              <input type="text" placeholder="전화번호" value={quickPhone} onChange={e => setQuickPhone(e.target.value)}
-                                style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `1px solid ${c.borderLight}`, fontSize: 13, outline: 'none' }} />
-                            </div>
-                            <div style={{ fontSize: 11, color: c.textLight, marginBottom: 8 }}>{'이름 또는 전화번호 중 하나만 입력해도 등록 가능합니다'}</div>
-                            <div style={{ display: 'flex', gap: 6 }}>
-                              <button onClick={() => setShowQuickReg(false)}
-                                style={{ flex: 1, padding: '8px', borderRadius: 8, border: `1px solid ${c.borderLight}`, background: 'white', fontSize: 12, cursor: 'pointer', color: c.textLight }}>
-                                {'취소'}
-                              </button>
-                              <button onClick={quickRegisterCustomer} disabled={quickRegistering || (!quickName.trim() && !quickPhone.trim())}
-                                style={{ flex: 1, padding: '8px', borderRadius: 8, border: 'none', background: c.primary, color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: quickRegistering || (!quickName.trim() && !quickPhone.trim()) ? 0.5 : 1 }}>
-                                {quickRegistering ? '등록 중...' : '등록 후 선택'}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                    if (!q && payCustomers.length > 0) return (
-                      <div>
-                        <div style={{ fontSize: 11, color: c.textLight, marginTop: 4, paddingLeft: 4 }}>{'이름 또는 전화번호로 검색하세요'}</div>
-                        {!showQuickReg && (
-                          <button onClick={() => { setShowQuickReg(true); setQuickName(''); setQuickPhone(''); }}
-                            style={{ width: '100%', marginTop: 6, padding: '10px', borderRadius: 10, border: `1.5px dashed ${c.primary}`, background: c.primaryLight + '20', color: c.primary, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                            + 신규 고객 등록
-                          </button>
-                        )}
-                        {showQuickReg && (
-                          <div style={{ marginTop: 6, padding: 14, borderRadius: 10, border: `1.5px solid ${c.primary}`, background: c.primaryLight + '15' }}>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: c.text, marginBottom: 10 }}>{'신규 고객 빠른 등록'}</div>
-                            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                              <input type="text" placeholder="이름" value={quickName} onChange={e => setQuickName(e.target.value)}
-                                style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `1px solid ${c.borderLight}`, fontSize: 13, outline: 'none' }} />
-                              <input type="text" placeholder="전화번호" value={quickPhone} onChange={e => setQuickPhone(e.target.value)}
-                                style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `1px solid ${c.borderLight}`, fontSize: 13, outline: 'none' }} />
-                            </div>
-                            <div style={{ fontSize: 11, color: c.textLight, marginBottom: 8 }}>{'이름 또는 전화번호 중 하나만 입력해도 등록 가능합니다'}</div>
-                            <div style={{ display: 'flex', gap: 6 }}>
-                              <button onClick={() => setShowQuickReg(false)}
-                                style={{ flex: 1, padding: '8px', borderRadius: 8, border: `1px solid ${c.borderLight}`, background: 'white', fontSize: 12, cursor: 'pointer', color: c.textLight }}>
-                                {'취소'}
-                              </button>
-                              <button onClick={quickRegisterCustomer} disabled={quickRegistering || (!quickName.trim() && !quickPhone.trim())}
-                                style={{ flex: 1, padding: '8px', borderRadius: 8, border: 'none', background: c.primary, color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: quickRegistering || (!quickName.trim() && !quickPhone.trim()) ? 0.5 : 1 }}>
-                                {quickRegistering ? '등록 중...' : '등록 후 선택'}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                    return (
+
+                    // 검색 결과가 있으면 목록 표시
+                    if (q && filtered.length > 0) return (
                       <div style={{ maxHeight: 150, overflowY: 'auto', marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
                         {filtered.map(cu => (
                           <div key={cu.id}
@@ -578,9 +537,96 @@ export default function SalesPage() {
                             <span style={{ fontSize: 11, color: c.textLight }}>{cu.user?.phone || ''}</span>
                           </div>
                         ))}
+                        <button onClick={() => {
+                          setShowQuickReg(true);
+                          if (isPhone) { setQuickName(''); setQuickPhone(q); } else { setQuickName(q); setQuickPhone(''); }
+                        }}
+                          style={{ marginTop: 4, padding: '8px', borderRadius: 8, border: `1.5px dashed ${c.primary}`, background: c.primaryLight + '20', color: c.primary, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                          + 신규 고객 등록
+                        </button>
                       </div>
                     );
+
+                    // 검색 결과 없음
+                    if (filtered.length === 0 && q) return (
+                      <div style={{ marginTop: 6 }}>
+                        <div style={{ padding: 10, textAlign: 'center', fontSize: 12, color: c.textLight }}>{'검색 결과가 없습니다'}</div>
+                        {!showQuickReg ? (
+                          <button onClick={() => {
+                            setShowQuickReg(true);
+                            if (isPhone) { setQuickName(''); setQuickPhone(q); } else { setQuickName(q); setQuickPhone(''); }
+                          }}
+                            style={{ width: '100%', padding: '10px', borderRadius: 10, border: `1.5px dashed ${c.primary}`, background: c.primaryLight + '20', color: c.primary, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                            + 신규 고객 등록
+                          </button>
+                        ) : null}
+                      </div>
+                    );
+
+                    // 초기 상태 (검색어 없음)
+                    if (!q && payCustomers.length > 0) return (
+                      <div>
+                        <div style={{ fontSize: 11, color: c.textLight, marginTop: 4, paddingLeft: 4 }}>{'이름 또는 전화번호로 검색하세요'}</div>
+                        {!showQuickReg && (
+                          <button onClick={() => { setShowQuickReg(true); setQuickName(''); setQuickPhone(''); }}
+                            style={{ width: '100%', marginTop: 6, padding: '10px', borderRadius: 10, border: `1.5px dashed ${c.primary}`, background: c.primaryLight + '20', color: c.primary, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                            + 신규 고객 등록
+                          </button>
+                        )}
+                      </div>
+                    );
+                    return null;
                   })()}
+
+                  {/* 빠른 등록 폼 */}
+                  {showQuickReg && (
+                    <div style={{ marginTop: 6, padding: 14, borderRadius: 10, border: `1.5px solid ${c.primary}`, background: c.primaryLight + '15' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: c.text, marginBottom: 10 }}>{'신규 고객 빠른 등록'}</div>
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                        <input type="text" placeholder="이름" value={quickName} onChange={e => setQuickName(e.target.value)}
+                          style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `1px solid ${c.borderLight}`, fontSize: 13, outline: 'none' }} />
+                        <input type="text" placeholder="전화번호" value={quickPhone}
+                          onChange={e => {
+                            const raw = e.target.value;
+                            const digits = raw.replace(/[^0-9]/g, '');
+                            if (digits.length <= 3) setQuickPhone(digits);
+                            else if (digits.length <= 7) setQuickPhone(digits.slice(0, 3) + '-' + digits.slice(3));
+                            else setQuickPhone(digits.slice(0, 3) + '-' + digits.slice(3, 7) + '-' + digits.slice(7, 11));
+                          }}
+                          style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `1px solid ${c.borderLight}`, fontSize: 13, outline: 'none' }} />
+                      </div>
+                      {/* 전화번호 입력 중 기존 고객 매칭 */}
+                      {quickPhone.replace(/[-\s]/g, '').length >= 4 && (() => {
+                        const phoneDigits = quickPhone.replace(/[-\s]/g, '');
+                        const matched = payCustomers.filter(cu => (cu.user?.phone || '').replace(/[-\s]/g, '').includes(phoneDigits));
+                        if (matched.length === 0) return null;
+                        return (
+                          <div style={{ marginBottom: 8, padding: 8, borderRadius: 8, background: '#FEF3C7', fontSize: 12 }}>
+                            <div style={{ fontWeight: 600, color: '#D97706', marginBottom: 4 }}>{'이미 등록된 번호입니다'}</div>
+                            {matched.map(cu => (
+                              <div key={cu.id}
+                                onClick={() => selectPayCustomer(cu.id, cu.user?.name || '')}
+                                style={{ padding: '6px 10px', borderRadius: 6, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', background: 'white', marginTop: 3 }}>
+                                <span style={{ fontWeight: 600, color: c.text }}>{cu.user?.name}</span>
+                                <span style={{ color: c.textLight }}>{cu.user?.phone}</span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                      <div style={{ fontSize: 11, color: c.textLight, marginBottom: 8 }}>{'이름 또는 전화번호 중 하나만 입력해도 등록 가능합니다'}</div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => setShowQuickReg(false)}
+                          style={{ flex: 1, padding: '8px', borderRadius: 8, border: `1px solid ${c.borderLight}`, background: 'white', fontSize: 12, cursor: 'pointer', color: c.textLight }}>
+                          {'취소'}
+                        </button>
+                        <button onClick={quickRegisterCustomer} disabled={quickRegistering || (!quickName.trim() && !quickPhone.trim())}
+                          style={{ flex: 1, padding: '8px', borderRadius: 8, border: 'none', background: c.primary, color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: quickRegistering || (!quickName.trim() && !quickPhone.trim()) ? 0.5 : 1 }}>
+                          {quickRegistering ? '등록 중...' : '등록 후 선택'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
