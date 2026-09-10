@@ -48,10 +48,14 @@ export default function SalesPage() {
 
   // 결제 모달
   const [showPayModal, setShowPayModal] = useState(false);
+  const [allUnpaid, setAllUnpaid] = useState<UnpaidReservation[]>([]);
   const [unpaidList, setUnpaidList] = useState<UnpaidReservation[]>([]);
   const [selectedResv, setSelectedResv] = useState<UnpaidReservation | null>(null);
   const [payForm, setPayForm] = useState({ method: 'CARD', discount: 0, pointUsed: 0 });
   const [paying, setPaying] = useState(false);
+  const [payCustomerId, setPayCustomerId] = useState<string>('');
+  const [payCustomerSearch, setPayCustomerSearch] = useState('');
+  const [payCustomers, setPayCustomers] = useState<{id:string; user:{name:string; phone?:string|null}}[]>([]);
 
   // 고객 멤버십 정보
   type MemberInfo = { grade: string; points: number; visitCount: number; totalSpent: number };
@@ -109,16 +113,18 @@ export default function SalesPage() {
   // 미결제 예약 조회
   const openPayModal = async () => {
     try {
-      const [resRes, setRes] = await Promise.all([
+      const [resRes, setRes, custRes] = await Promise.all([
         fetch(`/api/shops/${shopSlug}/reservations`),
         fetch(`/api/shops/${shopSlug}/settings`),
+        fetch(`/api/shops/${shopSlug}/customers`),
       ]);
       if (resRes.ok) {
         const d = await resRes.json();
         const unpaid = (d.reservations || []).filter((r: any) =>
           (r.status === 'COMPLETED' || r.status === 'IN_PROGRESS' || r.status === 'CONFIRMED') && !r.payment
         );
-        setUnpaidList(unpaid);
+        setAllUnpaid(unpaid);
+        setUnpaidList([]); // 고객 선택 전에는 비워둠
       }
       if (setRes.ok) {
         const sd = await setRes.json();
@@ -126,11 +132,28 @@ export default function SalesPage() {
         const gs = sd.gradeSettings ? (typeof sd.gradeSettings === 'string' ? JSON.parse(sd.gradeSettings) : sd.gradeSettings) : {};
         setShopPointSettings({ pointRate: sd.pointRate || 3, paymentRates: pr, gradeSettings: gs });
       }
+      if (custRes.ok) {
+        const cd = await custRes.json();
+        setPayCustomers(cd.customers || []);
+      }
+      setPayCustomerId('');
+      setPayCustomerSearch('');
       setSelectedResv(null);
       setMemberInfo(null);
       setPayForm({ method: 'CARD', discount: 0, pointUsed: 0 });
       setShowPayModal(true);
     } catch (e) { console.error(e); }
+  };
+
+  // 고객 선택 시 해당 고객의 미결제 예약만 필터링
+  const selectPayCustomer = (custId: string, custName: string) => {
+    setPayCustomerId(custId);
+    setPayCustomerSearch('');
+    const filtered = allUnpaid.filter((r: any) => r.customer?.user?.name === custName);
+    setUnpaidList(filtered);
+    setSelectedResv(null);
+    setMemberInfo(null);
+    setPayForm({ method: 'CARD', discount: 0, pointUsed: 0 });
   };
 
   // 예약 선택 시 고객 멤버십 정보 조회
@@ -417,7 +440,57 @@ export default function SalesPage() {
               <Receipt style={{ width: 18, height: 18, color: c.primary }} /> {'결제 등록'}
             </h3>
 
-            {/* 미결제 예약 선택 */}
+            {/* 고객 선택 */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: c.textLight, display: 'block', marginBottom: 6 }}>{'고객 선택'}</label>
+              {payCustomerId ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${c.primary}`, background: c.primaryLight + '30' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: c.text, flex: 1 }}>
+                    {payCustomers.find(cu => cu.id === payCustomerId)?.user?.name || '-'}
+                    <span style={{ fontSize: 11, color: c.textLight, marginLeft: 8 }}>
+                      {payCustomers.find(cu => cu.id === payCustomerId)?.user?.phone || ''}
+                    </span>
+                  </span>
+                  <button onClick={() => { setPayCustomerId(''); setUnpaidList([]); setSelectedResv(null); setMemberInfo(null); }}
+                    style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: `1px solid ${c.borderLight}`, background: 'white', cursor: 'pointer', color: c.textLight }}>
+                    {'변경'}
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <input
+                    type="text"
+                    placeholder="고객 이름 또는 전화번호 검색"
+                    value={payCustomerSearch}
+                    onChange={e => setPayCustomerSearch(e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${c.borderLight}`, fontSize: 13, outline: 'none' }}
+                  />
+                  {(() => {
+                    const q = payCustomerSearch.trim().toLowerCase();
+                    const filtered = q
+                      ? payCustomers.filter(cu => cu.user?.name?.toLowerCase().includes(q) || cu.user?.phone?.includes(q))
+                      : payCustomers;
+                    if (filtered.length === 0 && q) return <div style={{ padding: 12, textAlign: 'center', fontSize: 12, color: c.textLight }}>{'검색 결과가 없습니다'}</div>;
+                    if (!q && payCustomers.length > 0) return <div style={{ fontSize: 11, color: c.textLight, marginTop: 4, paddingLeft: 4 }}>{'이름 또는 전화번호로 검색하세요'}</div>;
+                    return (
+                      <div style={{ maxHeight: 150, overflowY: 'auto', marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {filtered.map(cu => (
+                          <div key={cu.id}
+                            onClick={() => selectPayCustomer(cu.id, cu.user?.name || '')}
+                            style={{ padding: '8px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 13, display: 'flex', justifyContent: 'space-between', background: '#f9f9f9' }}>
+                            <span style={{ fontWeight: 600, color: c.text }}>{cu.user?.name}</span>
+                            <span style={{ fontSize: 11, color: c.textLight }}>{cu.user?.phone || ''}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+
+            {/* 미결제 예약 선택 (고객 선택 후에만 표시) */}
+            {payCustomerId && (
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: c.textLight, display: 'block', marginBottom: 6 }}>{'미결제 예약 선택'}</label>
               {unpaidList.length === 0 ? (
@@ -441,6 +514,7 @@ export default function SalesPage() {
                 </div>
               )}
             </div>
+            )
 
             {selectedResv && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
