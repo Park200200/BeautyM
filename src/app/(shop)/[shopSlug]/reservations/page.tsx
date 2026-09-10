@@ -314,14 +314,29 @@ export default function ReservationsPage() {
       {selectedRes && (
         <>
           <div onClick={() => setSelectedRes(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9998 }} />
-          <div style={{
+          <div style={mob ? {
+            position: 'fixed',
+            bottom: 0, left: 0, right: 0,
+            maxHeight: '85vh', overflowY: 'auto',
+            background: 'white', borderRadius: '20px 20px 0 0', zIndex: 9999,
+            boxShadow: '0 -10px 40px rgba(0,0,0,0.15)',
+            padding: '8px 16px 24px',
+            animation: 'slideUp .25s ease-out',
+          } : {
             position: 'fixed',
             top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-            width: mob ? '92vw' : 420, maxHeight: '80vh', overflowY: 'auto',
+            width: 420, maxHeight: '80vh', overflowY: 'auto',
             background: 'white', borderRadius: 16, zIndex: 9999,
             boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
-            padding: mob ? '20px 16px' : '24px 20px',
+            padding: '24px 20px',
           }}>
+            {/* 모바일 드래그 핸들 */}
+            {mob && (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 12px' }}>
+                <div style={{ width: 36, height: 4, borderRadius: 2, background: '#D1D5DB' }} />
+              </div>
+            )}
+            <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
             {/* 헤더 */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h2 style={{ fontSize: 16, fontWeight: 700, color: c.text }}>예약 상세 정보</h2>
