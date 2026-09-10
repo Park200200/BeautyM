@@ -196,6 +196,12 @@ export default function Header() {
 
   // 서브탭: 확장 상태 관리
   const [tabsExpanded, setTabsExpanded] = useState(false);
+  const [expandedTabsData, setExpandedTabsData] = useState<{ tabs: SubTab[]; activeKey: string } | null>(null);
+
+  const openExpandedTabs = (tabs: SubTab[], activeKey: string) => {
+    setExpandedTabsData({ tabs, activeKey });
+    setTabsExpanded(true);
+  };
 
   const ScrollableTabs = useCallback(({ tabs: tabList, activeKey, colors }: { tabs: SubTab[]; activeKey: string; colors: typeof c }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -218,105 +224,14 @@ export default function Header() {
       const ro = new ResizeObserver(check);
       ro.observe(el);
       return () => { clearTimeout(t); el.removeEventListener('scroll', check); ro.disconnect(); };
-    }, [tabsExpanded]);
-
-    const hasOverflow = canLeft || canRight;
-
-    // 확장 모드: 풀사이즈 팝업
-    if (tabsExpanded) {
-      return (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, height: 56, zIndex: 1000,
-          display: 'flex', alignItems: 'center',
-          background: colors.surface,
-          borderBottom: `1px solid ${colors.borderLight}`,
-        }}>
-          {/* 왼쪽 그라데이션 */}
-          <div style={{
-            position: 'absolute', left: 0, top: 0, bottom: 0, width: 48, zIndex: 2,
-            background: `linear-gradient(90deg, ${colors.surface} 60%, transparent)`,
-            pointerEvents: 'none',
-          }} />
-          {/* 오른쪽 그라데이션 */}
-          <div style={{
-            position: 'absolute', right: 0, top: 0, bottom: 0, width: 48, zIndex: 2,
-            background: `linear-gradient(270deg, ${colors.surface} 60%, transparent)`,
-            pointerEvents: 'none',
-          }} />
-
-          {/* 왼쪽 닫기 (햄버거 위치) */}
-          <button onClick={() => setTabsExpanded(false)}
-            style={{
-              width: 48, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'none', border: 'none', cursor: 'pointer', zIndex: 3, flexShrink: 0,
-            }}>
-            <Menu style={{ width: 20, height: 20, color: colors.textLight }} />
-          </button>
-
-          {/* 탭 리스트 (확장) */}
-          <div ref={scrollRef}
-            style={{
-              flex: 1, display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'center',
-              overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch',
-              padding: '0 8px',
-            }}
-            onMouseDown={e => {
-              const el = scrollRef.current; if (!el) return;
-              dragState.current = { isDown: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft };
-            }}
-            onMouseLeave={() => { dragState.current.isDown = false; }}
-            onMouseUp={() => { dragState.current.isDown = false; }}
-            onMouseMove={e => {
-              if (!dragState.current.isDown) return; e.preventDefault();
-              const el = scrollRef.current; if (!el) return;
-              el.scrollLeft = dragState.current.scrollLeft - (e.pageX - el.offsetLeft - dragState.current.startX);
-            }}
-          >
-            <style>{`div[style*="scrollbarWidth"]::-webkit-scrollbar{display:none!important;width:0!important}`}</style>
-            {tabList.map(tab => {
-              const isActive = activeKey === tab.key;
-              const TabIcon = tab.icon;
-              return (
-                <Link key={tab.key} href={tab.path} onClick={() => setTabsExpanded(false)} style={{ flexShrink: 0 }}>
-                  <button style={{
-                    display: 'flex', alignItems: 'center', gap: 4,
-                    padding: '6px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                    whiteSpace: 'nowrap',
-                    background: isActive ? colors.primary : 'transparent',
-                    color: isActive ? colors.textOnPrimary : colors.textLight,
-                    border: isActive ? 'none' : `1px solid ${colors.borderLight}`,
-                    cursor: 'pointer', transition: 'all .15s',
-                  }}>
-                    <TabIcon style={{ width: 14, height: 14 }} />
-                    {tab.label}
-                  </button>
-                </Link>
-              );
-            })}
-          </div>
-
-          {/* 오른쪽 닫기 (아바타 위치) */}
-          <button onClick={() => setTabsExpanded(false)}
-            style={{
-              width: 48, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'none', border: 'none', cursor: 'pointer', zIndex: 3, flexShrink: 0,
-            }}>
-            <Avatar className="h-8 w-8" style={{ opacity: 0.5 }}>
-              <AvatarFallback style={{ background: colors.primaryLight, color: colors.primary, fontSize: 11 }}>
-                ✕
-              </AvatarFallback>
-            </Avatar>
-          </button>
-        </div>
-      );
-    }
+    }, []);
 
     // 축소 모드: 일반 탭 + ... 표시
     return (
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginLeft: 4, flex: 1, minWidth: 0 }}>
         {/* 왼쪽 오버플로우: 그라데이션 + ··· */}
         {canLeft && (
-          <div onClick={() => setTabsExpanded(true)}
+          <div onClick={() => openExpandedTabs(tabList, activeKey)}
             style={{
               position: 'absolute', left: 0, top: -2, bottom: -2, zIndex: 5,
               display: 'flex', alignItems: 'center', cursor: 'pointer',
@@ -328,7 +243,7 @@ export default function Header() {
         )}
         {/* 오른쪽 오버플로우: 그라데이션 + ··· */}
         {canRight && (
-          <div onClick={() => setTabsExpanded(true)}
+          <div onClick={() => openExpandedTabs(tabList, activeKey)}
             style={{
               position: 'absolute', right: 0, top: -2, bottom: -2, zIndex: 5,
               display: 'flex', alignItems: 'center', justifyContent: 'flex-end', cursor: 'pointer',
@@ -381,7 +296,7 @@ export default function Header() {
         </div>
       </div>
     );
-  }, [tabsExpanded]);
+  }, []);
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -389,6 +304,82 @@ export default function Header() {
   };
 
   return (
+    <>
+      {/* 확장 탭 팝업 - header 밖에서 독립 렌더링 */}
+      {tabsExpanded && expandedTabsData && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, height: 56, zIndex: 9999,
+          display: 'flex', alignItems: 'center',
+          background: c.surface,
+          borderBottom: `1px solid ${c.borderLight}`,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+        }}>
+          {/* 왼쪽 그라데이션 */}
+          <div style={{
+            position: 'absolute', left: 0, top: 0, bottom: 0, width: 52, zIndex: 2,
+            background: `linear-gradient(90deg, ${c.surface} 70%, transparent)`,
+            pointerEvents: 'none',
+          }} />
+          {/* 오른쪽 그라데이션 */}
+          <div style={{
+            position: 'absolute', right: 0, top: 0, bottom: 0, width: 52, zIndex: 2,
+            background: `linear-gradient(270deg, ${c.surface} 70%, transparent)`,
+            pointerEvents: 'none',
+          }} />
+
+          {/* 왼쪽 닫기 */}
+          <button onClick={() => setTabsExpanded(false)}
+            style={{
+              width: 52, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'none', border: 'none', cursor: 'pointer', zIndex: 3, flexShrink: 0,
+            }}>
+            <Menu style={{ width: 20, height: 20, color: c.textLight }} />
+          </button>
+
+          {/* 탭 리스트 */}
+          <div style={{
+            flex: 1, display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center',
+            overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch',
+            padding: '0 12px',
+          }}>
+            <style>{`div[style*="scrollbarWidth"]::-webkit-scrollbar{display:none!important;width:0!important}`}</style>
+            {expandedTabsData.tabs.map(tab => {
+              const isActive = expandedTabsData.activeKey === tab.key;
+              const TabIcon = tab.icon;
+              return (
+                <Link key={tab.key} href={tab.path} onClick={() => setTabsExpanded(false)} style={{ flexShrink: 0 }}>
+                  <button style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    padding: '7px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                    background: isActive ? c.primary : 'transparent',
+                    color: isActive ? c.textOnPrimary : c.textLight,
+                    border: isActive ? 'none' : `1px solid ${c.borderLight}`,
+                    cursor: 'pointer', transition: 'all .15s',
+                  }}>
+                    <TabIcon style={{ width: 15, height: 15 }} />
+                    {tab.label}
+                  </button>
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* 오른쪽 닫기 */}
+          <button onClick={() => setTabsExpanded(false)}
+            style={{
+              width: 52, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'none', border: 'none', cursor: 'pointer', zIndex: 3, flexShrink: 0,
+            }}>
+            <Avatar className="h-8 w-8" style={{ opacity: 0.6 }}>
+              <AvatarFallback style={{ background: c.primaryLight, color: c.primary, fontSize: 12, fontWeight: 700 }}>
+                ✕
+              </AvatarFallback>
+            </Avatar>
+          </button>
+        </div>
+      )}
+
     <header
       className="flex h-14 items-center justify-between border-b px-4 lg:px-6"
       style={{ background: c.surface, borderColor: c.borderLight }}
@@ -569,5 +560,6 @@ export default function Header() {
         </DropdownMenu>
       </div>
     </header>
+    </>
   );
 }
