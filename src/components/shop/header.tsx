@@ -308,7 +308,7 @@ export default function Header() {
               const isActive = expandedTabsData.activeKey === tab.key;
               const TabIcon = tab.icon;
               return (
-                <Link key={tab.key} href={tab.path} onClick={() => setTabsExpanded(false)} style={{ flexShrink: 0 }}>
+                <Link key={tab.key} href={tab.path} style={{ flexShrink: 0 }}>
                   <button style={{
                     display: 'flex', alignItems: 'center', gap: 4,
                     padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
