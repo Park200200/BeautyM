@@ -197,6 +197,8 @@ export default function Header() {
   // 서브탭: 확장 상태 관리
   const [tabsExpanded, setTabsExpanded] = useState(false);
   const [expandedTabsData, setExpandedTabsData] = useState<{ tabs: SubTab[]; activeKey: string } | null>(null);
+  const [hasTabOverflow, setHasTabOverflow] = useState(false);
+  const [activeSubTabs, setActiveSubTabs] = useState<{ tabs: SubTab[]; activeKey: string } | null>(null);
 
   const openExpandedTabs = (tabs: SubTab[], activeKey: string) => {
     setExpandedTabsData({ tabs, activeKey });
@@ -204,75 +206,43 @@ export default function Header() {
   };
 
   const ScrollableTabs = useCallback(({ tabs: tabList, activeKey, colors }: { tabs: SubTab[]; activeKey: string; colors: typeof c }) => {
-    const scrollRef = useRef<HTMLDivElement>(null);
-    const [canLeft, setCanLeft] = useState(false);
-    const [canRight, setCanRight] = useState(false);
-    const dragState = useRef({ isDown: false, startX: 0, scrollLeft: 0 });
-
-    const check = () => {
-      const el = scrollRef.current;
-      if (!el) return;
-      setCanLeft(el.scrollLeft > 2);
-      setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 2);
-    };
+    const measureRef = useRef<HTMLDivElement>(null);
+    const [overflow, setOverflow] = useState(false);
 
     useEffect(() => {
-      const el = scrollRef.current;
+      const el = measureRef.current;
       if (!el) return;
-      const t = setTimeout(check, 100);
-      el.addEventListener('scroll', check);
-      const ro = new ResizeObserver(check);
+      const checkOverflow = () => {
+        setOverflow(el.scrollWidth > el.clientWidth + 2);
+        setHasTabOverflow(el.scrollWidth > el.clientWidth + 2);
+        setActiveSubTabs({ tabs: tabList, activeKey });
+      };
+      const t = setTimeout(checkOverflow, 50);
+      const ro = new ResizeObserver(checkOverflow);
       ro.observe(el);
-      return () => { clearTimeout(t); el.removeEventListener('scroll', check); ro.disconnect(); };
-    }, []);
+      return () => { clearTimeout(t); ro.disconnect(); };
+    }, [tabList, activeKey]);
 
-    // 축소 모드: 일반 탭 + ... 표시
+    // 오버플로우 시 탭 숨기기 (제목 영역에서 "상세메뉴" 클릭으로 대체)
+    if (overflow) {
+      return (
+        <div ref={measureRef} style={{ display: 'flex', gap: 4, overflow: 'hidden', width: 0, height: 0, position: 'absolute', visibility: 'hidden' }}>
+          {tabList.map(tab => (
+            <span key={tab.key} style={{ flexShrink: 0, padding: '5px 12px', fontSize: 12 }}>{tab.label}</span>
+          ))}
+        </div>
+      );
+    }
+
+    // 오버플로우 없음: 일반 탭 표시
     return (
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginLeft: 4, flex: 1, minWidth: 0 }}>
-        {/* 왼쪽 오버플로우: 그라데이션 + ··· */}
-        {canLeft && (
-          <div onClick={() => openExpandedTabs(tabList, activeKey)}
-            style={{
-              position: 'absolute', left: 0, top: -2, bottom: -2, zIndex: 5,
-              display: 'flex', alignItems: 'center', cursor: 'pointer',
-              background: `linear-gradient(90deg, ${colors.surface} 80%, transparent)`,
-              width: 50, paddingLeft: 2,
-            }}>
-            <span style={{ fontSize: 20, fontWeight: 900, color: colors.primary, letterSpacing: 2, textShadow: `0 0 8px ${colors.surface}` }}>···</span>
-          </div>
-        )}
-        {/* 오른쪽 오버플로우: 그라데이션 + ··· */}
-        {canRight && (
-          <div onClick={() => openExpandedTabs(tabList, activeKey)}
-            style={{
-              position: 'absolute', right: 0, top: -2, bottom: -2, zIndex: 5,
-              display: 'flex', alignItems: 'center', justifyContent: 'flex-end', cursor: 'pointer',
-              background: `linear-gradient(270deg, ${colors.surface} 80%, transparent)`,
-              width: 50, paddingRight: 2,
-            }}>
-            <span style={{ fontSize: 20, fontWeight: 900, color: colors.primary, letterSpacing: 2, textShadow: `0 0 8px ${colors.surface}` }}>···</span>
-          </div>
-        )}
-        <div ref={scrollRef}
+        <div ref={measureRef}
           style={{
-            display: 'flex', gap: 4, overflowX: 'auto', scrollbarWidth: 'none',
+            display: 'flex', gap: 4, overflowX: 'hidden', scrollbarWidth: 'none',
             WebkitOverflowScrolling: 'touch', userSelect: 'none',
-            paddingLeft: canLeft ? 46 : 0, paddingRight: canRight ? 46 : 0,
-            transition: 'padding .2s',
-          }}
-          onMouseDown={e => {
-            const el = scrollRef.current; if (!el) return;
-            dragState.current = { isDown: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft };
-          }}
-          onMouseLeave={() => { dragState.current.isDown = false; }}
-          onMouseUp={() => { dragState.current.isDown = false; }}
-          onMouseMove={e => {
-            if (!dragState.current.isDown) return; e.preventDefault();
-            const el = scrollRef.current; if (!el) return;
-            el.scrollLeft = dragState.current.scrollLeft - (e.pageX - el.offsetLeft - dragState.current.startX);
           }}
         >
-          <style>{`div[style*="scrollbarWidth"]::-webkit-scrollbar{display:none!important;width:0!important}`}</style>
           {tabList.map((tab) => {
             const isActive = activeKey === tab.key;
             const TabIcon = tab.icon;
@@ -384,9 +354,20 @@ export default function Header() {
         </Button>
         <div className="flex items-center gap-1.5 min-w-0 flex-shrink-0">
           <PageIcon className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" style={{ color: c.primary }} />
-          <h1 className="text-sm md:text-lg font-semibold truncate" style={{ color: c.text }}>
-            {pageLabel}
-          </h1>
+          {hasTabOverflow && activeSubTabs ? (
+            <button
+              onClick={() => openExpandedTabs(activeSubTabs.tabs, activeSubTabs.activeKey)}
+              className="text-sm md:text-lg font-semibold truncate"
+              style={{ color: c.primary, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+            >
+              {pageLabel} 상세메뉴
+              <span style={{ fontSize: 10, opacity: 0.6 }}>▼</span>
+            </button>
+          ) : (
+            <h1 className="text-sm md:text-lg font-semibold truncate" style={{ color: c.text }}>
+              {pageLabel}
+            </h1>
+          )}
         </div>
 
         {/* 서브 탭 */}
