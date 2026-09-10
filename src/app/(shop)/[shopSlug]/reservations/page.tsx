@@ -48,6 +48,7 @@ export default function ReservationsPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [search, setSearch] = useState('');
+  const [selectedRes, setSelectedRes] = useState<Reservation | null>(null);
   const filterRef = useRef<HTMLDivElement>(null);
   const filterDrag = useRef({ isDown: false, startX: 0, scrollLeft: 0 });
 
@@ -210,10 +211,15 @@ export default function ReservationsPage() {
           {filtered.map((res) => (
             <div
               key={res.id}
+              onClick={() => setSelectedRes(res)}
               style={{
                 ...card,
                 padding: '13px 14px',
+                cursor: 'pointer',
+                transition: 'box-shadow .15s',
               }}
+              onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)')}
+              onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: c.text, display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -276,7 +282,7 @@ export default function ReservationsPage() {
             </TableHeader>
             <TableBody>
               {filtered.map((res) => (
-                <TableRow key={res.id} className="hover:bg-gray-50">
+                <TableRow key={res.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedRes(res)}>
                   <TableCell className="font-medium">
                     {formatDateTime(res.startTime)}
                   </TableCell>
@@ -303,6 +309,117 @@ export default function ReservationsPage() {
         </div>
       )}
       </div>
+
+      {/* 예약 상세 팝업 */}
+      {selectedRes && (
+        <>
+          <div onClick={() => setSelectedRes(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9998 }} />
+          <div style={{
+            position: 'fixed',
+            top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            width: mob ? '92vw' : 420, maxHeight: '80vh', overflowY: 'auto',
+            background: 'white', borderRadius: 16, zIndex: 9999,
+            boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+            padding: mob ? '20px 16px' : '24px 20px',
+          }}>
+            {/* 헤더 */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: c.text }}>예약 상세 정보</h2>
+              <button onClick={() => setSelectedRes(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: c.textLight, padding: 4 }}>✕</button>
+            </div>
+
+            {/* 상태 배지 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <span className={getStatusColor(selectedRes.status)} style={{ padding: '4px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+                {getStatusLabel(selectedRes.status)}
+              </span>
+              {selectedRes.currentSession && selectedRes.totalSessions && (
+                <span style={{ fontSize: 12, fontWeight: 600, color: c.primary }}>
+                  회차: {selectedRes.currentSession}/{selectedRes.totalSessions}회
+                </span>
+              )}
+            </div>
+
+            {/* 정보 목록 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* 예약 일시 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '12px 14px', background: '#F9FAFB', borderRadius: 10 }}>
+                <div style={{ fontSize: 11, color: c.textLight, fontWeight: 600 }}>📅 예약 일시</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: c.text }}>
+                  {formatDateTime(selectedRes.startTime)}
+                </div>
+                {selectedRes.endTime && (
+                  <div style={{ fontSize: 12, color: c.textLight }}>
+                    ~ {new Date(selectedRes.endTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 종료
+                  </div>
+                )}
+              </div>
+
+              {/* 고객 정보 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '12px 14px', background: '#F9FAFB', borderRadius: 10 }}>
+                <div style={{ fontSize: 11, color: c.textLight, fontWeight: 600 }}>👤 고객 정보</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: c.text }}>
+                  {selectedRes.customer?.user?.name || '미지정'}
+                </div>
+                {selectedRes.customer?.user?.phone && (
+                  <div style={{ fontSize: 12, color: c.textLight }}>
+                    📞 {selectedRes.customer.user.phone}
+                  </div>
+                )}
+              </div>
+
+              {/* 시술 정보 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '12px 14px', background: '#F9FAFB', borderRadius: 10 }}>
+                <div style={{ fontSize: 11, color: c.textLight, fontWeight: 600 }}>💆 시술 정보</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: c.text }}>
+                  {selectedRes.menu?.name || '-'}
+                </div>
+                <div style={{ display: 'flex', gap: 12, fontSize: 12, color: c.textLight }}>
+                  {selectedRes.menu?.duration && <span>⏱ {formatDuration(selectedRes.menu.duration)}</span>}
+                  {selectedRes.menu?.price != null && <span>💰 {selectedRes.menu.price.toLocaleString()}원</span>}
+                </div>
+              </div>
+
+              {/* 담당 관리사 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '12px 14px', background: '#F9FAFB', borderRadius: 10 }}>
+                <div style={{ fontSize: 11, color: c.textLight, fontWeight: 600 }}>🧑‍⚕️ 담당 관리사</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: c.text }}>
+                  {selectedRes.staff?.user?.name || '미배정'}
+                </div>
+              </div>
+
+              {/* 예약 출처 */}
+              <div style={{ display: 'flex', gap: 12, padding: '10px 14px', background: '#F9FAFB', borderRadius: 10, fontSize: 12 }}>
+                <div>
+                  <span style={{ color: c.textLight }}>출처: </span>
+                  <span style={{ fontWeight: 600, color: c.text }}>{selectedRes.source === 'WEBSITE' ? '온라인' : '매장'}</span>
+                </div>
+              </div>
+
+              {/* 메모 */}
+              {selectedRes.memo && (
+                <div style={{ padding: '12px 14px', background: '#FFFBEB', borderRadius: 10, border: '1px solid #FDE68A' }}>
+                  <div style={{ fontSize: 11, color: '#92400E', fontWeight: 600, marginBottom: 4 }}>📝 메모</div>
+                  <div style={{ fontSize: 13, color: '#78350F', lineHeight: 1.5 }}>{selectedRes.memo}</div>
+                </div>
+              )}
+            </div>
+
+            {/* 닫기 버튼 */}
+            <button
+              onClick={() => setSelectedRes(null)}
+              style={{
+                width: '100%', marginTop: 20, padding: '10px 0',
+                borderRadius: 10, border: `1px solid ${c.borderLight}`,
+                background: 'white', color: c.text, fontSize: 13, fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              닫기
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
