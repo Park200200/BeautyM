@@ -314,35 +314,37 @@ export default function Header() {
     // 축소 모드: 일반 탭 + ... 표시
     return (
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginLeft: 4, flex: 1, minWidth: 0 }}>
+        {/* 왼쪽 오버플로우: 그라데이션 + ··· */}
         {canLeft && (
-          <button onClick={() => setTabsExpanded(true)}
+          <div onClick={() => setTabsExpanded(true)}
             style={{
-              position: 'absolute', left: 0, zIndex: 2, border: 'none',
-              cursor: 'pointer', fontSize: 16, fontWeight: 900, color: colors.primary,
-              padding: '4px 14px 4px 0', letterSpacing: 1,
-              background: `linear-gradient(90deg, ${colors.surface} 60%, transparent)`,
-              height: '100%', display: 'flex', alignItems: 'center',
+              position: 'absolute', left: 0, top: 0, bottom: 0, zIndex: 2,
+              display: 'flex', alignItems: 'center', cursor: 'pointer',
+              paddingRight: 4,
+              background: `linear-gradient(90deg, ${colors.surface} 70%, ${colors.surface}00)`,
+              width: 36,
             }}>
-            ···
-          </button>
+            <span style={{ fontSize: 18, fontWeight: 900, color: colors.primary, letterSpacing: 1 }}>···</span>
+          </div>
         )}
+        {/* 오른쪽 오버플로우: 그라데이션 + ··· */}
         {canRight && (
-          <button onClick={() => setTabsExpanded(true)}
+          <div onClick={() => setTabsExpanded(true)}
             style={{
-              position: 'absolute', right: 0, zIndex: 2, border: 'none',
-              cursor: 'pointer', fontSize: 16, fontWeight: 900, color: colors.primary,
-              padding: '4px 0 4px 18px', letterSpacing: 1,
-              background: `linear-gradient(270deg, ${colors.surface} 60%, transparent)`,
-              height: '100%', display: 'flex', alignItems: 'center',
+              position: 'absolute', right: 0, top: 0, bottom: 0, zIndex: 2,
+              display: 'flex', alignItems: 'center', justifyContent: 'flex-end', cursor: 'pointer',
+              paddingLeft: 4,
+              background: `linear-gradient(270deg, ${colors.surface} 70%, ${colors.surface}00)`,
+              width: 36,
             }}>
-            ···
-          </button>
+            <span style={{ fontSize: 18, fontWeight: 900, color: colors.primary, letterSpacing: 1 }}>···</span>
+          </div>
         )}
         <div ref={scrollRef}
           style={{
             display: 'flex', gap: 4, overflowX: 'auto', scrollbarWidth: 'none',
             WebkitOverflowScrolling: 'touch', userSelect: 'none',
-            paddingLeft: canLeft ? 30 : 0, paddingRight: canRight ? 30 : 0,
+            paddingLeft: canLeft ? 36 : 0, paddingRight: canRight ? 36 : 0,
             transition: 'padding .2s',
           }}
           onMouseDown={e => {
