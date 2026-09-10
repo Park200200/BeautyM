@@ -15,7 +15,7 @@ import { useShopStore } from '@/stores/shop-store';
 import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
 import { useIsMobile } from '@/hooks/useMediaQuery';
-import { Menu, Bell, CalendarDays, Users, Scissors, Receipt, UserCog, Package, CreditCard, Image, LayoutDashboard, Settings, BellRing, Store, List, Plus, Building2, BrainCircuit, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Menu, Bell, CalendarDays, Users, Scissors, Receipt, UserCog, Package, CreditCard, Image, LayoutDashboard, Settings, BellRing, Store, List, Plus, Building2, BrainCircuit, ChevronLeft, ChevronRight, Mail, Smartphone, MessageCircle, Send, Clock } from 'lucide-react';
 import Link from 'next/link';
 
 const PAGE_MAP: Record<string, { label: string; icon: typeof CalendarDays }> = {
@@ -402,11 +402,27 @@ export default function Header() {
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: 12, fontWeight: isUnread ? 700 : 500, color: c.text }}>{n.title}</span>
-                              {isUnread && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444', flexShrink: 0 }} />}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                <span style={{ fontSize: 12, fontWeight: isUnread ? 700 : 500, color: c.text }}>{n.title}</span>
+                                {(() => {
+                                  const chMap: Record<string, { icon: any; color: string }> = {
+                                    IN_APP: { icon: Smartphone, color: '#6B7280' },
+                                    EMAIL: { icon: Mail, color: '#3B82F6' },
+                                    SMS: { icon: Send, color: '#10B981' },
+                                    KAKAO: { icon: MessageCircle, color: '#F59E0B' },
+                                  };
+                                  const ch = chMap[n.channel || 'IN_APP'] || chMap.IN_APP;
+                                  const ChIcon = ch.icon;
+                                  return <ChIcon style={{ width: 11, height: 11, color: ch.color }} />;
+                                })()}
+                              </div>
+                              {isUnread && <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#EF4444', flexShrink: 0 }} />}
                             </div>
                             <div style={{ fontSize: 11, color: c.textLight, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>{n.content}</div>
-                            <div style={{ fontSize: 9, color: c.textLight, marginTop: 2 }}>{timeAgo(n.createdAt)}</div>
+                            <div style={{ fontSize: 9, color: c.textLight, marginTop: 2, display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <Clock style={{ width: 8, height: 8 }} />
+                              <span>{timeAgo(n.createdAt)}</span>
+                            </div>
                           </div>
                         </div>
                       );

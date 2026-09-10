@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
 import { useIsMobile } from '@/hooks/useMediaQuery';
-import { Bell, CheckCheck, Calendar, CreditCard, Users, Gift, AlertCircle, Megaphone, Clock } from 'lucide-react';
+import { Bell, CheckCheck, Calendar, CreditCard, Users, Gift, AlertCircle, Megaphone, Clock, Mail, Smartphone, MessageCircle, Send } from 'lucide-react';
 
 type Noti = {
   id: string; type: string; channel?: string; title: string; content: string;
@@ -13,11 +13,11 @@ type Noti = {
   member?: { user: { name: string } } | null;
 };
 
-const CHANNEL_BADGE: Record<string, { label: string; color: string; bg: string }> = {
-  IN_APP: { label: '앱', color: '#6B7280', bg: '#F3F4F6' },
-  EMAIL: { label: '이메일', color: '#3B82F6', bg: '#DBEAFE' },
-  SMS: { label: 'SMS', color: '#10B981', bg: '#D1FAE5' },
-  KAKAO: { label: '카카오톡', color: '#F59E0B', bg: '#FEF3C7' },
+const CHANNEL_CONFIG: Record<string, { icon: any; color: string; label: string }> = {
+  IN_APP: { icon: Smartphone, color: '#6B7280', label: '앱' },
+  EMAIL: { icon: Mail, color: '#3B82F6', label: '이메일' },
+  SMS: { icon: Send, color: '#10B981', label: '문자' },
+  KAKAO: { icon: MessageCircle, color: '#F59E0B', label: '카톡' },
 };
 
 const TYPE_CONFIG: Record<string, { icon: any; color: string; bg: string }> = {
@@ -123,21 +123,38 @@ export default function NotificationsPage() {
             return (
               <div key={n.id} onClick={() => isUnread && markRead(n.id)}
                 style={{ display: 'flex', gap: mob ? 10 : 12, padding: mob ? '10px 12px' : '12px 14px', borderRadius: 12, background: isUnread ? `${tc.bg}40` : 'white', border: `1px solid ${isUnread ? tc.color + '30' : c.borderLight}`, cursor: isUnread ? 'pointer' : 'default', transition: 'all .2s' }}>
+                {/* 타입 아이콘 */}
                 <div style={{ width: mob ? 32 : 36, height: mob ? 32 : 36, borderRadius: mob ? 8 : 10, background: tc.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Icon style={{ width: mob ? 15 : 16, height: mob ? 15 : 16, color: tc.color }} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                  {/* 1줄: 제목 + 채널 아이콘 + 안읽음 표시 */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ fontSize: mob ? 12.5 : 13, fontWeight: isUnread ? 700 : 500, color: c.text }}>{n.title}</span>
-                      {(() => { const ch = CHANNEL_BADGE[n.channel || 'IN_APP'] || CHANNEL_BADGE.IN_APP; return (
-                        <span style={{ fontSize: 9, fontWeight: 600, color: ch.color, background: ch.bg, padding: '1px 6px', borderRadius: 6 }}>{ch.label}</span>
-                      ); })()}
+                      {(() => {
+                        const ch = CHANNEL_CONFIG[n.channel || 'IN_APP'] || CHANNEL_CONFIG.IN_APP;
+                        const ChIcon = ch.icon;
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }} title={ch.label}>
+                            <ChIcon style={{ width: 12, height: 12, color: ch.color }} />
+                            {n.channel === 'EMAIL' && n.content?.includes('@') && (
+                              <span style={{ fontSize: 9, color: ch.color }}>{n.content.match(/[\w.-]+@[\w.-]+/)?.[0] || ''}</span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                     {isUnread && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444', flexShrink: 0 }} />}
                   </div>
+                  {/* 2줄: 알림 내용 */}
                   <div style={{ fontSize: mob ? 11.5 : 12, color: c.textLight, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.content}</div>
-                  <div style={{ fontSize: mob ? 9.5 : 10, color: c.textLight, marginTop: 3 }}>{timeAgo(n.createdAt)}</div>
+                  {/* 3줄: 발송 시간 */}
+                  <div style={{ fontSize: mob ? 9.5 : 10, color: c.textLight, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Clock style={{ width: 9, height: 9 }} />
+                    <span>{timeAgo(n.createdAt)}</span>
+                    {n.createdAt && <span style={{ color: `${c.textLight}80` }}>· {new Date(n.createdAt).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}</span>}
+                  </div>
                 </div>
               </div>
             );
