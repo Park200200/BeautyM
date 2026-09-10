@@ -181,7 +181,7 @@ export default function Header() {
   const isPortfolioSection = lastSeg === 'portfolio' || secondLast === 'portfolio';
   const portfolioTabs: SubTab[] = shopSlug ? [
     { label: '포트폴리오', icon: List, path: `/${shopSlug}/portfolio`, key: 'portfolio' },
-    { label: '포트폴리오등록', icon: Plus, path: `/${shopSlug}/portfolio?new=1`, key: 'new' },
+    { label: '사례등록', icon: Plus, path: `/${shopSlug}/portfolio?new=1`, key: 'new' },
   ] : [];
   const activePortfolioTab = 'portfolio';
 
