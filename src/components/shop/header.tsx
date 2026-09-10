@@ -317,9 +317,11 @@ export default function Header() {
         {canLeft && (
           <button onClick={() => setTabsExpanded(true)}
             style={{
-              position: 'absolute', left: 0, zIndex: 2, background: 'none', border: 'none',
-              cursor: 'pointer', fontSize: 14, fontWeight: 800, color: colors.textLight, letterSpacing: 2,
-              padding: '2px 4px',
+              position: 'absolute', left: 0, zIndex: 2, border: 'none',
+              cursor: 'pointer', fontSize: 16, fontWeight: 900, color: colors.primary,
+              padding: '4px 10px 4px 2px', letterSpacing: 1,
+              background: `linear-gradient(90deg, ${colors.surface} 50%, transparent)`,
+              height: '100%', display: 'flex', alignItems: 'center',
             }}>
             ···
           </button>
@@ -327,9 +329,11 @@ export default function Header() {
         {canRight && (
           <button onClick={() => setTabsExpanded(true)}
             style={{
-              position: 'absolute', right: 0, zIndex: 2, background: 'none', border: 'none',
-              cursor: 'pointer', fontSize: 14, fontWeight: 800, color: colors.textLight, letterSpacing: 2,
-              padding: '2px 4px',
+              position: 'absolute', right: 0, zIndex: 2, border: 'none',
+              cursor: 'pointer', fontSize: 16, fontWeight: 900, color: colors.primary,
+              padding: '4px 2px 4px 10px', letterSpacing: 1,
+              background: `linear-gradient(270deg, ${colors.surface} 50%, transparent)`,
+              height: '100%', display: 'flex', alignItems: 'center',
             }}>
             ···
           </button>
