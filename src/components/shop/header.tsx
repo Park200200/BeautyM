@@ -112,7 +112,7 @@ export default function Header() {
   const reservationTabs: SubTab[] = shopSlug ? [
     { label: '리스트', icon: List, path: `/${shopSlug}/reservations`, key: 'reservations' },
     { label: '캘린더', icon: CalendarDays, path: `/${shopSlug}/reservations/calendar`, key: 'calendar' },
-    { label: '+ 등록', icon: Plus, path: `/${shopSlug}/reservations/new`, key: 'new' },
+    { label: '예약등록', icon: Plus, path: `/${shopSlug}/reservations/new`, key: 'new' },
   ] : [];
 
   const activeTab = lastSeg === 'calendar' ? 'calendar' : lastSeg === 'new' ? 'new' : 'reservations';
