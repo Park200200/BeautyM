@@ -316,31 +316,22 @@ export default function Header() {
         }}>
           {/* 왼쪽 그라데이션 */}
           <div style={{
-            position: 'absolute', left: 0, top: 0, bottom: 0, width: 52, zIndex: 2,
-            background: `linear-gradient(90deg, ${c.surface} 70%, transparent)`,
+            position: 'absolute', left: 0, top: 0, bottom: 0, width: 40, zIndex: 2,
+            background: `linear-gradient(90deg, ${c.surface} 60%, transparent)`,
             pointerEvents: 'none',
           }} />
           {/* 오른쪽 그라데이션 */}
           <div style={{
-            position: 'absolute', right: 0, top: 0, bottom: 0, width: 52, zIndex: 2,
-            background: `linear-gradient(270deg, ${c.surface} 70%, transparent)`,
+            position: 'absolute', right: 0, top: 0, bottom: 0, width: 40, zIndex: 2,
+            background: `linear-gradient(270deg, ${c.surface} 60%, transparent)`,
             pointerEvents: 'none',
           }} />
 
-          {/* 왼쪽 닫기 */}
-          <button onClick={() => setTabsExpanded(false)}
-            style={{
-              width: 52, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'none', border: 'none', cursor: 'pointer', zIndex: 3, flexShrink: 0,
-            }}>
-            <Menu style={{ width: 20, height: 20, color: c.textLight }} />
-          </button>
-
-          {/* 탭 리스트 */}
+          {/* 탭 리스트 - 축소 모드와 동일한 사이즈 */}
           <div style={{
-            flex: 1, display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center',
+            flex: 1, display: 'flex', gap: 4, alignItems: 'center', justifyContent: 'center',
             overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch',
-            padding: '0 12px',
+            padding: '0 16px',
           }}>
             <style>{`div[style*="scrollbarWidth"]::-webkit-scrollbar{display:none!important;width:0!important}`}</style>
             {expandedTabsData.tabs.map(tab => {
@@ -349,15 +340,15 @@ export default function Header() {
               return (
                 <Link key={tab.key} href={tab.path} onClick={() => setTabsExpanded(false)} style={{ flexShrink: 0 }}>
                   <button style={{
-                    display: 'flex', alignItems: 'center', gap: 5,
-                    padding: '7px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600,
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
                     whiteSpace: 'nowrap',
                     background: isActive ? c.primary : 'transparent',
                     color: isActive ? c.textOnPrimary : c.textLight,
                     border: isActive ? 'none' : `1px solid ${c.borderLight}`,
                     cursor: 'pointer', transition: 'all .15s',
                   }}>
-                    <TabIcon style={{ width: 15, height: 15 }} />
+                    <TabIcon style={{ width: 14, height: 14 }} />
                     {tab.label}
                   </button>
                 </Link>
@@ -365,17 +356,14 @@ export default function Header() {
             })}
           </div>
 
-          {/* 오른쪽 닫기 */}
+          {/* 오른쪽 닫기 ✕ */}
           <button onClick={() => setTabsExpanded(false)}
             style={{
-              width: 52, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 40, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: 'none', border: 'none', cursor: 'pointer', zIndex: 3, flexShrink: 0,
+              fontSize: 18, color: c.textLight,
             }}>
-            <Avatar className="h-8 w-8" style={{ opacity: 0.6 }}>
-              <AvatarFallback style={{ background: c.primaryLight, color: c.primary, fontSize: 12, fontWeight: 700 }}>
-                ✕
-              </AvatarFallback>
-            </Avatar>
+            ✕
           </button>
         </div>
       )}
