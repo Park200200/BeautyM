@@ -194,7 +194,9 @@ export default function Header() {
   ] : [];
   const activeMembershipTab = 'membership';
 
-  // 서브탭 스크롤 컴포넌트
+  // 서브탭: 확장 상태 관리
+  const [tabsExpanded, setTabsExpanded] = useState(false);
+
   const ScrollableTabs = useCallback(({ tabs: tabList, activeKey, colors }: { tabs: SubTab[]; activeKey: string; colors: typeof c }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
     const [canLeft, setCanLeft] = useState(false);
@@ -216,51 +218,138 @@ export default function Header() {
       const ro = new ResizeObserver(check);
       ro.observe(el);
       return () => { clearTimeout(t); el.removeEventListener('scroll', check); ro.disconnect(); };
-    }, []);
+    }, [tabsExpanded]);
 
+    const hasOverflow = canLeft || canRight;
+
+    // 확장 모드: 풀사이즈 팝업
+    if (tabsExpanded) {
+      return (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, height: 56, zIndex: 1000,
+          display: 'flex', alignItems: 'center',
+          background: colors.surface,
+          borderBottom: `1px solid ${colors.borderLight}`,
+        }}>
+          {/* 왼쪽 그라데이션 */}
+          <div style={{
+            position: 'absolute', left: 0, top: 0, bottom: 0, width: 48, zIndex: 2,
+            background: `linear-gradient(90deg, ${colors.surface} 60%, transparent)`,
+            pointerEvents: 'none',
+          }} />
+          {/* 오른쪽 그라데이션 */}
+          <div style={{
+            position: 'absolute', right: 0, top: 0, bottom: 0, width: 48, zIndex: 2,
+            background: `linear-gradient(270deg, ${colors.surface} 60%, transparent)`,
+            pointerEvents: 'none',
+          }} />
+
+          {/* 왼쪽 닫기 (햄버거 위치) */}
+          <button onClick={() => setTabsExpanded(false)}
+            style={{
+              width: 48, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'none', border: 'none', cursor: 'pointer', zIndex: 3, flexShrink: 0,
+            }}>
+            <Menu style={{ width: 20, height: 20, color: colors.textLight }} />
+          </button>
+
+          {/* 탭 리스트 (확장) */}
+          <div ref={scrollRef}
+            style={{
+              flex: 1, display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'center',
+              overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch',
+              padding: '0 8px',
+            }}
+            onMouseDown={e => {
+              const el = scrollRef.current; if (!el) return;
+              dragState.current = { isDown: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft };
+            }}
+            onMouseLeave={() => { dragState.current.isDown = false; }}
+            onMouseUp={() => { dragState.current.isDown = false; }}
+            onMouseMove={e => {
+              if (!dragState.current.isDown) return; e.preventDefault();
+              const el = scrollRef.current; if (!el) return;
+              el.scrollLeft = dragState.current.scrollLeft - (e.pageX - el.offsetLeft - dragState.current.startX);
+            }}
+          >
+            <style>{`div[style*="scrollbarWidth"]::-webkit-scrollbar{display:none!important;width:0!important}`}</style>
+            {tabList.map(tab => {
+              const isActive = activeKey === tab.key;
+              const TabIcon = tab.icon;
+              return (
+                <Link key={tab.key} href={tab.path} onClick={() => setTabsExpanded(false)} style={{ flexShrink: 0 }}>
+                  <button style={{
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    padding: '6px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                    background: isActive ? colors.primary : 'transparent',
+                    color: isActive ? colors.textOnPrimary : colors.textLight,
+                    border: isActive ? 'none' : `1px solid ${colors.borderLight}`,
+                    cursor: 'pointer', transition: 'all .15s',
+                  }}>
+                    <TabIcon style={{ width: 14, height: 14 }} />
+                    {tab.label}
+                  </button>
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* 오른쪽 닫기 (아바타 위치) */}
+          <button onClick={() => setTabsExpanded(false)}
+            style={{
+              width: 48, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'none', border: 'none', cursor: 'pointer', zIndex: 3, flexShrink: 0,
+            }}>
+            <Avatar className="h-8 w-8" style={{ opacity: 0.5 }}>
+              <AvatarFallback style={{ background: colors.primaryLight, color: colors.primary, fontSize: 11 }}>
+                ✕
+              </AvatarFallback>
+            </Avatar>
+          </button>
+        </div>
+      );
+    }
+
+    // 축소 모드: 일반 탭 + ... 표시
     return (
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginLeft: 4, flex: 1, minWidth: 0 }}>
         {canLeft && (
-          <button onClick={() => scrollRef.current?.scrollBy({ left: -100, behavior: 'smooth' })}
+          <button onClick={() => setTabsExpanded(true)}
             style={{
-              position: 'absolute', left: 0, zIndex: 2,
-              width: 22, height: 22, borderRadius: '50%', border: `1px solid ${colors.borderLight}`,
-              background: colors.surface, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', flexShrink: 0,
+              position: 'absolute', left: 0, zIndex: 2, background: 'none', border: 'none',
+              cursor: 'pointer', fontSize: 14, fontWeight: 800, color: colors.textLight, letterSpacing: 2,
+              padding: '2px 4px',
             }}>
-            <ChevronLeft style={{ width: 12, height: 12, color: colors.primary }} />
+            ···
           </button>
         )}
         {canRight && (
-          <button onClick={() => scrollRef.current?.scrollBy({ left: 100, behavior: 'smooth' })}
+          <button onClick={() => setTabsExpanded(true)}
             style={{
-              position: 'absolute', right: 0, zIndex: 2,
-              width: 22, height: 22, borderRadius: '50%', border: `1px solid ${colors.borderLight}`,
-              background: colors.surface, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', flexShrink: 0,
+              position: 'absolute', right: 0, zIndex: 2, background: 'none', border: 'none',
+              cursor: 'pointer', fontSize: 14, fontWeight: 800, color: colors.textLight, letterSpacing: 2,
+              padding: '2px 4px',
             }}>
-            <ChevronRight style={{ width: 12, height: 12, color: colors.primary }} />
+            ···
           </button>
         )}
         <div ref={scrollRef}
           style={{
             display: 'flex', gap: 4, overflowX: 'auto', scrollbarWidth: 'none',
             WebkitOverflowScrolling: 'touch', userSelect: 'none',
-            paddingLeft: canLeft ? 24 : 0, paddingRight: canRight ? 24 : 0,
+            paddingLeft: canLeft ? 20 : 0, paddingRight: canRight ? 20 : 0,
             transition: 'padding .2s',
           }}
           onMouseDown={e => {
-            const el = scrollRef.current;
-            if (!el) return;
+            const el = scrollRef.current; if (!el) return;
             dragState.current = { isDown: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft };
           }}
           onMouseLeave={() => { dragState.current.isDown = false; }}
           onMouseUp={() => { dragState.current.isDown = false; }}
           onMouseMove={e => {
-            if (!dragState.current.isDown) return;
-            e.preventDefault();
-            const el = scrollRef.current;
-            if (!el) return;
+            if (!dragState.current.isDown) return; e.preventDefault();
+            const el = scrollRef.current; if (!el) return;
             el.scrollLeft = dragState.current.scrollLeft - (e.pageX - el.offsetLeft - dragState.current.startX);
           }}
         >
@@ -288,7 +377,7 @@ export default function Header() {
         </div>
       </div>
     );
-  }, []);
+  }, [tabsExpanded]);
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
