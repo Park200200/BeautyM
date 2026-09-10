@@ -9,6 +9,7 @@ import { Bell, CheckCheck, Calendar, CreditCard, Users, Gift, AlertCircle, Megap
 
 type Noti = {
   id: string; type: string; channel?: string; title: string; content: string;
+  recipientId?: string | null;
   readAt: string | null; createdAt: string;
   member?: { user: { name: string } } | null;
 };
@@ -44,6 +45,9 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Noti[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [myMemberId, setMyMemberId] = useState<string | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
+  const [viewFilter, setViewFilter] = useState<'all' | 'mine'>('all');
   const filter = searchParams.get('filter') === 'unread' ? 'unread' : 'all';
 
   const fetchNoti = async () => {
@@ -54,6 +58,8 @@ export default function NotificationsPage() {
         const d = await res.json();
         setNotifications(d.notifications || []);
         setUnreadCount(d.unreadCount || 0);
+        if (d.myMemberId) setMyMemberId(d.myMemberId);
+        if (d.isOwner !== undefined) setIsOwner(d.isOwner);
       }
     } catch (e) { console.error(e); }
     setLoading(false);
@@ -83,8 +89,6 @@ export default function NotificationsPage() {
     } catch (e) { fetchNoti(); }
   };
 
-  const filtered = filter === 'unread' ? notifications.filter(n => !n.readAt) : notifications;
-
   const timeAgo = (s: string) => {
     const diff = (Date.now() - new Date(s).getTime()) / 1000;
     if (diff < 60) return '방금';
@@ -93,10 +97,38 @@ export default function NotificationsPage() {
     return `${Math.floor(diff / 86400)}일 전`;
   };
 
+  const filtered = notifications.filter(n => {
+    if (filter === 'unread' && n.readAt) return false;
+    if (viewFilter === 'mine' && myMemberId && n.recipientId !== myMemberId) return false;
+    return true;
+  });
+
+  const mineCount = notifications.filter(n => myMemberId && n.recipientId === myMemberId).length;
+
   if (!mounted) return null;
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: mob ? '14px 12px' : '20px 16px' }}>
+
+      {/* OWNER 전용: 전체 / 내 알림 필터 탭 */}
+      {isOwner && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+          {[
+            { key: 'all' as const, label: '전체', count: notifications.length },
+            { key: 'mine' as const, label: '내 알림', count: mineCount },
+          ].map(t => (
+            <button key={t.key} onClick={() => setViewFilter(t.key)}
+              style={{
+                padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none', transition: 'all .2s',
+                background: viewFilter === t.key ? c.primary : `${c.borderLight}40`,
+                color: viewFilter === t.key ? 'white' : c.textLight,
+              }}>
+              {t.label} <span style={{ fontSize: 10, opacity: 0.8 }}>({t.count})</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* 모두 읽음 */}
       {unreadCount > 0 && (
         <div style={{ marginBottom: 16 }}>
@@ -148,11 +180,16 @@ export default function NotificationsPage() {
                   </div>
                   {/* 2줄: 알림 내용 */}
                   <div style={{ fontSize: mob ? 11.5 : 12, color: c.textLight, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.content}</div>
-                  {/* 3줄: 발송 시간 */}
+                  {/* 3줄: 발송 시간 + 개인/전체 구분 */}
                   <div style={{ fontSize: mob ? 9.5 : 10, color: c.textLight, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
                     <Clock style={{ width: 9, height: 9 }} />
                     <span>{timeAgo(n.createdAt)}</span>
                     {n.createdAt && <span style={{ color: `${c.textLight}80` }}>· {new Date(n.createdAt).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}</span>}
+                    {isOwner && myMemberId && (
+                      <span style={{ fontSize: 9, fontWeight: 600, color: n.recipientId === myMemberId ? '#8B5CF6' : '#6B7280', background: n.recipientId === myMemberId ? '#EDE9FE' : '#F3F4F6', padding: '0px 5px', borderRadius: 6, marginLeft: 2 }}>
+                        {n.recipientId === myMemberId ? '내 알림' : '전체'}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

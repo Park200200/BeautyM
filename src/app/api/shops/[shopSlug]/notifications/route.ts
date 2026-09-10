@@ -41,7 +41,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ shopSlug
     where: { ...whereFilter, readAt: null },
   });
 
-  return NextResponse.json({ notifications, unreadCount });
+  return NextResponse.json({ notifications, unreadCount, myMemberId: myMember?.id || null, isOwner });
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ shopSlug: string }> }) {
