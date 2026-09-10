@@ -305,7 +305,8 @@ export default function Header() {
           }}>
             <style>{`div[style*="scrollbarWidth"]::-webkit-scrollbar{display:none!important;width:0!important}`}</style>
             {expandedTabsData.tabs.map(tab => {
-              const isActive = expandedTabsData.activeKey === tab.key;
+              const currentActiveKey = activeSubTabs?.activeKey || expandedTabsData.activeKey;
+              const isActive = currentActiveKey === tab.key;
               const TabIcon = tab.icon;
               return (
                 <Link key={tab.key} href={tab.path} style={{ flexShrink: 0 }}>
