@@ -157,16 +157,34 @@ export default function SalesPage() {
     } catch (e) { console.error(e); }
   };
 
-  // 고객 선택 시 해당 고객의 미결제 예약만 필터링
-  const selectPayCustomer = (custId: string, custName: string) => {
+  // 고객 선택 시 해당 고객의 미결제 예약만 필터링 + 멤버십 조회
+  const selectPayCustomer = async (custId: string, custName: string) => {
     setPayCustomerId(custId);
     setPayCustomerSearch('');
     setShowQuickReg(false);
     const filtered = allUnpaid.filter((r: any) => r.customer?.user?.name === custName);
     setUnpaidList(filtered);
     setSelectedResv(null);
-    setMemberInfo(null);
+    setDirectMenu(null);
     setPayForm({ method: 'CARD', discount: 0, pointUsed: 0 });
+    // 고객 멤버십 정보 조회
+    setMemberInfo(null);
+    try {
+      const res = await fetch(`/api/shops/${shopSlug}/customers`);
+      if (res.ok) {
+        const data = await res.json();
+        const customers = data.customers || data || [];
+        const found = customers.find((c: any) => c.id === custId || c.user?.name === custName);
+        if (found) {
+          setMemberInfo({
+            grade: found.memberGrade || found.grade || 'NORMAL',
+            points: found.totalPoints || found.points || 0,
+            visitCount: found.visitCount || 0,
+            totalSpent: found.totalSpent || 0,
+          });
+        }
+      }
+    } catch { /* ignore */ }
   };
 
   // 빠른 고객 등록 (이름+전화번호만)
