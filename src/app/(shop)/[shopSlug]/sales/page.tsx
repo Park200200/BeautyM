@@ -269,6 +269,32 @@ export default function SalesPage() {
       if (res.ok) {
         const paymentData = await res.json();
         const custInfo = payCustomers.find(cu => cu.id === payCustomerId);
+        // 포인트 적립 계산
+        const methodKey = payForm.method as 'CARD' | 'CASH' | 'TRANSFER';
+        const methodRate = shopPointSettings.paymentRates[methodKey] || 0;
+        const gradeKey = (memberInfo?.grade || 'NORMAL').toUpperCase();
+        const GRADE_MAP: Record<string, string> = { 'NORMAL': 'NORMAL', '일반': 'NORMAL', 'SILVER': 'SILVER', '실버': 'SILVER', 'GOLD': 'GOLD', '골드': 'GOLD', 'VIP': 'VIP', 'VVIP': 'VVIP' };
+        const normalizedGrade = GRADE_MAP[gradeKey] || 'NORMAL';
+        const gs = shopPointSettings.gradeSettings[normalizedGrade] || shopPointSettings.gradeSettings[gradeKey];
+        const gradePointRate = gs?.pointRate || shopPointSettings.pointRate;
+        const payAmount = Math.max(0, amount);
+        const earnedPoints = Math.floor(payAmount * methodRate / 100) + Math.floor(payAmount * gradePointRate / 100);
+
+        // 고객 최신 포인트/쿠폰 조회
+        let updatedPoints = (memberInfo?.points || 0) + earnedPoints - payForm.pointUsed;
+        let coupons: any[] = [];
+        try {
+          const custRes = await fetch(`/api/shops/${shopSlug}/customers`);
+          if (custRes.ok) {
+            const cd = await custRes.json();
+            const found = (cd.customers || []).find((c: any) => c.id === payCustomerId);
+            if (found) {
+              updatedPoints = found.totalPoints || found.points || updatedPoints;
+              coupons = found.coupons || [];
+            }
+          }
+        } catch { /* ignore */ }
+
         setPayConfirmData({
           ...paymentData,
           menuName: selectedResv ? (selectedResv.menu?.name || '-') : (directMenu?.name || '-'),
@@ -276,8 +302,12 @@ export default function SalesPage() {
           customerName: custInfo?.user?.name || '-',
           discount: payForm.discount,
           pointUsed: payForm.pointUsed,
-          finalAmount: Math.max(0, amount),
+          finalAmount: payAmount,
           method: payForm.method,
+          earnedPoints,
+          totalPoints: updatedPoints,
+          coupons,
+          grade: memberInfo?.grade || 'NORMAL',
         });
         fetchSales();
       }
@@ -558,6 +588,51 @@ export default function SalesPage() {
                     <span style={{ fontWeight: 600 }}>{METHOD_LABELS[payConfirmData.method] || payConfirmData.method}</span>
                   </div>
                 </div>
+
+                {/* 포인트 적립 정보 */}
+                <div style={{ padding: 14, borderRadius: 10, border: `1px solid #D1FAE5`, background: '#ECFDF5', marginBottom: 16, fontSize: 13 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#059669', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    🎁 {'포인트 적립 내역'}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ color: '#065F46' }}>{'이번 적립'}</span>
+                    <span style={{ fontWeight: 700, color: '#059669', fontSize: 15 }}>+{(payConfirmData.earnedPoints || 0).toLocaleString()}P</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ color: '#065F46' }}>{'총 보유 포인트'}</span>
+                    <span style={{ fontWeight: 700, color: '#047857', fontSize: 15 }}>{(payConfirmData.totalPoints || 0).toLocaleString()}P</span>
+                  </div>
+                  {payConfirmData.pointUsed > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#6B7280' }}>
+                      <span>{'이번 사용'}</span>
+                      <span>-{payConfirmData.pointUsed.toLocaleString()}P</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 쿠폰 리스트 */}
+                {payConfirmData.coupons && payConfirmData.coupons.length > 0 && (
+                  <div style={{ padding: 14, borderRadius: 10, border: `1px solid #FEF3C7`, background: '#FFFBEB', marginBottom: 16, fontSize: 13 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#D97706', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      🎟️ {'보유 쿠폰'} <span style={{ fontSize: 11, fontWeight: 500, color: '#92400E' }}>({payConfirmData.coupons.length}장)</span>
+                    </div>
+                    {payConfirmData.coupons.map((cp: any, i: number) => (
+                      <div key={i} style={{ padding: '8px 10px', borderRadius: 8, background: 'white', marginBottom: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+                        <span style={{ fontWeight: 600, color: '#92400E' }}>{cp.name || cp.couponName || '쿠폰'}</span>
+                        <span style={{ color: '#D97706', fontWeight: 700 }}>
+                          {cp.discountType === 'PERCENT' ? `${cp.discountValue}% 할인` : cp.discountValue ? `${cp.discountValue.toLocaleString()}원 할인` : ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {payConfirmData.coupons && payConfirmData.coupons.length === 0 && (
+                  <div style={{ padding: 12, borderRadius: 10, background: '#f9f9f9', marginBottom: 16, textAlign: 'center', fontSize: 12, color: c.textLight }}>
+                    {'보유 쿠폰이 없습니다'}
+                  </div>
+                )}
+
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={() => setPayConfirmData(null)}
                     style={{ flex: 1, padding: '12px', borderRadius: 10, border: `1.5px solid ${c.borderLight}`, background: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer', color: c.textLight }}>
