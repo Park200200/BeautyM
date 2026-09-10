@@ -24,11 +24,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ shopSlug
 
   const myMember = await getMyMember(shop.id);
 
-  // OWNER: 매장 전체 알림 / STAFF: 본인 + 전체 공지만
+  // OWNER: 매장 전체 알림 / STAFF: 본인 관련만
   const isOwner = !myMember || myMember.role === 'OWNER';
   const whereFilter = isOwner
     ? { shopId: shop.id }
-    : { shopId: shop.id, OR: [{ recipientId: myMember.id }, { recipientId: null }] };
+    : { shopId: shop.id, recipientId: myMember.id };
 
   const notifications = await prisma.notificationLog.findMany({
     where: whereFilter,
@@ -86,7 +86,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ shopSl
       const isOwner = !myMember || myMember.role === 'OWNER';
       const whereFilter = isOwner
         ? { shopId: shop.id, readAt: null }
-        : { shopId: shop.id, readAt: null, OR: [{ recipientId: myMember.id }, { recipientId: null }] };
+        : { shopId: shop.id, readAt: null, recipientId: myMember.id };
       await prisma.notificationLog.updateMany({
         where: whereFilter,
         data: { readAt: new Date() },
