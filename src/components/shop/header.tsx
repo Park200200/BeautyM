@@ -122,7 +122,7 @@ export default function Header() {
   const menuTabs: SubTab[] = shopSlug ? [
     { label: '뷰티 상품', icon: List, path: `/${shopSlug}/menus`, key: 'menus' },
     { label: '시술 상세', icon: List, path: `/${shopSlug}/menus/categories`, key: 'categories' },
-    { label: '+ 추가', icon: Plus, path: `/${shopSlug}/menus?new=1`, key: 'new' },
+    { label: '상품등록', icon: Plus, path: `/${shopSlug}/menus?new=1`, key: 'new' },
   ] : [];
   const activeMenuTab = lastSeg === 'categories' ? 'categories' : 'menus';
 
@@ -138,7 +138,7 @@ export default function Header() {
   const isSalesSection = lastSeg === 'sales' || secondLast === 'sales';
   const salesTabs: SubTab[] = shopSlug ? [
     { label: '매출 현황', icon: List, path: `/${shopSlug}/sales`, key: 'sales' },
-    { label: '+ 결제 등록', icon: Plus, path: `/${shopSlug}/sales?pay=1`, key: 'pay' },
+    { label: '결제등록', icon: Plus, path: `/${shopSlug}/sales?pay=1`, key: 'pay' },
   ] : [];
   const activeSalesTab = 'sales';
 
@@ -146,7 +146,7 @@ export default function Header() {
   const isStaffSection = lastSeg === 'staff' || secondLast === 'staff';
   const staffTabs: SubTab[] = shopSlug ? [
     { label: '직원 리스트', icon: List, path: `/${shopSlug}/staff`, key: 'staff' },
-    { label: '+ 직원 등록', icon: Plus, path: `/${shopSlug}/staff?new=1`, key: 'new' },
+    { label: '직원등록', icon: Plus, path: `/${shopSlug}/staff?new=1`, key: 'new' },
   ] : [];
   const activeStaffTab = 'staff';
 
@@ -154,7 +154,7 @@ export default function Header() {
   const isInventorySection = lastSeg === 'inventory' || secondLast === 'inventory';
   const inventoryTabs: SubTab[] = shopSlug ? [
     { label: '재고 현황', icon: List, path: `/${shopSlug}/inventory`, key: 'inventory' },
-    { label: '+ 제품 등록', icon: Plus, path: `/${shopSlug}/inventory?new=1`, key: 'new' },
+    { label: '제품등록', icon: Plus, path: `/${shopSlug}/inventory?new=1`, key: 'new' },
   ] : [];
   const activeInventoryTab = 'inventory';
 
