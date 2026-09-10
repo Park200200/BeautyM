@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams } from 'next/navigation';
 import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
@@ -312,8 +313,8 @@ export default function ReservationsPage() {
       </div>
     </div>
 
-    {/* 예약 상세 팝업 — 컨테이너 밖 렌더링 */}
-    {selectedRes && (
+    {/* 예약 상세 팝업 — Portal로 body에 직접 렌더링 */}
+    {selectedRes && createPortal(
       <>
         <div onClick={() => setSelectedRes(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9998 }} />
         <div style={mob ? {
@@ -375,7 +376,8 @@ export default function ReservationsPage() {
           </div>
           <button onClick={() => setSelectedRes(null)} style={{ width: '100%', marginTop: 20, padding: '10px 0', borderRadius: 10, border: `1px solid ${c.borderLight}`, background: 'white', color: c.text, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>닫기</button>
         </div>
-      </>
+      </>,
+      document.body
     )}
     </>
   );
