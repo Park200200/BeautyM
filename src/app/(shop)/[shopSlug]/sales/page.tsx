@@ -62,6 +62,7 @@ export default function SalesPage() {
   const [quickRegistering, setQuickRegistering] = useState(false);
   const [payMenus, setPayMenus] = useState<{id:string; name:string; price:number; duration:number; category?:string}[]>([]);
   const [directMenu, setDirectMenu] = useState<{id:string; name:string; price:number; duration:number} | null>(null);
+  const [payConfirmData, setPayConfirmData] = useState<any>(null); // 결제완료 확인 화면 데이터
 
   // 고객 멤버십 정보
   type MemberInfo = { grade: string; points: number; visitCount: number; totalSpent: number };
@@ -152,6 +153,7 @@ export default function SalesPage() {
       setSelectedResv(null);
       setDirectMenu(null);
       setMemberInfo(null);
+      setPayConfirmData(null);
       setPayForm({ method: 'CARD', discount: 0, pointUsed: 0 });
       setShowPayModal(true);
     } catch (e) { console.error(e); }
@@ -266,9 +268,17 @@ export default function SalesPage() {
       });
       if (res.ok) {
         const paymentData = await res.json();
-        setShowPayModal(false);
-        setReceiptData(paymentData);
-        setShowReceipt(true);
+        const custInfo = payCustomers.find(cu => cu.id === payCustomerId);
+        setPayConfirmData({
+          ...paymentData,
+          menuName: selectedResv ? (selectedResv.menu?.name || '-') : (directMenu?.name || '-'),
+          menuPrice,
+          customerName: custInfo?.user?.name || '-',
+          discount: payForm.discount,
+          pointUsed: payForm.pointUsed,
+          finalAmount: Math.max(0, amount),
+          method: payForm.method,
+        });
         fetchSales();
       }
     } catch (e) { console.error(e); }
@@ -503,9 +513,64 @@ export default function SalesPage() {
               <X style={{ width: 18, height: 18 }} />
             </button>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: c.text, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Receipt style={{ width: 18, height: 18, color: c.primary }} /> {'결제 등록'}
+              <Receipt style={{ width: 18, height: 18, color: c.primary }} /> {payConfirmData ? '결제 완료' : '결제 등록'}
             </h3>
 
+            {payConfirmData ? (
+              <div>
+                <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                  <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#D1FAE5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                    <span style={{ fontSize: 28 }}>✓</span>
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: c.text }}>{'결제가 완료되었습니다'}</div>
+                </div>
+                <div style={{ padding: 16, borderRadius: 10, background: '#f9f9f9', marginBottom: 16, fontSize: 13 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ color: c.textLight }}>{'고객'}</span>
+                    <span style={{ fontWeight: 600, color: c.text }}>{payConfirmData.customerName}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ color: c.textLight }}>{'시술'}</span>
+                    <span style={{ fontWeight: 600, color: c.text }}>{payConfirmData.menuName}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ color: c.textLight }}>{'시술 금액'}</span>
+                    <span style={{ fontWeight: 600 }}>{fmtPrice(payConfirmData.menuPrice)}</span>
+                  </div>
+                  {payConfirmData.discount > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <span style={{ color: c.textLight }}>{'할인'}</span>
+                      <span style={{ color: '#EF4444' }}>-{fmtPrice(payConfirmData.discount)}</span>
+                    </div>
+                  )}
+                  {payConfirmData.pointUsed > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <span style={{ color: c.textLight }}>{'포인트 사용'}</span>
+                      <span style={{ color: '#F59E0B' }}>-{fmtPrice(payConfirmData.pointUsed)}</span>
+                    </div>
+                  )}
+                  <div style={{ borderTop: `1px solid ${c.borderLight}`, paddingTop: 8, display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 15 }}>
+                    <span>{'결제 금액'}</span>
+                    <span style={{ color: c.primary }}>{fmtPrice(payConfirmData.finalAmount)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+                    <span style={{ color: c.textLight }}>{'결제 수단'}</span>
+                    <span style={{ fontWeight: 600 }}>{METHOD_LABELS[payConfirmData.method] || payConfirmData.method}</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => setPayConfirmData(null)}
+                    style={{ flex: 1, padding: '12px', borderRadius: 10, border: `1.5px solid ${c.borderLight}`, background: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer', color: c.textLight }}>
+                    {'취소'}
+                  </button>
+                  <button onClick={() => { setShowPayModal(false); setPayConfirmData(null); setReceiptData(payConfirmData); setShowReceipt(true); }}
+                    style={{ flex: 2, padding: '12px', borderRadius: 10, border: 'none', background: c.primary, color: c.textOnPrimary, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                    {'확인'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+            <>
             {/* 고객 선택 */}
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: c.textLight, display: 'block', marginBottom: 6 }}>{'고객 선택'}</label>
@@ -848,6 +913,8 @@ export default function SalesPage() {
               </div>
               );
             })()}
+            </>
+            )}
           </div>
         </div>
       )}
