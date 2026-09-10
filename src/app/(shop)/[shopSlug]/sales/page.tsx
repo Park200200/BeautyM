@@ -60,6 +60,8 @@ export default function SalesPage() {
   const [quickName, setQuickName] = useState('');
   const [quickPhone, setQuickPhone] = useState('');
   const [quickRegistering, setQuickRegistering] = useState(false);
+  const [payMenus, setPayMenus] = useState<{id:string; name:string; price:number; duration:number; category?:string}[]>([]);
+  const [directMenu, setDirectMenu] = useState<{id:string; name:string; price:number; duration:number} | null>(null);
 
   // 고객 멤버십 정보
   type MemberInfo = { grade: string; points: number; visitCount: number; totalSpent: number };
@@ -117,10 +119,11 @@ export default function SalesPage() {
   // 미결제 예약 조회
   const openPayModal = async () => {
     try {
-      const [resRes, setRes, custRes] = await Promise.all([
+      const [resRes, setRes, custRes, menuRes] = await Promise.all([
         fetch(`/api/shops/${shopSlug}/reservations`),
         fetch(`/api/shops/${shopSlug}/settings`),
         fetch(`/api/shops/${shopSlug}/customers`),
+        fetch(`/api/shops/${shopSlug}/menus`),
       ]);
       if (resRes.ok) {
         const d = await resRes.json();
@@ -140,9 +143,14 @@ export default function SalesPage() {
         const cd = await custRes.json();
         setPayCustomers(cd.customers || []);
       }
+      if (menuRes.ok) {
+        const md = await menuRes.json();
+        setPayMenus((md.menus || md || []).map((m: any) => ({ id: m.id, name: m.name, price: m.price, duration: m.duration, category: m.category?.name || '' })));
+      }
       setPayCustomerId('');
       setPayCustomerSearch('');
       setSelectedResv(null);
+      setDirectMenu(null);
       setMemberInfo(null);
       setPayForm({ method: 'CARD', discount: 0, pointUsed: 0 });
       setShowPayModal(true);
@@ -216,20 +224,27 @@ export default function SalesPage() {
 
   // 결제 처리
   const handlePayment = async () => {
-    if (!selectedResv) return;
+    if (!selectedResv && !directMenu) return;
     setPaying(true);
     try {
-      const amount = (selectedResv.menu?.price || 0) - payForm.discount - payForm.pointUsed;
+      const menuPrice = selectedResv ? (selectedResv.menu?.price || 0) : (directMenu?.price || 0);
+      const amount = menuPrice - payForm.discount - payForm.pointUsed;
+      const body: any = {
+        amount: Math.max(0, amount),
+        discount: payForm.discount,
+        pointUsed: payForm.pointUsed,
+        method: payForm.method,
+      };
+      if (selectedResv) {
+        body.reservationId = selectedResv.id;
+      } else if (directMenu) {
+        body.menuId = directMenu.id;
+        body.customerId = payCustomerId;
+      }
       const res = await fetch(`/api/shops/${shopSlug}/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reservationId: selectedResv.id,
-          amount: Math.max(0, amount),
-          discount: payForm.discount,
-          pointUsed: payForm.pointUsed,
-          method: payForm.method,
-        }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         const paymentData = await res.json();
@@ -636,12 +651,45 @@ export default function SalesPage() {
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: c.textLight, display: 'block', marginBottom: 6 }}>{'미결제 예약 선택'}</label>
               {unpaidList.length === 0 ? (
-                <div style={{ padding: 20, textAlign: 'center', color: c.textLight, fontSize: 13, background: '#f9f9f9', borderRadius: 10 }}>{'미결제 예약이 없습니다'}</div>
+                <div>
+                  <div style={{ padding: 12, textAlign: 'center', color: c.textLight, fontSize: 13, background: '#f9f9f9', borderRadius: 10, marginBottom: 10 }}>{'미결제 예약이 없습니다'}</div>
+                  {/* 시술 메뉴 직접 선택 */}
+                  <label style={{ fontSize: 12, fontWeight: 600, color: c.textLight, display: 'block', marginBottom: 6 }}>{'시술 메뉴 직접 선택'}</label>
+                  {directMenu ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${c.primary}`, background: c.primaryLight + '30' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: c.text, flex: 1 }}>
+                        {directMenu.name}
+                        <span style={{ fontSize: 11, color: c.textLight, marginLeft: 8 }}>{fmtPrice(directMenu.price)} · {directMenu.duration}분</span>
+                      </span>
+                      <button onClick={() => { setDirectMenu(null); setPayForm({ method: 'CARD', discount: 0, pointUsed: 0 }); }}
+                        style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: `1px solid ${c.borderLight}`, background: 'white', cursor: 'pointer', color: c.textLight }}>
+                        {'변경'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 180, overflowY: 'auto' }}>
+                      {payMenus.map(m => (
+                        <div key={m.id}
+                          onClick={() => { setDirectMenu(m); setSelectedResv(null); setPayForm({ method: 'CARD', discount: 0, pointUsed: 0 }); }}
+                          style={{ padding: '10px 14px', borderRadius: 10, cursor: 'pointer', fontSize: 13, border: `1.5px solid ${c.borderLight}`, background: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <div style={{ fontWeight: 600, color: c.text }}>{m.name}</div>
+                            {m.category && <span style={{ fontSize: 10, color: c.textLight }}>{m.category}</span>}
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontWeight: 700, color: c.primary, fontSize: 13 }}>{fmtPrice(m.price)}</div>
+                            <div style={{ fontSize: 10, color: c.textLight }}>{m.duration}분</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
                   {unpaidList.map(r => (
                     <div key={r.id}
-                      onClick={() => selectReservation(r)}
+                      onClick={() => { selectReservation(r); setDirectMenu(null); }}
                       style={{
                         padding: '10px 14px', borderRadius: 10, cursor: 'pointer', fontSize: 13,
                         border: `1.5px solid ${selectedResv?.id === r.id ? c.primary : c.borderLight}`,
@@ -658,13 +706,15 @@ export default function SalesPage() {
             </div>
             )}
 
-            {selectedResv && (
+            {(selectedResv || directMenu) && (() => {
+              const menuPrice = selectedResv ? (selectedResv.menu?.price || 0) : (directMenu?.price || 0);
+              return (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {/* 금액 정보 */}
                 <div style={{ padding: 14, borderRadius: 10, background: '#f9f9f9' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
                     <span>{'시술 금액'}</span>
-                    <span style={{ fontWeight: 700 }}>{fmtPrice(selectedResv.menu?.price || 0)}</span>
+                    <span style={{ fontWeight: 700 }}>{fmtPrice(menuPrice)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
                     <span>{'할인'}</span>
@@ -676,7 +726,7 @@ export default function SalesPage() {
                   </div>
                   <div style={{ borderTop: `1px solid ${c.borderLight}`, paddingTop: 6, display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 800 }}>
                     <span>{'결제 금액'}</span>
-                    <span style={{ color: c.primary }}>{fmtPrice(Math.max(0, (selectedResv.menu?.price || 0) - payForm.discount - payForm.pointUsed))}</span>
+                    <span style={{ color: c.primary }}>{fmtPrice(Math.max(0, menuPrice - payForm.discount - payForm.pointUsed))}</span>
                   </div>
                 </div>
 
@@ -776,7 +826,8 @@ export default function SalesPage() {
                   {paying ? '처리 중...' : '결제 완료'}
                 </button>
               </div>
-            )}
+              );
+            })()}
           </div>
         </div>
       )}
