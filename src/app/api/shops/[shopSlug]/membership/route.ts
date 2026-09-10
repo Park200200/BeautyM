@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { notifyCouponIssued, notifyPointEarned } from '@/lib/notifications';
 
 export async function GET(req: Request, { params }: { params: Promise<{ shopSlug: string }> }) {
   const { shopSlug } = await params;
@@ -86,6 +87,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ shopSl
           data: { totalPoints: { increment: amount } },
         }),
       ]);
+      // 포인트 적립 알림
+      if (pointType === 'EARN') {
+        const member = await prisma.shopMember.findUnique({ where: { id: memberId }, include: { user: true } });
+        if (member) await notifyPointEarned(shop.id, memberId, member.user?.name || '고객', Math.abs(points));
+      }
     }
 
     // 쿠폰 발급
@@ -103,6 +109,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ shopSl
           validUntil: until,
         },
       });
+      // 쿠폰 발급 알림
+      const member = await prisma.shopMember.findUnique({ where: { id: memberId }, include: { user: true } });
+      if (member) await notifyCouponIssued(shop.id, memberId, member.user?.name || '고객', couponName);
     }
 
     return NextResponse.json({ success: true });

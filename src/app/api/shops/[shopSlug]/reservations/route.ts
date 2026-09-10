@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { notifyReservationCreated } from '@/lib/notifications';
 
 export async function GET(req: Request, { params }: { params: Promise<{ shopSlug: string }> }) {
   const { shopSlug } = await params;
@@ -81,6 +82,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ shopSlu
       menu: { include: { menuTreatments: { include: { treatment: { include: { category: true } } } } } },
     },
   });
+
+  // 예약 확인 알림 생성
+  await notifyReservationCreated(shop.id, reservation);
 
   return NextResponse.json({ reservation });
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { notifyPaymentCompleted } from '@/lib/notifications';
 
 // 결제 등록
 export async function POST(req: Request, { params }: { params: Promise<{ shopSlug: string }> }) {
@@ -104,6 +105,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ shopSlu
         shop: true,
       },
     });
+
+    // 결제 완료 알림 생성
+    const custName = paymentFull?.reservation?.customer?.user?.name || '고객';
+    const menuName2 = paymentFull?.reservation?.menu?.name || '시술';
+    await notifyPaymentCompleted(shop.id, paymentFull, custName, menuName2);
 
     return NextResponse.json(paymentFull, { status: 201 });
   } catch (error: any) {
