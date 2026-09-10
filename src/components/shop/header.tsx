@@ -387,10 +387,10 @@ export default function Header() {
 
                 {/* 알림 목록 */}
                 <div style={{ maxHeight: 380, overflowY: 'auto' }}>
-                  {notiList.length === 0 ? (
-                    <div style={{ padding: 40, textAlign: 'center', color: c.textLight, fontSize: 13 }}>{'\uC54C\uB9BC\uC774 \uC5C6\uC2B5\uB2C8\uB2E4'}</div>
+                  {notiList.filter(n => !n.readAt).length === 0 ? (
+                    <div style={{ padding: 40, textAlign: 'center', color: c.textLight, fontSize: 13 }}>{'새 알림이 없습니다'}</div>
                   ) : (
-                    notiList.slice(0, 8).map(n => {
+                    notiList.filter(n => !n.readAt).slice(0, 8).map(n => {
                       const nc = NOTI_COLORS[n.type] || NOTI_COLORS.SYSTEM;
                       const isUnread = !n.readAt;
                       return (
