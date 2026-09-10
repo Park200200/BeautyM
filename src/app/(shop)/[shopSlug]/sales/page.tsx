@@ -813,13 +813,15 @@ export default function SalesPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr' : '1fr 1fr', gap: 8 }}>
                   <div>
                     <label style={{ fontSize: 11, fontWeight: 600, color: c.textLight, display: 'block', marginBottom: 4 }}>{'할인 금액'}</label>
-                    <input type="number" value={payForm.discount || ''} onChange={e => setPayForm({...payForm, discount: parseInt(e.target.value) || 0})}
-                      placeholder="0" style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: `1px solid ${c.borderLight}`, fontSize: 13, outline: 'none' }} />
+                    <input type="text" value={payForm.discount ? payForm.discount.toLocaleString() : ''}
+                      onChange={e => { const v = parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0; setPayForm({...payForm, discount: v}); }}
+                      placeholder="0" style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: `1px solid ${c.borderLight}`, fontSize: 13, outline: 'none', textAlign: 'right' }} />
                   </div>
                   <div>
                     <label style={{ fontSize: 11, fontWeight: 600, color: c.textLight, display: 'block', marginBottom: 4 }}>{'포인트 사용'}</label>
-                    <input type="number" value={payForm.pointUsed || ''} onChange={e => setPayForm({...payForm, pointUsed: parseInt(e.target.value) || 0})}
-                      placeholder="0" style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: `1px solid ${c.borderLight}`, fontSize: 13, outline: 'none' }} />
+                    <input type="text" value={payForm.pointUsed ? payForm.pointUsed.toLocaleString() : ''}
+                      onChange={e => { const v = parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0; setPayForm({...payForm, pointUsed: v}); }}
+                      placeholder="0" style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: `1px solid ${c.borderLight}`, fontSize: 13, outline: 'none', textAlign: 'right' }} />
                   </div>
                 </div>
 
