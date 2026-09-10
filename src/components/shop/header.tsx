@@ -130,7 +130,7 @@ export default function Header() {
   const isCustomerSection = lastSeg === 'customers' || secondLast === 'customers';
   const customerTabs: SubTab[] = shopSlug ? [
     { label: '고객 리스트', icon: List, path: `/${shopSlug}/customers`, key: 'customers' },
-    { label: '+ 고객 등록', icon: Plus, path: `/${shopSlug}/customers?new=1`, key: 'new' },
+    { label: '고객등록', icon: Plus, path: `/${shopSlug}/customers?new=1`, key: 'new' },
   ] : [];
   const activeCustomerTab = 'customers';
 
@@ -181,7 +181,7 @@ export default function Header() {
   const isPortfolioSection = lastSeg === 'portfolio' || secondLast === 'portfolio';
   const portfolioTabs: SubTab[] = shopSlug ? [
     { label: '포트폴리오', icon: List, path: `/${shopSlug}/portfolio`, key: 'portfolio' },
-    { label: '+ 등록', icon: Plus, path: `/${shopSlug}/portfolio?new=1`, key: 'new' },
+    { label: '포트폴리오등록', icon: Plus, path: `/${shopSlug}/portfolio?new=1`, key: 'new' },
   ] : [];
   const activePortfolioTab = 'portfolio';
 
