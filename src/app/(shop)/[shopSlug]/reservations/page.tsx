@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
@@ -48,6 +48,8 @@ export default function ReservationsPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [search, setSearch] = useState('');
+  const filterRef = useRef<HTMLDivElement>(null);
+  const filterDrag = useRef({ isDown: false, startX: 0, scrollLeft: 0 });
 
   const fetchReservations = async () => {
     setLoading(true);
@@ -86,8 +88,9 @@ export default function ReservationsPage() {
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: mob ? '14px 12px' : '20px 16px', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 56px)' }}>
       <style>{`.bm-resv-scroll::-webkit-scrollbar { display:none!important; width:0!important; }`}</style>
-      {/* 상태 필터: 가로 스크롤 */}
+      {/* 상태 필터: 좌우 드래그 스크롤 */}
       <div
+        ref={filterRef}
         style={{
           display: 'flex',
           gap: 6,
@@ -97,6 +100,20 @@ export default function ReservationsPage() {
           WebkitOverflowScrolling: 'touch',
           paddingBottom: 4,
           scrollbarWidth: 'none',
+          userSelect: 'none',
+          cursor: 'grab',
+        }}
+        onMouseDown={e => {
+          const el = filterRef.current; if (!el) return;
+          filterDrag.current = { isDown: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft };
+          el.style.cursor = 'grabbing';
+        }}
+        onMouseLeave={() => { filterDrag.current.isDown = false; if (filterRef.current) filterRef.current.style.cursor = 'grab'; }}
+        onMouseUp={() => { filterDrag.current.isDown = false; if (filterRef.current) filterRef.current.style.cursor = 'grab'; }}
+        onMouseMove={e => {
+          if (!filterDrag.current.isDown) return; e.preventDefault();
+          const el = filterRef.current; if (!el) return;
+          el.scrollLeft = filterDrag.current.scrollLeft - (e.pageX - el.offsetLeft - filterDrag.current.startX);
         }}
       >
         {STATUS_FILTERS.map((f) => {
