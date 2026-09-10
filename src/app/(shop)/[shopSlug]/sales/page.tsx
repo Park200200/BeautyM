@@ -761,11 +761,11 @@ export default function SalesPage() {
                   const gradePointRate = gs?.pointRate || shopPointSettings.pointRate;
                   const methodKey = payForm.method as 'CARD' | 'CASH' | 'TRANSFER';
                   const methodRate = shopPointSettings.paymentRates[methodKey] || 0;
-                  const payAmount = Math.max(0, (selectedResv.menu?.price || 0) - payForm.discount - payForm.pointUsed);
+                  const payAmount = Math.max(0, menuPrice - payForm.discount - payForm.pointUsed);
                   const methodPoints = Math.floor(payAmount * methodRate / 100);
                   const gradePoints = Math.floor(payAmount * gradePointRate / 100);
                   const earnPoints = methodPoints + gradePoints;
-                  const autoDiscount = gradeDiscount > 0 ? Math.floor((selectedResv.menu?.price || 0) * gradeDiscount / 100) : 0;
+                  const autoDiscount = gradeDiscount > 0 ? Math.floor(menuPrice * gradeDiscount / 100) : 0;
                   
                   return (
                     <div style={{ padding: 14, borderRadius: 10, border: `1px solid ${c.primaryLight}`, background: `${c.primaryLight}20` }}>
