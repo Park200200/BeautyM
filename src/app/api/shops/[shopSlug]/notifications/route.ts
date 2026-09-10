@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
 
-// 로그인 사용자의 shopMember ID 조회
-async function getMyMemberId(shopId: string): Promise<string | null> {
+// 로그인 사용자의 shopMember 정보 조회
+async function getMyMember(shopId: string): Promise<{ id: string; role: string } | null> {
   try {
     const cookieStore = await cookies();
     const session = cookieStore.get('beautym-session');
@@ -11,8 +11,9 @@ async function getMyMemberId(shopId: string): Promise<string | null> {
     const parsed = JSON.parse(session.value);
     const member = await prisma.shopMember.findFirst({
       where: { shopId, userId: parsed.userId },
+      select: { id: true, role: true },
     });
-    return member?.id || null;
+    return member || null;
   } catch { return null; }
 }
 
@@ -21,13 +22,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ shopSlug
   const shop = await prisma.shop.findUnique({ where: { slug: shopSlug } });
   if (!shop) return NextResponse.json({ error: 'Shop not found' }, { status: 404 });
 
-  const myMemberId = await getMyMemberId(shop.id);
+  const myMember = await getMyMember(shop.id);
 
-  // 관리자(OWNER/STAFF): 본인 대상 알림 + 수신자 없는 전체 알림
-  // recipientId가 null인 알림 = 매장 전체 공지 (시스템 알림 등)
-  const whereFilter = myMemberId
-    ? { shopId: shop.id, OR: [{ recipientId: myMemberId }, { recipientId: null }] }
-    : { shopId: shop.id };
+  // OWNER: 매장 전체 알림 / STAFF: 본인 + 전체 공지만
+  const isOwner = !myMember || myMember.role === 'OWNER';
+  const whereFilter = isOwner
+    ? { shopId: shop.id }
+    : { shopId: shop.id, OR: [{ recipientId: myMember.id }, { recipientId: null }] };
 
   const notifications = await prisma.notificationLog.findMany({
     where: whereFilter,
@@ -76,15 +77,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ shopSl
     const shop = await prisma.shop.findUnique({ where: { slug: shopSlug } });
     if (!shop) return NextResponse.json({ error: 'Shop not found' }, { status: 404 });
 
-    const myMemberId = await getMyMemberId(shop.id);
+    const myMember = await getMyMember(shop.id);
     const body = await req.json();
     const { action, notificationId } = body;
 
-    // 모두 읽음 - 본인 관련 알림만
+    // 모두 읽음 - OWNER는 전체, STAFF는 본인만
     if (action === 'readAll') {
-      const whereFilter = myMemberId
-        ? { shopId: shop.id, readAt: null, OR: [{ recipientId: myMemberId }, { recipientId: null }] }
-        : { shopId: shop.id, readAt: null };
+      const isOwner = !myMember || myMember.role === 'OWNER';
+      const whereFilter = isOwner
+        ? { shopId: shop.id, readAt: null }
+        : { shopId: shop.id, readAt: null, OR: [{ recipientId: myMember.id }, { recipientId: null }] };
       await prisma.notificationLog.updateMany({
         where: whereFilter,
         data: { readAt: new Date() },
