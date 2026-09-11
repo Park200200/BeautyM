@@ -194,19 +194,33 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     arg.el.style.cursor = 'pointer';
     arg.el.style.position = 'relative';
 
-    // 휴무일 표시 — 날짜 숫자 바로 옆에
+    // 휴무일 표시 — 날짜 숫자 옆에 pill 형태
     if (isHoliday(dateStr)) {
       arg.el.style.background = 'repeating-linear-gradient(135deg, transparent, transparent 6px, rgba(200,200,200,0.13) 6px, rgba(200,200,200,0.13) 7px)';
       const existingHol = arg.el.querySelector('.bm-holiday-badge');
       if (!existingHol) {
-        // 날짜 숫자가 들어있는 .fc-daygrid-day-top 찾기
         const dayTop = arg.el.querySelector('.fc-daygrid-day-top');
         if (dayTop) {
-          const badge = document.createElement('span');
-          badge.className = 'bm-holiday-badge';
-          badge.style.cssText = `font-size:${mob ? '8px' : '10px'};font-weight:700;color:#EF4444;background:rgba(239,68,68,0.08);padding:1px 6px;border-radius:4px;white-space:nowrap;letter-spacing:0.5px;margin-left:4px;`;
-          badge.textContent = '휴무';
-          dayTop.appendChild(badge);
+          // 기존 날짜 숫자 요소 찾기
+          const dayNum = dayTop.querySelector('.fc-daygrid-day-number');
+          const dayText = dayNum?.textContent || '';
+          const isToday = arg.el.classList.contains('fc-day-today');
+          // pill 컨테이너 생성
+          const pill = document.createElement('div');
+          pill.className = 'bm-holiday-badge';
+          pill.style.cssText = `display:inline-flex;align-items:center;gap:0;background:rgba(239,68,68,0.06);border-radius:20px;padding:2px 4px;margin:${mob ? '2px' : '4px'};`;
+          let html = '';
+          if (isToday) {
+            html += `<span style="font-size:${mob ? '8px' : '11px'};font-weight:700;color:#3B82F6;padding:0 6px;">TODAY</span>`;
+            html += `<span style="color:#D1D5DB;font-size:10px;">|</span>`;
+          }
+          html += `<span style="font-size:${mob ? '8px' : '11px'};font-weight:700;color:#EF4444;padding:0 6px;">휴무</span>`;
+          html += `<span style="color:#D1D5DB;font-size:10px;">|</span>`;
+          html += `<span style="font-size:${mob ? '8px' : '11px'};font-weight:600;color:#EF4444;padding:0 6px;">${dayText}</span>`;
+          pill.innerHTML = html;
+          // 기존 날짜 숫자 숨기고 pill 삽입
+          if (dayNum) (dayNum as HTMLElement).style.display = 'none';
+          dayTop.appendChild(pill);
         }
       }
     }
