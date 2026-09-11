@@ -11,8 +11,9 @@ import { useIsMobile } from '@/hooks/useMediaQuery';
 
 interface ReservationEvent {
   id: string;
+  customerId?: string | null;
   customer?: { user?: { name: string; phone?: string | null } };
-  menu?: { name: string };
+  menu?: { id?: string; name: string };
   staff?: { user?: { name: string } };
   startTime: string;
   endTime: string;
@@ -34,7 +35,7 @@ interface DaySummary {
 interface CalEvent {
   id: string; title: string; start: string; end: string;
   backgroundColor: string; borderColor: string; textColor: string;
-  extendedProps: { menu: string; customer: string; phone: string; staff: string; status: string; session: string };
+  extendedProps: { menu: string; customer: string; phone: string; staff: string; status: string; session: string; customerId: string; menuName: string };
 }
 
 export default function CalendarPage({ params }: { params: Promise<{ shopSlug: string }> }) {
@@ -42,7 +43,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [rawEvents, setRawEvents] = useState<ReservationEvent[]>([]);
   const [mounted, setMounted] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<{ id: string; menu: string; customer: string; phone: string; staff: string; status: string; session: string; start: string; end: string } | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<{ id: string; menu: string; customer: string; phone: string; staff: string; status: string; session: string; start: string; end: string; customerId: string; menuName: string } | null>(null);
   const [activeDate, setActiveDate] = useState<string>(''); // 클릭한 날짜 (YYYY-MM-DD)
   const [popupDate, setPopupDate] = useState<string | null>(null); // 월간 클릭 팝업
   const calendarRef = useRef<FullCalendar>(null);
@@ -118,7 +119,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
               title: menuName,
               start: r.startTime, end: r.endTime,
               backgroundColor: sc.bg, borderColor: sc.bar, textColor: sc.text,
-              extendedProps: { menu: menuName, customer: custName, phone: custPhone, staff: staffName, status: r.status, session },
+              extendedProps: { menu: menuName, customer: custName, phone: custPhone, staff: staffName, status: r.status, session, customerId: r.customerId || '', menuName },
             };
           }));
         }
@@ -448,11 +449,15 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     });
   }, [activeDate]);
 
-  // 선택 회원의 방문 이력
+  // 선택 회원의 방문 이력 (고객ID 기반)
   const customerHistory = selectedEvent
     ? rawEvents
-        .filter((r) => r.customer?.user?.name === selectedEvent.customer && r.status !== 'CANCELLED')
+        .filter((r) => r.customerId && r.customerId === selectedEvent.customerId && r.status !== 'CANCELLED')
         .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+    : [];
+  // 해당 시술만 필터
+  const menuHistory = selectedEvent
+    ? customerHistory.filter((r) => r.menu?.name === selectedEvent.menuName)
     : [];
 
   const STATUS_LABEL: Record<string, string> = {
@@ -666,6 +671,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 menu: p.menu, customer: p.customer, phone: p.phone,
                 staff: p.staff, status: p.status, session: p.session,
                 start: fmt(info.event.start), end: fmt(info.event.end),
+                customerId: p.customerId, menuName: p.menuName,
               });
             }}
             eventContent={(arg) => {
@@ -894,9 +900,30 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: c.textLight }}>상태</span><span style={{ fontSize: 11, fontWeight: 600, borderRadius: 8, padding: '2px 8px', background: (STATUS_COLORS[selectedEvent.status] || STATUS_COLORS.CONFIRMED).bg, color: (STATUS_COLORS[selectedEvent.status] || STATUS_COLORS.CONFIRMED).text }}>{STATUS_LABEL[selectedEvent.status] || selectedEvent.status}</span></div>
               </div>
             </div>
+            {/* 해당 시술 이력 */}
+            <div style={{ padding: '16px 20px', borderBottom: `1px solid ${c.borderLight}` }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: c.primary, marginBottom: 8 }}>
+                💆 {selectedEvent.menuName} 이력 ({menuHistory.length}건)
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 200, overflowY: 'auto' }}>
+                {menuHistory.map((h) => {
+                  const d = new Date(h.startTime); const dateStr = `${d.getMonth()+1}/${d.getDate()}`; const time = `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+                  const isCurrent = h.id === selectedEvent.id;
+                  return (<div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', borderRadius: 8, fontSize: 12, background: isCurrent ? c.primaryLight : 'transparent', border: isCurrent ? `1px solid ${c.primary}30` : '1px solid transparent' }}>
+                    <div><span style={{ fontWeight: 600, color: c.text }}>{dateStr}</span><span style={{ color: c.textLight, marginLeft: 4 }}>{time}</span></div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 11, color: c.text }}>{h.staff?.user?.name || '-'}</span>
+                      <span style={{ fontSize: 10, borderRadius: 6, padding: '1px 6px', background: h.status==='COMPLETED'?'#F3F4F6':h.status==='CONFIRMED'?`${c.primary}18`:'#FEF3C7', color: h.status==='COMPLETED'?'#6B7280':h.status==='CONFIRMED'?c.primary:'#92400E' }}>{STATUS_LABEL[h.status]||h.status}</span>
+                    </div>
+                  </div>);
+                })}
+                {menuHistory.length === 0 && <div style={{ fontSize: 12, color: c.textLight, textAlign: 'center', padding: 12 }}>이력 없음</div>}
+              </div>
+            </div>
+            {/* 전체 방문 이력 */}
             <div style={{ padding: '16px 20px' }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: c.textLight, marginBottom: 8 }}>방문 이력 ({customerHistory.length}건)</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 300, overflowY: 'auto' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: c.textLight, marginBottom: 8 }}>📋 전체 방문 이력 ({customerHistory.length}건)</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 250, overflowY: 'auto' }}>
                 {customerHistory.map((h) => {
                   const d = new Date(h.startTime); const dateStr = `${d.getMonth()+1}/${d.getDate()}`; const time = `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
                   const isCurrent = h.id === selectedEvent.id;
