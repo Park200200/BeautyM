@@ -184,7 +184,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
   const handleDayCellDidMount = useCallback((arg: { date: Date; el: HTMLElement; view: { type: string } }) => {
     if (arg.view.type !== 'dayGridMonth') return;
 
-    const dateStr = `${arg.date.getFullYear()}-${String(arg.date.getMonth() + 1).padStart(2, '0')}-${String(arg.date.getDate()).padStart(2, '0')}`;
+    // FC의 data-date 속성은 항상 YYYY-MM-DD 로컬 날짜 (타임존 안전)
+    const dateStr = arg.el.getAttribute('data-date') || `${arg.date.getFullYear()}-${String(arg.date.getMonth() + 1).padStart(2, '0')}-${String(arg.date.getDate()).padStart(2, '0')}`;
     const map = summaryMap();
     const s = map[dateStr];
 
@@ -200,10 +201,9 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     const hiddenNum = arg.el.querySelector('.fc-daygrid-day-number') as HTMLElement;
     if (hiddenNum) hiddenNum.style.display = '';
 
-    // 오늘 판단 (직접 비교)
-    const now = new Date(); now.setHours(0,0,0,0);
-    const cellDate = new Date(arg.date); cellDate.setHours(0,0,0,0);
-    const isToday = now.getTime() === cellDate.getTime();
+    // 오늘 판단 (문자열 비교 — 타임존 안전)
+    const todayStr = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })();
+    const isToday = dateStr === todayStr;
     const holiday = isHoliday(dateStr);
 
     if (holiday || isToday) {
