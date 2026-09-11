@@ -8,6 +8,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
 import { useIsMobile } from '@/hooks/useMediaQuery';
+import { Clock, User, RefreshCw, Sparkles, ClipboardList } from 'lucide-react';
 
 interface ReservationEvent {
   id: string;
@@ -939,14 +940,14 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
                   {[
-                    ['⏰', '시간', `${selectedEvent.start} - ${selectedEvent.end}`],
-                    ['👩‍⚕️', '담당', selectedEvent.staff || '-'],
-                    ['🔄', '횟수', `${selectedEvent.session}회`],
-                  ].map(([icon, label, value]) => (
-                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 13 }}>{icon}</span>
-                      <span style={{ fontSize: 11, color: c.textLight }}>{label}</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: label === '횟수' ? c.primary : c.text, marginLeft: 'auto' }}>{value}</span>
+                    { icon: <Clock style={{ width: 13, height: 13, color: c.textLight }} />, label: '시간', value: `${selectedEvent.start} - ${selectedEvent.end}`, highlight: false },
+                    { icon: <User style={{ width: 13, height: 13, color: c.textLight }} />, label: '담당', value: selectedEvent.staff || '-', highlight: false },
+                    { icon: <RefreshCw style={{ width: 13, height: 13, color: c.textLight }} />, label: '횟수', value: `${selectedEvent.session}회`, highlight: true },
+                  ].map((item) => (
+                    <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {item.icon}
+                      <span style={{ fontSize: 11, color: c.textLight }}>{item.label}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: item.highlight ? c.primary : c.text, marginLeft: 'auto' }}>{item.value}</span>
                     </div>
                   ))}
                 </div>
@@ -957,7 +958,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             <div style={{ padding: '16px 20px 0' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: c.primary, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontSize: 14 }}>💆</span> {selectedEvent.menuName} 이력
+                  <Sparkles style={{ width: 14, height: 14 }} /> {selectedEvent.menuName} 이력
                 </div>
                 <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: c.primaryLight, color: c.primary }}>{menuHistory.length}건</span>
               </div>
@@ -972,7 +973,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             <div style={{ padding: '12px 20px 20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: c.textLight, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontSize: 14 }}>📋</span> 전체 방문 이력
+                  <ClipboardList style={{ width: 14, height: 14 }} /> 전체 방문 이력
                 </div>
                 <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: '#F3F4F6', color: '#6B7280' }}>{customerHistory.length}건</span>
               </div>
