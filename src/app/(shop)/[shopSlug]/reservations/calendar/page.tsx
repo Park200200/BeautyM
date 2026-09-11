@@ -12,7 +12,7 @@ import { useIsMobile } from '@/hooks/useMediaQuery';
 interface ReservationEvent {
   id: string;
   customerId?: string | null;
-  customer?: { user?: { name: string; phone?: string | null; profileImage?: string | null; birthday?: string | null } };
+  customer?: { user?: { name: string; phone?: string | null; profileImage?: string | null; birthday?: string | null; gender?: string | null } };
   menu?: { id?: string; name: string };
   staff?: { user?: { name: string } };
   startTime: string;
@@ -35,7 +35,7 @@ interface DaySummary {
 interface CalEvent {
   id: string; title: string; start: string; end: string;
   backgroundColor: string; borderColor: string; textColor: string;
-  extendedProps: { menu: string; customer: string; phone: string; staff: string; status: string; session: string; customerId: string; menuName: string; profileImage: string; birthday: string };
+  extendedProps: { menu: string; customer: string; phone: string; staff: string; status: string; session: string; customerId: string; menuName: string; profileImage: string; birthday: string; gender: string };
 }
 
 export default function CalendarPage({ params }: { params: Promise<{ shopSlug: string }> }) {
@@ -43,7 +43,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [rawEvents, setRawEvents] = useState<ReservationEvent[]>([]);
   const [mounted, setMounted] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<{ id: string; menu: string; customer: string; phone: string; staff: string; status: string; session: string; start: string; end: string; customerId: string; menuName: string; profileImage: string; birthday: string } | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<{ id: string; menu: string; customer: string; phone: string; staff: string; status: string; session: string; start: string; end: string; customerId: string; menuName: string; profileImage: string; birthday: string; gender: string } | null>(null);
   const [activeDate, setActiveDate] = useState<string>(''); // 클릭한 날짜 (YYYY-MM-DD)
   const [popupDate, setPopupDate] = useState<string | null>(null); // 월간 클릭 팝업
   const calendarRef = useRef<FullCalendar>(null);
@@ -119,7 +119,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
               title: menuName,
               start: r.startTime, end: r.endTime,
               backgroundColor: sc.bg, borderColor: sc.bar, textColor: sc.text,
-              extendedProps: { menu: menuName, customer: custName, phone: custPhone, staff: staffName, status: r.status, session, customerId: r.customerId || '', menuName, profileImage: r.customer?.user?.profileImage || '', birthday: r.customer?.user?.birthday || '' },
+              extendedProps: { menu: menuName, customer: custName, phone: custPhone, staff: staffName, status: r.status, session, customerId: r.customerId || '', menuName, profileImage: r.customer?.user?.profileImage || '', birthday: r.customer?.user?.birthday || '', gender: r.customer?.user?.gender || '' },
             };
           }));
         }
@@ -672,7 +672,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 staff: p.staff, status: p.status, session: p.session,
                 start: fmt(info.event.start), end: fmt(info.event.end),
                 customerId: p.customerId, menuName: p.menuName,
-                profileImage: p.profileImage, birthday: p.birthday,
+                profileImage: p.profileImage, birthday: p.birthday, gender: p.gender,
               });
             }}
             eventContent={(arg) => {
@@ -894,13 +894,16 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
               )}
               <div style={{ fontSize: 16, fontWeight: 700, color: c.text }}>{selectedEvent.customer}</div>
               <div style={{ fontSize: 13, color: c.textLight, marginTop: 4 }}>{selectedEvent.phone ? fmtPhone(selectedEvent.phone) : '연락처 없음'}</div>
-              {selectedEvent.birthday && (() => {
-                const bd = new Date(selectedEvent.birthday);
-                const now = new Date();
-                let age = now.getFullYear() - bd.getFullYear();
-                if (now.getMonth() < bd.getMonth() || (now.getMonth() === bd.getMonth() && now.getDate() < bd.getDate())) age--;
-                return <div style={{ fontSize: 12, color: c.textLight, marginTop: 4 }}>만 {age}세</div>;
-              })()}
+              <div style={{ fontSize: 12, color: c.textLight, marginTop: 4, display: 'flex', justifyContent: 'center', gap: 8 }}>
+                {selectedEvent.birthday && (() => {
+                  const bd = new Date(selectedEvent.birthday);
+                  const now = new Date();
+                  let age = now.getFullYear() - bd.getFullYear();
+                  if (now.getMonth() < bd.getMonth() || (now.getMonth() === bd.getMonth() && now.getDate() < bd.getDate())) age--;
+                  return <span>만 {age}세</span>;
+                })()}
+                {selectedEvent.gender && <span>{selectedEvent.gender === 'FEMALE' ? '♀ 여성' : selectedEvent.gender === 'MALE' ? '♂ 남성' : selectedEvent.gender}</span>}
+              </div>
             </div>
             <div style={{ padding: '16px 20px', borderBottom: `1px solid ${c.borderLight}` }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: c.textLight, marginBottom: 8 }}>선택된 예약</div>

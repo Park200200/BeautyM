@@ -165,6 +165,7 @@ model User {
   authType        String   @default("EMAIL") // EMAIL | PHONE
   profileImage    String?
   birthday        DateTime? // 생년월일
+  gender          String?   // MALE | FEMALE
   isPhoneVerified Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

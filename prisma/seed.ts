@@ -284,15 +284,15 @@ async function main() {
   // ============================================
   const customerPin = await bcrypt.hash('1234', 10);
   const customers = [
-    { name: '박지현', phone: '01011112222' },
-    { name: '최서연', phone: '01033334444' },
-    { name: '정다은', phone: '01055556666' },
+    { name: '박지현', phone: '01011112222', gender: 'FEMALE' as const },
+    { name: '최서연', phone: '01033334444', gender: 'FEMALE' as const },
+    { name: '정다은', phone: '01055556666', gender: 'FEMALE' as const },
   ];
 
   for (const cust of customers) {
     const user = await prisma.user.upsert({
       where: { phone: cust.phone },
-      update: {},
+      update: { gender: cust.gender },
       create: {
         name: cust.name,
         phone: cust.phone,
@@ -300,6 +300,7 @@ async function main() {
         globalRole: 'USER',
         authType: 'PHONE',
         isPhoneVerified: true,
+        gender: cust.gender,
       },
     });
 
