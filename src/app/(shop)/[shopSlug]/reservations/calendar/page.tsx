@@ -945,7 +945,13 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             {panelContent}
           </div>
         </>, document.body);
-        return (<div style={{ width: 320, flexShrink: 0 }}><div className="rounded-2xl border overflow-hidden" style={{ background: c.surface, borderColor: c.borderLight, position: 'sticky', top: 16 }}>{panelContent}</div></div>);
+        return createPortal(<>
+          <div onClick={() => setSelectedEvent(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 9998 }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 380, maxHeight: '80vh', overflowY: 'auto', background: c.surface, borderRadius: 20, zIndex: 9999, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', animation: 'fadeIn .2s ease-out' }}>
+            <style>{`@keyframes fadeIn{from{opacity:0;transform:translate(-50%,-50%) scale(0.95)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}`}</style>
+            {panelContent}
+          </div>
+        </>, document.body);
       })()}
     </div>
   );
