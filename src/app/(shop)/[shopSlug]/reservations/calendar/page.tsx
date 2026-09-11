@@ -231,9 +231,11 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
     const wrapper = document.createElement('div');
     wrapper.className = 'bm-day-summary';
-    wrapper.style.cssText = mob
-      ? `position:absolute; top:24px; left:2px; right:2px; display:flex; flex-direction:column; gap:1px; pointer-events:none; font-size:8px; line-height:1.2;`
-      : `position:absolute; top:30px; left:4px; right:4px; display:flex; flex-direction:column; gap:2px; pointer-events:none; font-size:9px; line-height:1.3;`;
+    wrapper.style.cssText = `
+      position:absolute; bottom:4px; left:4px; right:4px;
+      display:flex; flex-direction:column; gap:2px;
+      pointer-events:none; font-size:9px; line-height:1.3;
+    `;
 
     // 5단계 프로그레스 바 세그먼트 생성
     const segColors = UTIL_LEVELS.map(l => l.color);
@@ -246,37 +248,37 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       return `<div style="flex:1;height:100%;background:${bgColor};opacity:${opacity};${i === 0 ? 'border-radius:3px 0 0 3px;' : ''}${i === 4 ? 'border-radius:0 3px 3px 0;' : ''}"></div>`;
     }).join('');
 
-    if (mob) {
-      wrapper.innerHTML = `
-        <div style="display:flex;justify-content:space-between;font-weight:700;color:${c.primary}">${s.count}건</div>
-        <div style="color:${c.textLight}">${fmtT(s.firstTime)}</div>
-        <div style="color:${c.textLight}">${fmtT(s.lastTime)}</div>
-        <div style="width:100%;height:4px;border-radius:2px;background:${c.borderLight};overflow:hidden;display:flex;gap:1px;margin-top:1px">
-          ${segmentsHtml}
-        </div>
-      `;
-    } else {
-      wrapper.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;font-weight:700;color:${c.primary}">
-          <span>예약</span><span>${s.count}건</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;color:${c.textLight}">
-          <span>시작</span><span style="font-weight:600;color:${c.text}">${fmtT(s.firstTime)}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;color:${c.textLight}">
-          <span>종료</span><span style="font-weight:600;color:${c.text}">${fmtT(s.lastTime)}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;color:${c.textLight}">
-          <span>근무</span><span style="font-weight:600;color:${c.text}">${workStr}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-weight:800;color:${utilColor}">${util}%</span><span style="font-size:8px;color:${utilColor};font-weight:600">${level.label}</span>
-        </div>
-        <div style="width:100%;height:5px;border-radius:3px;background:${c.borderLight};overflow:hidden;display:flex;gap:1px;margin-top:1px">
-          ${segmentsHtml}
-        </div>
-      `;
-    }
+    // 아이콘 SVG (모바일용)
+    const ico = (path: string, color: string) => `<svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg>`;
+    const icoBook = ico('M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', c.primary); // 예약
+    const icoStart = ico('M12 2v20M2 12l10-10M22 12l-10-10', '#10B981'); // 시작 (▶)
+    const icoEnd = ico('M18 6L6 18M6 6l12 12', '#EF4444'); // 종료 (✕)
+    const icoWork = ico('M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 6v6l4 2', '#6366F1'); // 근무 (시계)
+    const icoEff = ico('M18 20V10M12 20V4M6 20v-6', utilColor); // 효율 (차트)
+
+    const lbl = (icon: string, label: string) => mob ? icon : `<span>${label}</span>`;
+
+    wrapper.innerHTML = `
+      <div style="display:flex;justify-content:space-between;font-weight:700;color:${c.primary};align-items:center">
+        ${lbl(icoBook, '예약')}<span>${s.count}건</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;color:${c.textLight};align-items:center">
+        ${lbl(icoStart, '시작')}<span>${fmtT(s.firstTime)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;color:${c.textLight};align-items:center">
+        ${lbl(icoEnd, '종료')}<span>${fmtT(s.lastTime)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;color:${c.text};align-items:center">
+        ${lbl(icoWork, '근무')}<span>${workStr}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        ${lbl(icoEff, '효율')}
+        <span style="font-weight:800;color:${utilColor};font-size:10px">${util}% <span style="font-size:8px;font-weight:600;opacity:0.8">${level.label}</span></span>
+      </div>
+      <div style="width:100%;height:6px;border-radius:3px;background:${c.borderLight};overflow:hidden;margin-top:2px;display:flex;gap:1px">
+        ${segmentsHtml}
+      </div>
+    `;
 
     arg.el.appendChild(wrapper);
   }, [summaryMap, c.primary, c.primaryLight, c.textOnPrimary, c.borderLight, c.text, c.textLight, CLOSE_HOUR, OPEN_HOUR, mob, isHoliday]);

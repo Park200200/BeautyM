@@ -154,27 +154,29 @@ async function main() {
     },
   });
 
-  const demoShop = await prisma.shop.upsert({
-    where: { slug: 'glow-skin' },
-    update: {},
-    create: {
-      name: '글로우 스킨케어',
-      slug: 'glow-skin',
-      phone: '02-1234-5678',
-      address: '서울시 강남구 테헤란로 123',
-      description: '피부관리 전문 에스테틱',
-      businessHours: JSON.stringify({
-        mon: { open: '10:00', close: '20:00' },
-        tue: { open: '10:00', close: '20:00' },
-        wed: { open: '10:00', close: '20:00' },
-        thu: { open: '10:00', close: '20:00' },
-        fri: { open: '10:00', close: '20:00' },
-        sat: { open: '10:00', close: '18:00' },
-        sun: null,
-      }),
-      isActive: true,
-    },
-  });
+  // 먼저 매장이 존재하는지 확인
+  const existingShop = await prisma.shop.findUnique({ where: { slug: 'glow-skin' } });
+  const demoShop = existingShop
+    ? existingShop
+    : await prisma.shop.create({
+        data: {
+          name: '글로우 스킨케어',
+          slug: 'glow-skin',
+          phone: '02-1234-5678',
+          address: '서울시 강남구 테헤란로 123',
+          description: '피부관리 전문 에스테틱',
+          businessHours: JSON.stringify({
+            mon: { open: '10:00', close: '20:00', closed: false },
+            tue: { open: '10:00', close: '20:00', closed: false },
+            wed: { open: '10:00', close: '20:00', closed: false },
+            thu: { open: '10:00', close: '20:00', closed: false },
+            fri: { open: '10:00', close: '20:00', closed: false },
+            sat: { open: '10:00', close: '18:00', closed: false },
+            sun: { open: '00:00', close: '00:00', closed: true },
+          }),
+          isActive: true,
+        },
+      });
   console.log('  ✅ 데모 매장 "글로우 스킨케어" 생성 완료');
 
   // 매장 구독 (Pro 플랜 — 직원관리 포함)
