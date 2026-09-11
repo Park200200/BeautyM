@@ -8,7 +8,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
 import { useIsMobile } from '@/hooks/useMediaQuery';
-import { Clock, User, RefreshCw, Sparkles, ClipboardList } from 'lucide-react';
+import { Clock, User, RefreshCw, Sparkles, ClipboardList, ChevronDown } from 'lucide-react';
 
 interface ReservationEvent {
   id: string;
@@ -45,6 +45,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
   const [rawEvents, setRawEvents] = useState<ReservationEvent[]>([]);
   const [mounted, setMounted] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<{ id: string; menu: string; customer: string; phone: string; staff: string; status: string; session: string; start: string; end: string; customerId: string; menuName: string; profileImage: string; birthday: string; gender: string } | null>(null);
+  const [historyTab, setHistoryTab] = useState<'menu' | 'all'>('menu');
   const [activeDate, setActiveDate] = useState<string>(''); // 클릭한 날짜 (YYYY-MM-DD)
   const [popupDate, setPopupDate] = useState<string | null>(null); // 월간 클릭 팝업
   const calendarRef = useRef<FullCalendar>(null);
@@ -675,6 +676,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 customerId: p.customerId, menuName: p.menuName,
                 profileImage: p.profileImage, birthday: p.birthday, gender: p.gender,
               });
+              setHistoryTab('menu');
             }}
             eventContent={(arg) => {
               const p = arg.event.extendedProps;
@@ -947,33 +949,45 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             </div>
 
             {/* 시술 이력 */}
-            <div style={{ padding: '16px 20px 0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: c.primary, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ padding: '12px 20px 0' }}>
+              <div onClick={() => setHistoryTab(historyTab === 'menu' ? 'all' : 'menu')}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: historyTab === 'menu' ? c.primary : c.textLight, display: 'flex', alignItems: 'center', gap: 4, transition: 'color .15s' }}>
                   <Sparkles style={{ width: 14, height: 14 }} /> {selectedEvent.menuName} 이력
                 </div>
-                <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: c.primaryLight, color: c.primary }}>{menuHistory.length}건</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: historyTab === 'menu' ? c.primaryLight : '#F3F4F6', color: historyTab === 'menu' ? c.primary : '#6B7280' }}>{menuHistory.length}건</span>
+                  <ChevronDown style={{ width: 14, height: 14, color: c.textLight, transition: 'transform .2s', transform: historyTab === 'menu' ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+                </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 180, overflowY: 'auto' }}>
-                {menuHistory.length > 0 ? menuHistory.map(h => historyItem(h, false)) : (
-                  <div style={{ fontSize: 12, color: c.textLight, textAlign: 'center', padding: 16 }}>이력 없음</div>
-                )}
-              </div>
+              {historyTab === 'menu' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 220, overflowY: 'auto', paddingBottom: 8 }}>
+                  {menuHistory.length > 0 ? menuHistory.map(h => historyItem(h, false)) : (
+                    <div style={{ fontSize: 12, color: c.textLight, textAlign: 'center', padding: 16 }}>이력 없음</div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* 전체 방문 이력 */}
-            <div style={{ padding: '12px 20px 20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: c.textLight, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ padding: '0 20px 20px' }}>
+              <div onClick={() => setHistoryTab(historyTab === 'all' ? 'menu' : 'all')}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', cursor: 'pointer', userSelect: 'none', borderTop: `1px solid ${c.borderLight}` }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: historyTab === 'all' ? c.primary : c.textLight, display: 'flex', alignItems: 'center', gap: 4, transition: 'color .15s' }}>
                   <ClipboardList style={{ width: 14, height: 14 }} /> 전체 방문 이력
                 </div>
-                <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: '#F3F4F6', color: '#6B7280' }}>{customerHistory.length}건</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: historyTab === 'all' ? c.primaryLight : '#F3F4F6', color: historyTab === 'all' ? c.primary : '#6B7280' }}>{customerHistory.length}건</span>
+                  <ChevronDown style={{ width: 14, height: 14, color: c.textLight, transition: 'transform .2s', transform: historyTab === 'all' ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+                </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 200, overflowY: 'auto' }}>
-                {customerHistory.length > 0 ? customerHistory.map(h => historyItem(h, true)) : (
-                  <div style={{ fontSize: 12, color: c.textLight, textAlign: 'center', padding: 16 }}>이력 없음</div>
-                )}
-              </div>
+              {historyTab === 'all' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 220, overflowY: 'auto', paddingBottom: 8 }}>
+                  {customerHistory.length > 0 ? customerHistory.map(h => historyItem(h, true)) : (
+                    <div style={{ fontSize: 12, color: c.textLight, textAlign: 'center', padding: 16 }}>이력 없음</div>
+                  )}
+                </div>
+              )}
             </div>
           </>
           );
