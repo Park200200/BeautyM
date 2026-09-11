@@ -994,7 +994,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         })();
         if (mob) return createPortal(<>
           <div onClick={() => setSelectedEvent(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9998 }} />
-          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, maxHeight: '85vh', overflowY: 'auto', background: c.surface, borderRadius: '20px 20px 0 0', zIndex: 9999, boxShadow: '0 -10px 40px rgba(0,0,0,0.15)', animation: 'slideUp .25s ease-out' }}>
+          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 'calc(100dvh - 56px)', overflowY: 'auto', background: c.surface, borderRadius: '20px 20px 0 0', zIndex: 9999, boxShadow: '0 -10px 40px rgba(0,0,0,0.15)', animation: 'slideUp .25s ease-out' }}>
             <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
             <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}><div style={{ width: 36, height: 4, borderRadius: 2, background: '#D1D5DB' }} /></div>
             {panelContent}
