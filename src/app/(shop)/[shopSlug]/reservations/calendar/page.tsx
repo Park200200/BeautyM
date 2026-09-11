@@ -233,7 +233,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     wrapper.className = 'bm-day-summary';
     wrapper.style.cssText = mob
       ? `position:absolute; top:24px; left:2px; right:2px; display:flex; flex-direction:column; gap:1px; pointer-events:none; font-size:8px; line-height:1.2;`
-      : `position:absolute; top:4px; right:4px; display:flex; flex-direction:column; gap:1px; pointer-events:none; font-size:9px; line-height:1.2; text-align:right;`;
+      : `position:absolute; top:30px; left:4px; right:4px; display:flex; flex-direction:column; gap:2px; pointer-events:none; font-size:9px; line-height:1.3;`;
 
     // 5단계 프로그레스 바 세그먼트 생성
     const segColors = UTIL_LEVELS.map(l => l.color);
@@ -257,19 +257,19 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       `;
     } else {
       wrapper.innerHTML = `
-        <div style="display:inline-flex;align-items:center;gap:3px;font-weight:700;color:${c.primary}">
-          <span>${s.count}건</span><span style="color:${c.textLight};font-weight:400">예약</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-weight:700;color:${c.primary}">
+          <span>예약</span><span>${s.count}건</span>
         </div>
-        <div style="display:inline-flex;align-items:center;gap:3px;color:${c.textLight}">
-          <span style="font-weight:600;color:${c.text}">${fmtT(s.firstTime)}</span><span>시작</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;color:${c.textLight}">
+          <span>시작</span><span style="font-weight:600;color:${c.text}">${fmtT(s.firstTime)}</span>
         </div>
-        <div style="display:inline-flex;align-items:center;gap:3px;color:${c.textLight}">
-          <span style="font-weight:600;color:${c.text}">${fmtT(s.lastTime)}</span><span>종료</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;color:${c.textLight}">
+          <span>종료</span><span style="font-weight:600;color:${c.text}">${fmtT(s.lastTime)}</span>
         </div>
-        <div style="display:inline-flex;align-items:center;gap:3px;color:${c.textLight}">
-          <span style="font-weight:600;color:${c.text}">${workStr}</span><span>근무</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;color:${c.textLight}">
+          <span>근무</span><span style="font-weight:600;color:${c.text}">${workStr}</span>
         </div>
-        <div style="display:inline-flex;align-items:center;gap:3px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
           <span style="font-weight:800;color:${utilColor}">${util}%</span><span style="font-size:8px;color:${utilColor};font-weight:600">${level.label}</span>
         </div>
         <div style="width:100%;height:5px;border-radius:3px;background:${c.borderLight};overflow:hidden;display:flex;gap:1px;margin-top:1px">
