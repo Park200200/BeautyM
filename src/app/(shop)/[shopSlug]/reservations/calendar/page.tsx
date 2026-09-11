@@ -880,78 +880,109 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
       {/* 회원 상세 패널 */}
       {selectedEvent && (() => {
-        const panelContent = (
+        const panelContent = (() => {
+          const sc = STATUS_COLORS[selectedEvent.status] || STATUS_COLORS.CONFIRMED;
+          let age = '';
+          if (selectedEvent.birthday) {
+            const bd = new Date(selectedEvent.birthday); const now = new Date();
+            let a = now.getFullYear() - bd.getFullYear();
+            if (now.getMonth() < bd.getMonth() || (now.getMonth() === bd.getMonth() && now.getDate() < bd.getDate())) a--;
+            age = `만 ${a}세`;
+          }
+          const genderLabel = selectedEvent.gender === 'FEMALE' ? '여' : selectedEvent.gender === 'MALE' ? '남' : '';
+          const infoParts = [age, genderLabel].filter(Boolean).join(' · ');
+
+          const historyItem = (h: ReservationEvent, showMenu: boolean) => {
+            const d = new Date(h.startTime);
+            const dateStr = `${d.getMonth()+1}.${d.getDate()}`;
+            const time = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+            const isCurrent = h.id === selectedEvent.id;
+            const hsc = STATUS_COLORS[h.status] || STATUS_COLORS.CONFIRMED;
+            return (
+              <div key={h.id} style={{ display: 'flex', alignItems: 'center', padding: '8px 12px', borderRadius: 10, background: isCurrent ? `${c.primary}08` : 'transparent', border: isCurrent ? `1.5px solid ${c.primary}25` : '1.5px solid transparent', gap: 10, transition: 'all .15s' }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: hsc.text, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: c.text }}>{dateStr} <span style={{ fontWeight: 400, color: c.textLight }}>{time}</span></div>
+                  {showMenu && <div style={{ fontSize: 11, color: c.textLight, marginTop: 1 }}>{h.menu?.name}</div>}
+                </div>
+                <div style={{ fontSize: 11, color: c.textLight, flexShrink: 0 }}>{h.staff?.user?.name || ''}</div>
+                <div style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 6, background: hsc.bg, color: hsc.text, flexShrink: 0 }}>{STATUS_LABEL[h.status] || h.status}</div>
+              </div>
+            );
+          };
+
+          return (
           <>
-            <div style={{ padding: '16px 20px', borderBottom: `1px solid ${c.borderLight}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>회원 정보</span>
-              <button onClick={() => setSelectedEvent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: c.textLight, padding: 4 }}>✕</button>
-            </div>
-            <div style={{ padding: '20px', textAlign: 'center', borderBottom: `1px solid ${c.borderLight}` }}>
+            {/* 닫기 */}
+            <button onClick={() => setSelectedEvent(null)} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: c.textLight, padding: 4, lineHeight: 1, zIndex: 1 }}>✕</button>
+
+            {/* 프로필 헤더 */}
+            <div style={{ padding: '28px 24px 20px', textAlign: 'center', background: `linear-gradient(180deg, ${c.primaryLight}40 0%, transparent 100%)` }}>
               {selectedEvent.profileImage ? (
-                <img src={selectedEvent.profileImage} alt="" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', margin: '0 auto 10px', display: 'block' }} />
+                <img src={selectedEvent.profileImage} alt="" style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', margin: '0 auto 12px', display: 'block', border: `3px solid ${c.surface}`, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
               ) : (
-                <div style={{ width: 64, height: 64, borderRadius: '50%', margin: '0 auto 10px', background: c.primaryLight, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 700, color: c.primary }}>{selectedEvent.customer.charAt(0)}</div>
+                <div style={{ width: 72, height: 72, borderRadius: '50%', margin: '0 auto 12px', background: `linear-gradient(135deg, ${c.primary}, ${c.primary}99)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, fontWeight: 700, color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>{selectedEvent.customer.charAt(0)}</div>
               )}
-              <div style={{ fontSize: 16, fontWeight: 700, color: c.text }}>{selectedEvent.customer}</div>
-              <div style={{ fontSize: 13, color: c.textLight, marginTop: 4 }}>{selectedEvent.phone ? fmtPhone(selectedEvent.phone) : '연락처 없음'}</div>
-              <div style={{ fontSize: 12, color: c.textLight, marginTop: 4, display: 'flex', justifyContent: 'center', gap: 8 }}>
-                {selectedEvent.birthday && (() => {
-                  const bd = new Date(selectedEvent.birthday);
-                  const now = new Date();
-                  let age = now.getFullYear() - bd.getFullYear();
-                  if (now.getMonth() < bd.getMonth() || (now.getMonth() === bd.getMonth() && now.getDate() < bd.getDate())) age--;
-                  return <span>만 {age}세</span>;
-                })()}
-                {selectedEvent.gender && <span>{selectedEvent.gender === 'FEMALE' ? '♀ 여성' : selectedEvent.gender === 'MALE' ? '♂ 남성' : selectedEvent.gender}</span>}
-              </div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: c.text, letterSpacing: -0.3 }}>{selectedEvent.customer}</div>
+              <div style={{ fontSize: 13, color: c.textLight, marginTop: 4 }}>{selectedEvent.phone ? fmtPhone(selectedEvent.phone) : ''}</div>
+              {infoParts && <div style={{ fontSize: 12, color: c.textLight, marginTop: 2 }}>{infoParts}</div>}
             </div>
-            <div style={{ padding: '16px 20px', borderBottom: `1px solid ${c.borderLight}` }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: c.textLight, marginBottom: 8 }}>선택된 예약</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {[['시술', selectedEvent.menu], ['시간', `${selectedEvent.start} - ${selectedEvent.end}`], ['담당', selectedEvent.staff || '-']].map(([l, v]) => (
-                  <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: c.textLight }}>{l}</span><span style={{ fontWeight: 600, color: c.text }}>{v}</span></div>
-                ))}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: c.textLight }}>횟수</span><span style={{ fontWeight: 700, color: c.primary }}>{selectedEvent.session}회</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: c.textLight }}>상태</span><span style={{ fontSize: 11, fontWeight: 600, borderRadius: 8, padding: '2px 8px', background: (STATUS_COLORS[selectedEvent.status] || STATUS_COLORS.CONFIRMED).bg, color: (STATUS_COLORS[selectedEvent.status] || STATUS_COLORS.CONFIRMED).text }}>{STATUS_LABEL[selectedEvent.status] || selectedEvent.status}</span></div>
-              </div>
-            </div>
-            {/* 해당 시술 이력 */}
-            <div style={{ padding: '16px 20px', borderBottom: `1px solid ${c.borderLight}` }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: c.primary, marginBottom: 8 }}>
-                💆 {selectedEvent.menuName} 이력 ({menuHistory.length}건)
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 200, overflowY: 'auto' }}>
-                {menuHistory.map((h) => {
-                  const d = new Date(h.startTime); const dateStr = `${d.getMonth()+1}/${d.getDate()}`; const time = `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
-                  const isCurrent = h.id === selectedEvent.id;
-                  return (<div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', borderRadius: 8, fontSize: 12, background: isCurrent ? c.primaryLight : 'transparent', border: isCurrent ? `1px solid ${c.primary}30` : '1px solid transparent' }}>
-                    <div><span style={{ fontWeight: 600, color: c.text }}>{dateStr}</span><span style={{ color: c.textLight, marginLeft: 4 }}>{time}</span></div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 11, color: c.text }}>{h.staff?.user?.name || '-'}</span>
-                      <span style={{ fontSize: 10, borderRadius: 6, padding: '1px 6px', background: h.status==='COMPLETED'?'#F3F4F6':h.status==='CONFIRMED'?`${c.primary}18`:'#FEF3C7', color: h.status==='COMPLETED'?'#6B7280':h.status==='CONFIRMED'?c.primary:'#92400E' }}>{STATUS_LABEL[h.status]||h.status}</span>
+
+            {/* 선택된 예약 카드 */}
+            <div style={{ padding: '0 20px', marginTop: -4 }}>
+              <div style={{ borderRadius: 14, padding: '16px 18px', background: c.surface, border: `1px solid ${c.borderLight}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: c.text }}>{selectedEvent.menu}</div>
+                  <span style={{ fontSize: 11, fontWeight: 600, borderRadius: 8, padding: '3px 10px', background: sc.bg, color: sc.text }}>{STATUS_LABEL[selectedEvent.status] || selectedEvent.status}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
+                  {[
+                    ['⏰', '시간', `${selectedEvent.start} - ${selectedEvent.end}`],
+                    ['👩‍⚕️', '담당', selectedEvent.staff || '-'],
+                    ['🔄', '횟수', `${selectedEvent.session}회`],
+                  ].map(([icon, label, value]) => (
+                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 13 }}>{icon}</span>
+                      <span style={{ fontSize: 11, color: c.textLight }}>{label}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: label === '횟수' ? c.primary : c.text, marginLeft: 'auto' }}>{value}</span>
                     </div>
-                  </div>);
-                })}
-                {menuHistory.length === 0 && <div style={{ fontSize: 12, color: c.textLight, textAlign: 'center', padding: 12 }}>이력 없음</div>}
+                  ))}
+                </div>
               </div>
             </div>
+
+            {/* 시술 이력 */}
+            <div style={{ padding: '16px 20px 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: c.primary, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontSize: 14 }}>💆</span> {selectedEvent.menuName} 이력
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: c.primaryLight, color: c.primary }}>{menuHistory.length}건</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 180, overflowY: 'auto' }}>
+                {menuHistory.length > 0 ? menuHistory.map(h => historyItem(h, false)) : (
+                  <div style={{ fontSize: 12, color: c.textLight, textAlign: 'center', padding: 16 }}>이력 없음</div>
+                )}
+              </div>
+            </div>
+
             {/* 전체 방문 이력 */}
-            <div style={{ padding: '16px 20px' }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: c.textLight, marginBottom: 8 }}>📋 전체 방문 이력 ({customerHistory.length}건)</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 250, overflowY: 'auto' }}>
-                {customerHistory.map((h) => {
-                  const d = new Date(h.startTime); const dateStr = `${d.getMonth()+1}/${d.getDate()}`; const time = `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
-                  const isCurrent = h.id === selectedEvent.id;
-                  return (<div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', borderRadius: 8, fontSize: 12, background: isCurrent ? c.primaryLight : 'transparent', border: isCurrent ? `1px solid ${c.primary}30` : '1px solid transparent' }}>
-                    <div><span style={{ fontWeight: 600, color: c.text }}>{dateStr}</span><span style={{ color: c.textLight, marginLeft: 4 }}>{time}</span></div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ fontSize: 11, color: c.text }}>{h.menu?.name}</span><span style={{ fontSize: 10, borderRadius: 6, padding: '1px 6px', background: h.status==='COMPLETED'?'#F3F4F6':h.status==='CONFIRMED'?`${c.primary}18`:'#FEF3C7', color: h.status==='COMPLETED'?'#6B7280':h.status==='CONFIRMED'?c.primary:'#92400E' }}>{STATUS_LABEL[h.status]||h.status}</span></div>
-                  </div>);
-                })}
-                {customerHistory.length === 0 && <div style={{ fontSize: 12, color: c.textLight, textAlign: 'center', padding: 12 }}>이력 없음</div>}
+            <div style={{ padding: '12px 20px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: c.textLight, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontSize: 14 }}>📋</span> 전체 방문 이력
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: '#F3F4F6', color: '#6B7280' }}>{customerHistory.length}건</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 200, overflowY: 'auto' }}>
+                {customerHistory.length > 0 ? customerHistory.map(h => historyItem(h, true)) : (
+                  <div style={{ fontSize: 12, color: c.textLight, textAlign: 'center', padding: 16 }}>이력 없음</div>
+                )}
               </div>
             </div>
           </>
-        );
+          );
+        })();
         if (mob) return createPortal(<>
           <div onClick={() => setSelectedEvent(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9998 }} />
           <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, maxHeight: '85vh', overflowY: 'auto', background: c.surface, borderRadius: '20px 20px 0 0', zIndex: 9999, boxShadow: '0 -10px 40px rgba(0,0,0,0.15)', animation: 'slideUp .25s ease-out' }}>
