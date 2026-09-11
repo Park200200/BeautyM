@@ -194,20 +194,28 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     arg.el.style.cursor = 'pointer';
     arg.el.style.position = 'relative';
 
-    // 휴무일 표시 — 날짜 숫자 옆에 pill 형태
-    if (isHoliday(dateStr)) {
-      arg.el.style.background = 'repeating-linear-gradient(135deg, transparent, transparent 6px, rgba(200,200,200,0.13) 6px, rgba(200,200,200,0.13) 7px)';
-      const existingHol = arg.el.querySelector('.bm-holiday-badge');
-      if (!existingHol) {
-        const dayTop = arg.el.querySelector('.fc-daygrid-day-top');
-        if (dayTop) {
-          // 기존 날짜 숫자 요소 찾기
-          const dayNum = dayTop.querySelector('.fc-daygrid-day-number');
-          const dayText = dayNum?.textContent || '';
-          const isToday = arg.el.classList.contains('fc-day-today');
-          // pill 컨테이너 생성
-          const pill = document.createElement('div');
-          pill.className = 'bm-holiday-badge';
+    // 기존 커스텀 배지 모두 제거 (중복 방지)
+    arg.el.querySelectorAll('.bm-holiday-badge, .bm-today-badge').forEach(e => e.remove());
+    // 숨겨진 날짜 숫자 복원
+    const hiddenNum = arg.el.querySelector('.fc-daygrid-day-number') as HTMLElement;
+    if (hiddenNum) hiddenNum.style.display = '';
+
+    // 오늘 판단 (직접 비교)
+    const now = new Date(); now.setHours(0,0,0,0);
+    const cellDate = new Date(arg.date); cellDate.setHours(0,0,0,0);
+    const isToday = now.getTime() === cellDate.getTime();
+    const holiday = isHoliday(dateStr);
+
+    if (holiday || isToday) {
+      const dayTop = arg.el.querySelector('.fc-daygrid-day-top');
+      if (dayTop) {
+        const dayNum = dayTop.querySelector('.fc-daygrid-day-number');
+        const dayText = dayNum?.textContent || '';
+        const pill = document.createElement('div');
+        pill.className = holiday ? 'bm-holiday-badge' : 'bm-today-badge';
+
+        if (holiday) {
+          arg.el.style.background = 'repeating-linear-gradient(135deg, transparent, transparent 6px, rgba(200,200,200,0.13) 6px, rgba(200,200,200,0.13) 7px)';
           pill.style.cssText = `display:inline-flex;align-items:center;gap:0;background:rgba(239,68,68,0.06);border-radius:20px;padding:2px 4px;margin:${mob ? '2px' : '4px'};`;
           let html = '';
           if (isToday) {
@@ -218,28 +226,12 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
           html += `<span style="color:#D1D5DB;font-size:10px;">|</span>`;
           html += `<span style="font-size:${mob ? '8px' : '11px'};font-weight:600;color:#EF4444;padding:0 6px;">${dayText}</span>`;
           pill.innerHTML = html;
-          // 기존 날짜 숫자 숨기고 pill 삽입
-          if (dayNum) (dayNum as HTMLElement).style.display = 'none';
-          dayTop.appendChild(pill);
-        }
-      }
-    }
-
-    // 오늘 날짜 pill (휴무가 아닌 경우)
-    if (!isHoliday(dateStr) && arg.el.classList.contains('fc-day-today')) {
-      const existingToday = arg.el.querySelector('.bm-today-badge');
-      if (!existingToday) {
-        const dayTop = arg.el.querySelector('.fc-daygrid-day-top');
-        if (dayTop) {
-          const dayNum = dayTop.querySelector('.fc-daygrid-day-number');
-          const dayText = dayNum?.textContent || '';
-          const pill = document.createElement('div');
-          pill.className = 'bm-today-badge';
+        } else {
           pill.style.cssText = `display:inline-flex;align-items:center;gap:0;background:rgba(59,130,246,0.06);border-radius:20px;padding:2px 4px;margin:${mob ? '2px' : '4px'};`;
           pill.innerHTML = `<span style="font-size:${mob ? '8px' : '11px'};font-weight:700;color:#3B82F6;padding:0 6px;">TODAY</span><span style="color:#D1D5DB;font-size:10px;">|</span><span style="font-size:${mob ? '8px' : '11px'};font-weight:600;color:#3B82F6;padding:0 6px;">${dayText}</span>`;
-          if (dayNum) (dayNum as HTMLElement).style.display = 'none';
-          dayTop.appendChild(pill);
         }
+        if (dayNum) (dayNum as HTMLElement).style.display = 'none';
+        dayTop.appendChild(pill);
       }
     }
 
