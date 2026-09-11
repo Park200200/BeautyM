@@ -917,15 +917,17 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             <button onClick={() => setSelectedEvent(null)} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: c.textLight, padding: 4, lineHeight: 1, zIndex: 1 }}>✕</button>
 
             {/* 프로필 헤더 */}
-            <div style={{ padding: '28px 24px 20px', textAlign: 'center', background: `linear-gradient(180deg, ${c.primaryLight}40 0%, transparent 100%)` }}>
+            <div style={{ padding: '20px 24px 16px', display: 'flex', alignItems: 'center', gap: 14, background: `linear-gradient(180deg, ${c.primaryLight}40 0%, transparent 100%)` }}>
               {selectedEvent.profileImage ? (
-                <img src={selectedEvent.profileImage} alt="" style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', margin: '0 auto 12px', display: 'block', border: `3px solid ${c.surface}`, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                <img src={selectedEvent.profileImage} alt="" style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: `2px solid ${c.surface}`, boxShadow: '0 3px 10px rgba(0,0,0,0.1)' }} />
               ) : (
-                <div style={{ width: 72, height: 72, borderRadius: '50%', margin: '0 auto 12px', background: `linear-gradient(135deg, ${c.primary}, ${c.primary}99)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, fontWeight: 700, color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>{selectedEvent.customer.charAt(0)}</div>
+                <div style={{ width: 56, height: 56, borderRadius: '50%', flexShrink: 0, background: `linear-gradient(135deg, ${c.primary}, ${c.primary}99)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 700, color: '#fff', boxShadow: '0 3px 10px rgba(0,0,0,0.1)' }}>{selectedEvent.customer.charAt(0)}</div>
               )}
-              <div style={{ fontSize: 18, fontWeight: 700, color: c.text, letterSpacing: -0.3 }}>{selectedEvent.customer}</div>
-              <div style={{ fontSize: 13, color: c.textLight, marginTop: 4 }}>{selectedEvent.phone ? fmtPhone(selectedEvent.phone) : ''}</div>
-              {infoParts && <div style={{ fontSize: 12, color: c.textLight, marginTop: 2 }}>{infoParts}</div>}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 17, fontWeight: 700, color: c.text, letterSpacing: -0.3 }}>{selectedEvent.customer}</div>
+                <div style={{ fontSize: 12, color: c.textLight, marginTop: 2 }}>{selectedEvent.phone ? fmtPhone(selectedEvent.phone) : ''}</div>
+                {infoParts && <div style={{ fontSize: 11, color: c.textLight, marginTop: 1 }}>{infoParts}</div>}
+              </div>
             </div>
 
             {/* 선택된 예약 카드 */}
