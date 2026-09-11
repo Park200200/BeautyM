@@ -508,9 +508,13 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
               --fc-event-border-color: transparent;
               font-family: 'Pretendard','Noto Sans KR',sans-serif;
             }
-            /* 월간 뷰: 오늘 셀 기본 스타일 제거 (커스텀 pill 사용) */
+            /* 월간 뷰: 오늘 셀 기본 스타일 완전 제거 (커스텀 pill 사용) */
             .fc-dayGridMonth-view .fc-day-today { background:transparent!important; }
-            .fc-dayGridMonth-view .fc-day-today .fc-daygrid-day-number { background:none!important; color:inherit!important; border-radius:0!important; }
+            .fc-dayGridMonth-view .fc-day-today .fc-daygrid-day-number {
+              background:none!important; color:inherit!important; border-radius:0!important;
+              font-weight:inherit!important; box-shadow:none!important;
+            }
+            .fc-dayGridMonth-view .fc-day-today .fc-daygrid-day-frame { background:transparent!important; }
             /* 주간 뷰: 오늘 컬럼 넓고 밝게, 나머지 좁고 약간 어둡게 */
             .fc-timeGridWeek-view .fc-col-header-cell { position:relative; }
             .fc-timeGridWeek-view th.fc-day-today::before {
