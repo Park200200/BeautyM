@@ -207,28 +207,31 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     const holiday = isHoliday(dateStr);
 
     if (holiday || isToday) {
-      const dayTop = arg.el.querySelector('.fc-daygrid-day-top');
+      const dayTop = arg.el.querySelector('.fc-daygrid-day-top') as HTMLElement;
       if (dayTop) {
+        dayTop.style.overflow = 'hidden';
         const dayNum = dayTop.querySelector('.fc-daygrid-day-number');
-        const dayText = dayNum?.textContent || '';
+        const dayText = dayNum?.textContent?.replace(/\D/g, '') || '';
         const pill = document.createElement('div');
         pill.className = holiday ? 'bm-holiday-badge' : 'bm-today-badge';
+        const fs = mob ? '8px' : '10px';
+        const pd = mob ? '0 3px' : '0 4px';
 
         if (holiday) {
           arg.el.style.background = 'repeating-linear-gradient(135deg, transparent, transparent 6px, rgba(200,200,200,0.13) 6px, rgba(200,200,200,0.13) 7px)';
-          pill.style.cssText = `display:inline-flex;align-items:center;gap:0;background:rgba(239,68,68,0.06);border-radius:20px;padding:2px 4px;margin:${mob ? '2px' : '4px'};`;
+          pill.style.cssText = `display:inline-flex;align-items:center;gap:0;background:rgba(239,68,68,0.06);border-radius:14px;padding:1px 2px;margin:2px;white-space:nowrap;overflow:hidden;max-width:100%;`;
           let html = '';
           if (isToday) {
-            html += `<span style="font-size:${mob ? '8px' : '11px'};font-weight:700;color:#3B82F6;padding:0 6px;">TODAY</span>`;
-            html += `<span style="color:#D1D5DB;font-size:10px;">|</span>`;
+            html += `<span style="font-size:${fs};font-weight:700;color:#3B82F6;padding:${pd};">TODAY</span>`;
+            html += `<span style="color:#D1D5DB;font-size:9px;">|</span>`;
           }
-          html += `<span style="font-size:${mob ? '8px' : '11px'};font-weight:700;color:#EF4444;padding:0 6px;">휴무</span>`;
-          html += `<span style="color:#D1D5DB;font-size:10px;">|</span>`;
-          html += `<span style="font-size:${mob ? '8px' : '11px'};font-weight:600;color:#EF4444;padding:0 6px;">${dayText}</span>`;
+          html += `<span style="font-size:${fs};font-weight:700;color:#EF4444;padding:${pd};">휴무</span>`;
+          html += `<span style="color:#D1D5DB;font-size:9px;">|</span>`;
+          html += `<span style="font-size:${fs};font-weight:600;color:#EF4444;padding:${pd};">${dayText}일</span>`;
           pill.innerHTML = html;
         } else {
-          pill.style.cssText = `display:inline-flex;align-items:center;gap:0;background:rgba(59,130,246,0.06);border-radius:20px;padding:2px 4px;margin:${mob ? '2px' : '4px'};`;
-          pill.innerHTML = `<span style="font-size:${mob ? '8px' : '11px'};font-weight:700;color:#3B82F6;padding:0 6px;">TODAY</span><span style="color:#D1D5DB;font-size:10px;">|</span><span style="font-size:${mob ? '8px' : '11px'};font-weight:600;color:#3B82F6;padding:0 6px;">${dayText}</span>`;
+          pill.style.cssText = `display:inline-flex;align-items:center;gap:0;background:rgba(59,130,246,0.06);border-radius:14px;padding:1px 2px;margin:2px;white-space:nowrap;overflow:hidden;max-width:100%;`;
+          pill.innerHTML = `<span style="font-size:${fs};font-weight:700;color:#3B82F6;padding:${pd};">TODAY</span><span style="color:#D1D5DB;font-size:9px;">|</span><span style="font-size:${fs};font-weight:600;color:#3B82F6;padding:${pd};">${dayText}일</span>`;
         }
         if (dayNum) (dayNum as HTMLElement).style.display = 'none';
         dayTop.appendChild(pill);
