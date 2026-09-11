@@ -210,7 +210,7 @@ export default function CustomerDetailPage() {
     setBdYear(y); setBdMonth(m); setBdDay(d);
     setEditProfileForm({
       name: customer.user?.name || '',
-      phone: customer.user?.phone || '',
+      phone: formatPhone(customer.user?.phone || ''),
       email: customer.user?.email || '',
       memo: customer.memo || '',
       birthday: bd,
@@ -1328,7 +1328,13 @@ export default function CustomerDetailPage() {
               <label style={{ fontSize: 12, fontWeight: 600, color: c.textLight, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Phone style={{ width: 13, height: 13 }} /> 전화번호
               </label>
-              <Input value={editProfileForm.phone} onChange={e => setEditProfileForm({ ...editProfileForm, phone: e.target.value })}
+              <Input value={editProfileForm.phone} onChange={e => {
+                  const raw = e.target.value.replace(/\D/g, '').slice(0, 11);
+                  let formatted = raw;
+                  if (raw.length > 7) formatted = `${raw.slice(0,3)}-${raw.slice(3,7)}-${raw.slice(7)}`;
+                  else if (raw.length > 3) formatted = `${raw.slice(0,3)}-${raw.slice(3)}`;
+                  setEditProfileForm({ ...editProfileForm, phone: formatted });
+                }}
                 className="rounded-xl" placeholder="010-0000-0000" />
             </div>
             <div>
