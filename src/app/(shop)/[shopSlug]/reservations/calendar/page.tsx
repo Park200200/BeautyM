@@ -514,7 +514,10 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             }
             /* 월간 뷰: 오늘 셀 기본 스타일 완전 제거 (커스텀 pill 사용) */
             .fc-dayGridMonth-view .fc-day-today { background:transparent!important; }
-            .fc-dayGridMonth-view .fc-day-today .fc-daygrid-day-number { display:none!important; }
+            .fc-dayGridMonth-view .fc-day-today .fc-daygrid-day-number,
+            .fc-dayGridMonth-view .fc-day-today a.fc-daygrid-day-number,
+            .fc-dayGridMonth-view .fc-day-today .fc-daygrid-day-top a,
+            .fc-dayGridMonth-view .fc-day-today .fc-daygrid-day-top .fc-daygrid-day-number { display:none!important; }
             .fc-dayGridMonth-view .fc-day-today .fc-daygrid-day-frame { background:transparent!important; }
             /* 주간 뷰: 오늘 컬럼 넓고 밝게, 나머지 좁고 약간 어둡게 */
             .fc-timeGridWeek-view .fc-col-header-cell { position:relative; }
