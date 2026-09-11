@@ -63,6 +63,7 @@ export default function CustomerDetailPage() {
   const [bdMonth, setBdMonth] = useState('');
   const [bdDay, setBdDay] = useState('');
   const [uploadingProfilePhoto, setUploadingProfilePhoto] = useState(false);
+  const [expandedPurchaseId, setExpandedPurchaseId] = useState<string | null>(null);
   const profilePhotoRef = useRef<HTMLInputElement>(null);
 
   // 탭 드래그 스크롤
@@ -265,7 +266,7 @@ export default function CustomerDetailPage() {
   // 구매내역: COMPLETED 상태의 예약에서 메뉴 정보 추출
   const purchaseList = reservations
     .filter((r: any) => r.status === 'COMPLETED' && r.menu)
-    .map((r: any) => ({ id: r.id, menuName: r.menu?.name, price: r.menu?.price || 0, duration: r.menu?.duration || 0, date: r.startTime, staffName: r.staff?.user?.name }));
+    .map((r: any) => ({ id: r.id, menuId: r.menuId, menuName: r.menu?.name, price: r.menu?.price || 0, duration: r.menu?.duration || 0, date: r.startTime, staffName: r.staff?.user?.name }));
 
   const tabs = [
     { id: 'records', label: '\uC2DC\uC220\uCE74\uB4DC', icon: FileText, count: records.length },
@@ -978,21 +979,64 @@ export default function CustomerDetailPage() {
 
               {/* 리스트 */}
               <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${c.borderLight}` }}>
-                {purchaseList.map((p, idx) => (
-                  <div key={p.id} className="px-5 py-4 flex items-center gap-4 transition hover:bg-black/[.02]"
-                    style={{ borderBottom: idx < purchaseList.length - 1 ? `1px solid ${c.borderLight}` : 'none' }}>
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: c.primaryLight + '30' }}>
-                      <Sparkles className="w-4 h-4" style={{ color: c.primary }} />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-semibold text-sm" style={{ color: c.text }}>{p.menuName}</div>
-                      <div className="text-xs mt-0.5" style={{ color: c.textLight }}>
-                        {formatDateTime(p.date)} {'\u00B7'} {p.duration}{'\uBD84'} {p.staffName && `\u00B7 ${p.staffName}`}
+                {purchaseList.map((p, idx) => {
+                  const isExpanded = expandedPurchaseId === p.id;
+                  // 해당 시술의 전체 예약 이력 (모든 상태)
+                  const menuReservations = isExpanded ? reservations
+                    .filter((r: any) => r.menuId === p.menuId)
+                    .sort((a: any, b: any) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()) : [];
+                  const statusLabel: Record<string, string> = { CONFIRMED: '확정', PENDING: '대기', COMPLETED: '완료', CANCELLED: '취소', NO_SHOW: '노쇼', REQUESTED: '요청' };
+                  const statusColor: Record<string, { bg: string; text: string }> = {
+                    CONFIRMED: { bg: `${c.primary}18`, text: c.primary }, COMPLETED: { bg: '#F3F4F6', text: '#6B7280' },
+                    PENDING: { bg: '#FEF3C7', text: '#92400E' }, CANCELLED: { bg: '#FEE2E2', text: '#991B1B' },
+                    NO_SHOW: { bg: '#FEE2E2', text: '#DC2626' }, REQUESTED: { bg: '#DBEAFE', text: '#1D4ED8' },
+                  };
+                  return (
+                  <div key={p.id} style={{ borderBottom: idx < purchaseList.length - 1 ? `1px solid ${c.borderLight}` : 'none' }}>
+                    <div className="px-5 py-4 flex items-center gap-4 transition hover:bg-black/[.02] cursor-pointer"
+                      onClick={() => setExpandedPurchaseId(isExpanded ? null : p.id)}>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: c.primaryLight + '30' }}>
+                        <Sparkles className="w-4 h-4" style={{ color: c.primary }} />
                       </div>
+                      <div className="flex-1">
+                        <div className="font-semibold text-sm" style={{ color: c.text }}>{p.menuName}</div>
+                        <div className="text-xs mt-0.5" style={{ color: c.textLight }}>
+                          {formatDateTime(p.date)} {'·'} {p.duration}{'분'} {p.staffName && `· ${p.staffName}`}
+                        </div>
+                      </div>
+                      <span className="text-sm font-bold" style={{ color: c.text }}>{'₩'}{p.price.toLocaleString()}</span>
+                      <ChevronDown className="w-4 h-4 transition-transform" style={{ color: c.textLight, transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }} />
                     </div>
-                    <span className="text-sm font-bold" style={{ color: c.text }}>{'\u20A9'}{p.price.toLocaleString()}</span>
+                    {/* 펼침: 해당 시술 예약 이력 */}
+                    {isExpanded && (
+                      <div className="px-5 pb-4">
+                        <div className="rounded-xl overflow-hidden ml-14" style={{ border: `1px solid ${c.borderLight}`, background: c.primaryLight + '15' }}>
+                          <div className="px-4 py-2 flex items-center justify-between" style={{ borderBottom: `1px solid ${c.borderLight}`, background: c.primaryLight + '40' }}>
+                            <span className="text-xs font-bold" style={{ color: c.primary }}>💆 {p.menuName} 예약 이력</span>
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: c.primaryLight, color: c.primary }}>{menuReservations.length}건</span>
+                          </div>
+                          {menuReservations.map((r: any, rIdx: number) => {
+                            const sc = statusColor[r.status] || statusColor.CONFIRMED;
+                            return (
+                              <div key={r.id} className="px-4 py-2.5 flex items-center justify-between text-xs"
+                                style={{ borderBottom: rIdx < menuReservations.length - 1 ? `1px solid ${c.borderLight}` : 'none' }}>
+                                <div className="flex items-center gap-3">
+                                  <span style={{ fontWeight: 600, color: c.text }}>{formatDateTime(r.startTime)}</span>
+                                  <span style={{ color: c.textLight }}>{r.staff?.user?.name || '-'}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-semibold" style={{ color: c.textLight }}>{r.currentSession || '-'}/{r.totalSessions || '-'}회</span>
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{ background: sc.bg, color: sc.text }}>{statusLabel[r.status] || r.status}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </>
           ) : (
