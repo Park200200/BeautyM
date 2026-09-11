@@ -194,16 +194,20 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     arg.el.style.cursor = 'pointer';
     arg.el.style.position = 'relative';
 
-    // 휴무일 표시
+    // 휴무일 표시 — 날짜 숫자 바로 옆에
     if (isHoliday(dateStr)) {
       arg.el.style.background = 'repeating-linear-gradient(135deg, transparent, transparent 6px, rgba(200,200,200,0.13) 6px, rgba(200,200,200,0.13) 7px)';
       const existingHol = arg.el.querySelector('.bm-holiday-badge');
       if (!existingHol) {
-        const badge = document.createElement('div');
-        badge.className = 'bm-holiday-badge';
-        badge.style.cssText = `position:absolute;top:${mob ? '24px' : '32px'};left:50%;transform:translateX(-50%);font-size:${mob ? '8px' : '10px'};font-weight:700;color:#EF4444;background:rgba(239,68,68,0.08);padding:1px 6px;border-radius:4px;white-space:nowrap;z-index:3;letter-spacing:1px;`;
-        badge.textContent = '휴무';
-        arg.el.appendChild(badge);
+        // 날짜 숫자가 들어있는 .fc-daygrid-day-top 찾기
+        const dayTop = arg.el.querySelector('.fc-daygrid-day-top');
+        if (dayTop) {
+          const badge = document.createElement('span');
+          badge.className = 'bm-holiday-badge';
+          badge.style.cssText = `font-size:${mob ? '8px' : '10px'};font-weight:700;color:#EF4444;background:rgba(239,68,68,0.08);padding:1px 6px;border-radius:4px;white-space:nowrap;letter-spacing:0.5px;margin-left:4px;`;
+          badge.textContent = '휴무';
+          dayTop.appendChild(badge);
+        }
       }
     }
 
