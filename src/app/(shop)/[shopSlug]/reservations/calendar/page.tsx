@@ -225,6 +225,24 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       }
     }
 
+    // 오늘 날짜 pill (휴무가 아닌 경우)
+    if (!isHoliday(dateStr) && arg.el.classList.contains('fc-day-today')) {
+      const existingToday = arg.el.querySelector('.bm-today-badge');
+      if (!existingToday) {
+        const dayTop = arg.el.querySelector('.fc-daygrid-day-top');
+        if (dayTop) {
+          const dayNum = dayTop.querySelector('.fc-daygrid-day-number');
+          const dayText = dayNum?.textContent || '';
+          const pill = document.createElement('div');
+          pill.className = 'bm-today-badge';
+          pill.style.cssText = `display:inline-flex;align-items:center;gap:0;background:rgba(59,130,246,0.06);border-radius:20px;padding:2px 4px;margin:${mob ? '2px' : '4px'};`;
+          pill.innerHTML = `<span style="font-size:${mob ? '8px' : '11px'};font-weight:700;color:#3B82F6;padding:0 6px;">TODAY</span><span style="color:#D1D5DB;font-size:10px;">|</span><span style="font-size:${mob ? '8px' : '11px'};font-weight:600;color:#3B82F6;padding:0 6px;">${dayText}</span>`;
+          if (dayNum) (dayNum as HTMLElement).style.display = 'none';
+          dayTop.appendChild(pill);
+        }
+      }
+    }
+
     if (!s) return;
 
     const totalMin = (CLOSE_HOUR - OPEN_HOUR) * 60;
