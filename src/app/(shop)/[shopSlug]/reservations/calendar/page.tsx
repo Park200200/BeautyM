@@ -933,23 +933,15 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
             {/* 선택된 예약 카드 */}
             <div style={{ padding: '0 20px', marginTop: -4 }}>
-              <div style={{ borderRadius: 14, padding: '16px 18px', background: c.surface, border: `1px solid ${c.borderLight}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: c.text }}>{selectedEvent.menu}</div>
+              <div style={{ borderRadius: 14, padding: '14px 18px', background: c.surface, border: `1px solid ${c.borderLight}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: c.text, flex: 1 }}>{selectedEvent.menu}</div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: c.primary }}>{selectedEvent.session}회</span>
                   <span style={{ fontSize: 11, fontWeight: 600, borderRadius: 8, padding: '3px 10px', background: sc.bg, color: sc.text }}>{STATUS_LABEL[selectedEvent.status] || selectedEvent.status}</span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
-                  {[
-                    { icon: <Clock style={{ width: 13, height: 13, color: c.textLight }} />, label: '시간', value: `${selectedEvent.start} - ${selectedEvent.end}`, highlight: false },
-                    { icon: <User style={{ width: 13, height: 13, color: c.textLight }} />, label: '담당', value: selectedEvent.staff || '-', highlight: false },
-                    { icon: <RefreshCw style={{ width: 13, height: 13, color: c.textLight }} />, label: '횟수', value: `${selectedEvent.session}회`, highlight: true },
-                  ].map((item) => (
-                    <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {item.icon}
-                      <span style={{ fontSize: 11, color: c.textLight }}>{item.label}</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: item.highlight ? c.primary : c.text, marginLeft: 'auto' }}>{item.value}</span>
-                    </div>
-                  ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: c.textLight }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Clock style={{ width: 12, height: 12 }} />{selectedEvent.start} - {selectedEvent.end}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><User style={{ width: 12, height: 12 }} /><span style={{ color: c.text, fontWeight: 500 }}>{selectedEvent.staff || '-'}</span></div>
                 </div>
               </div>
             </div>
