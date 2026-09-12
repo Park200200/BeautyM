@@ -405,21 +405,6 @@ export default function TreatmentDetailPage() {
                 )}
               </div>
 
-              {/* 전후 사진 등록 옵션 */}
-              <div className="flex items-center justify-between px-3 py-2.5 rounded-xl" style={{ background: enablePhotos ? '#FFF7ED' : '#F9FAFB', border: `1px solid ${enablePhotos ? '#FDBA74' : '#E5E7EB'}` }}>
-                <div className="flex items-center gap-2">
-                  <Camera className="w-3.5 h-3.5" style={{ color: enablePhotos ? '#EA580C' : '#9CA3AF' }} />
-                  <span className="text-xs font-medium" style={{ color: enablePhotos ? '#EA580C' : '#6B7280' }}>시술 전/후 사진 등록</span>
-                </div>
-                <button
-                  onClick={() => setEnablePhotos(!enablePhotos)}
-                  className="relative w-9 h-5 rounded-full transition-colors"
-                  style={{ background: enablePhotos ? '#F97316' : '#D1D5DB' }}>
-                  <div className="absolute top-0.5 transition-all w-4 h-4 rounded-full bg-white shadow-sm"
-                    style={{ left: enablePhotos ? 18 : 2 }} />
-                </button>
-              </div>
-
               <div><label className="text-xs font-medium block mb-1" style={{ color: c.textLight }}>
                 <Wrench className="w-3.5 h-3.5 inline mr-1" />{'\uC0AC\uC6A9\uC7A5\uBE44'}</label>
                 <TagInput tags={equipmentTags} onChange={setEquipmentTags} suggestions={allEquipmentSuggestions}
