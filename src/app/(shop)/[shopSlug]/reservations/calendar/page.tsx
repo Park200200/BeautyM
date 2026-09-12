@@ -494,41 +494,56 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         const mainContent = mainEvent.querySelector('.fc-event-main') as HTMLElement;
         if (!mainContent) return;
 
-        // 모든 이벤트의 콘텐츠 수집
-        const contents: string[] = [];
+        // 그룹 전체 시간 범위 (가장 빠른 시작 ~ 가장 늦은 종료)
+        const groupMinTop = Math.min(...group.map(g => g.top));
+        const groupMaxBottom = Math.max(...group.map(g => g.bottom));
+        const groupHeight = groupMaxBottom - groupMinTop;
+
+        // 모든 이벤트의 콘텐츠 + 상대 위치 수집
+        const items: { content: string; relTop: number; }[] = [];
         group.forEach((info, idx) => {
           const eventMain = info.el.querySelector('.fc-event-main');
-          if (eventMain) contents.push(eventMain.innerHTML);
+          if (eventMain) {
+            items.push({
+              content: eventMain.innerHTML,
+              relTop: info.top - groupMinTop,
+            });
+          }
           if (idx === 0) {
-            // 첫 번째: 전체 너비로 확장
-            const insetParts = (info.el.style.inset || '').split(' ');
-            info.el.style.inset = `${insetParts[0] || '0px'} 0px auto 0px`;
+            // 첫 번째: 전체 시간 범위로 확장 + 전체 너비
+            info.el.style.inset = `${groupMinTop}px 0px auto 0px`;
             info.el.style.width = '100%';
+            info.el.style.height = `${groupHeight}px`;
             info.el.style.zIndex = '15';
+            mainEvent.style.height = '100%';
+            mainEvent.style.minHeight = '100%';
           } else {
             info.el.style.display = 'none';
           }
         });
 
-        if (contents.length <= 1) return;
+        if (items.length <= 1) return;
 
         let current = 0;
 
-        // 첫 번째 콘텐츠 표시 (원래 것 유지)
+        // 첫 번째 콘텐츠: 시작 위치에 표시
+        mainContent.style.paddingTop = `${items[0].relTop}px`;
         mainContent.style.fontWeight = '700';
 
         // "중복(1/N)건" 뱃지
         const topBadge = document.createElement('div');
         topBadge.className = 'bm-overlap-badge';
         topBadge.style.cssText = `position:absolute;top:2px;right:2px;background:#EF4444;color:#fff;font-size:9px;font-weight:800;padding:2px 8px;border-radius:8px;z-index:12;cursor:pointer;user-select:none;transition:transform 0.15s;`;
-        topBadge.textContent = `중복(1/${contents.length})건`;
+        topBadge.textContent = `중복(1/${items.length})건`;
         topBadge.addEventListener('click', (e) => {
           e.stopPropagation();
           e.preventDefault();
-          current = (current + 1) % contents.length;
-          mainContent.innerHTML = contents[current];
+          current = (current + 1) % items.length;
+          const item = items[current];
+          mainContent.innerHTML = item.content;
+          mainContent.style.paddingTop = `${item.relTop}px`;
           mainContent.style.fontWeight = '700';
-          topBadge.textContent = `중복(${current + 1}/${contents.length})건`;
+          topBadge.textContent = `중복(${current + 1}/${items.length})건`;
           topBadge.style.transform = 'scale(0.9)';
           setTimeout(() => { topBadge.style.transform = 'scale(1)'; }, 150);
         });
