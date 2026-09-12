@@ -52,6 +52,9 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
   const [showTreatmentForm, setShowTreatmentForm] = useState(false);
   const [beforePhoto, setBeforePhoto] = useState<string>('');
   const [afterPhoto, setAfterPhoto] = useState<string>('');
+  const [showReschedule, setShowReschedule] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('');
   const [historyTab, setHistoryTab] = useState<'menu' | 'all'>('menu');
   const [activeDate, setActiveDate] = useState<string>(''); // 클릭한 날짜 (YYYY-MM-DD)
   const [popupDate, setPopupDate] = useState<string | null>(null); // 월간 클릭 팝업
@@ -1452,7 +1455,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
           return (
           <>
             {/* 닫기 */}
-            <button onClick={() => setSelectedEvent(null)} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: c.textLight, padding: 4, lineHeight: 1, zIndex: 1 }}>✕</button>
+            <button onClick={() => { setSelectedEvent(null); setShowReschedule(false); }} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: c.textLight, padding: 4, lineHeight: 1, zIndex: 1 }}>✕</button>
 
             {/* 프로필 헤더 - 고정 */}
             <div className="bm-popup-header" style={{ padding: '20px 24px 16px', display: 'flex', alignItems: 'center', gap: 14, background: `linear-gradient(180deg, ${c.primaryLight}40 0%, ${c.surface} 100%)`, flexShrink: 0 }}>
@@ -1503,34 +1506,90 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
                   if (isFuture && !(selectedEvent.status === 'CANCELLED' || selectedEvent.status === 'NO_SHOW')) {
                     // 미래: 변경 + 취소
+                    // 변경 폼 표시
+                    if (showReschedule) {
+                      // 시간 옵션 생성 (영업시간 기준 30분 단위)
+                      const timeOptions: string[] = [];
+                      for (let h = bizOpen; h < bizClose; h++) {
+                        timeOptions.push(`${String(h).padStart(2, '0')}:00`);
+                        timeOptions.push(`${String(h).padStart(2, '0')}:30`);
+                      }
+                      return (
+                        <div style={{ marginTop: 10 }}>
+                          <div style={{ background: `${c.primary}08`, borderRadius: 12, padding: '14px 16px', border: `1.5px solid ${c.primary}25` }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: c.primary, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 5 }}>
+                              <CalendarDays style={{ width: 13, height: 13 }} /> 예약 변경
+                            </div>
+                            {/* 날짜 선택 */}
+                            <div style={{ marginBottom: 8 }}>
+                              <label style={{ fontSize: 11, fontWeight: 600, color: c.textLight, display: 'block', marginBottom: 4 }}>날짜</label>
+                              <input
+                                type="date"
+                                value={rescheduleDate}
+                                onChange={e => setRescheduleDate(e.target.value)}
+                                min={new Date().toISOString().split('T')[0]}
+                                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: `1px solid ${c.borderLight}`, fontSize: 13, outline: 'none', boxSizing: 'border-box', color: c.text }}
+                              />
+                            </div>
+                            {/* 시간 선택 */}
+                            <div style={{ marginBottom: 10 }}>
+                              <label style={{ fontSize: 11, fontWeight: 600, color: c.textLight, display: 'block', marginBottom: 4 }}>시작 시간</label>
+                              <select
+                                value={rescheduleTime}
+                                onChange={e => setRescheduleTime(e.target.value)}
+                                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: `1px solid ${c.borderLight}`, fontSize: 13, outline: 'none', boxSizing: 'border-box', color: c.text, background: '#fff' }}
+                              >
+                                <option value="">시간 선택</option>
+                                {timeOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                              </select>
+                            </div>
+                            {/* 버튼 */}
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button
+                                onClick={() => setShowReschedule(false)}
+                                style={{ flex: 1, padding: '8px', borderRadius: 8, border: `1px solid ${c.borderLight}`, background: '#fff', color: c.textLight, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                              >취소</button>
+                              <button
+                                disabled={!rescheduleDate || !rescheduleTime}
+                                onClick={async () => {
+                                  if (!rescheduleDate || !rescheduleTime) return;
+                                  const start = new Date(`${rescheduleDate}T${rescheduleTime}:00+09:00`);
+                                  const duration = selectedEvent.end && selectedEvent.start
+                                    ? (() => { const [sh,sm] = selectedEvent.start.split(':').map(Number); const [eh,em] = selectedEvent.end.split(':').map(Number); return (eh*60+em) - (sh*60+sm); })()
+                                    : 60;
+                                  const end = new Date(start.getTime() + duration * 60000);
+                                  try {
+                                    const res = await fetch(`/api/shops/${shopSlug}/reservations/${selectedEvent.id}`, {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ startTime: start.toISOString(), endTime: end.toISOString() }),
+                                    });
+                                    if (res.ok) {
+                                      setShowReschedule(false);
+                                      setSelectedEvent(null);
+                                      fetchReservations();
+                                    }
+                                  } catch (e) { console.error(e); }
+                                }}
+                                style={{ flex: 1, padding: '8px', borderRadius: 8, border: 'none', background: (!rescheduleDate || !rescheduleTime) ? '#D1D5DB' : c.primary, color: '#fff', fontSize: 12, fontWeight: 700, cursor: (!rescheduleDate || !rescheduleTime) ? 'not-allowed' : 'pointer' }}
+                              >확인</button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
                     return (
                       <div style={{ display: 'flex', gap: 5, marginTop: 10 }}>
                         <button
-                          onClick={async () => {
-                            const newDate = prompt('변경할 날짜를 입력하세요 (예: 2026-09-20):');
-                            if (!newDate) return;
-                            const newTime = prompt('변경할 시작 시간을 입력하세요 (예: 14:00):');
-                            if (!newTime) return;
-                            const [h, m] = newTime.split(':').map(Number);
-                            const start = new Date(`${newDate}T${newTime}:00+09:00`);
-                            // 기존 duration 계산
-                            const oldStart = new Date(selectedEvent.eventDate);
-                            const duration = selectedEvent.end && selectedEvent.start
-                              ? (() => { const [sh,sm] = selectedEvent.start.split(':').map(Number); const [eh,em] = selectedEvent.end.split(':').map(Number); return (eh*60+em) - (sh*60+sm); })()
-                              : 60;
-                            const end = new Date(start.getTime() + duration * 60000);
-                            try {
-                              const res = await fetch(`/api/shops/${shopSlug}/reservations/${selectedEvent.id}`, {
-                                method: 'PATCH',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ startTime: start.toISOString(), endTime: end.toISOString() }),
-                              });
-                              if (res.ok) {
-                                alert('예약이 변경되었습니다.');
-                                setSelectedEvent(null);
-                                fetchReservations();
-                              }
-                            } catch (e) { console.error(e); }
+                          onClick={() => {
+                            // 현재 예약 날짜/시간을 기본값으로
+                            if (selectedEvent.eventDate) {
+                              const d = new Date(selectedEvent.eventDate);
+                              const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+                              setRescheduleDate(`${kst.getUTCFullYear()}-${String(kst.getUTCMonth() + 1).padStart(2, '0')}-${String(kst.getUTCDate()).padStart(2, '0')}`);
+                            }
+                            setRescheduleTime(selectedEvent.start || '');
+                            setShowReschedule(true);
                           }}
                           style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${c.primary}`, background: c.primary, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                           <CalendarDays style={{ width: 13, height: 13 }} /> 변경
