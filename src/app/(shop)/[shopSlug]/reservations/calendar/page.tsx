@@ -62,6 +62,10 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
   const [closedDays, setClosedDays] = useState<string[]>([]); // 요일별 정기휴무 ['sun']
   const [holidays, setHolidays] = useState<string[]>([]); // 특정 날짜 휴무 ['2026-09-15']
 
+  // 실제 영업시간 (효율 계산용)
+  const [bizOpen, setBizOpen] = useState(10);
+  const [bizClose, setBizClose] = useState(20);
+
   useEffect(() => {
     fetch(`/api/shops/${shopSlug}/settings`)
       .then(r => r.ok ? r.json() : null)
@@ -74,6 +78,12 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
           dayKeys.forEach(k => { if (bh[k]?.closed) closed.push(k); });
           setClosedDays(closed);
           if (Array.isArray(bh._holidays)) setHolidays(bh._holidays);
+          // 영업시간 추출 (첫 번째 영업일 기준)
+          const firstOpen = dayKeys.find(k => bh[k] && !bh[k].closed);
+          if (firstOpen && bh[firstOpen]) {
+            setBizOpen(parseInt(bh[firstOpen].open?.split(':')[0] || '10'));
+            setBizClose(parseInt(bh[firstOpen].close?.split(':')[0] || '20'));
+          }
         } catch {}
       }).catch(() => {});
   }, [shopSlug]);
@@ -149,7 +159,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       const first = new Date(Math.min(...starts));
       const last = new Date(Math.max(...ends));
 
-      const totalMin = (CLOSE_HOUR - OPEN_HOUR) * 60;
+      const totalMin = (bizClose - bizOpen) * 60;
       const sorted = evts
         .map((e) => ({ s: new Date(e.startTime), e: new Date(e.endTime) }))
         .sort((a, b) => a.s.getTime() - b.s.getTime());
@@ -182,7 +192,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       };
     });
     return result;
-  }, [rawEvents, CLOSE_HOUR, OPEN_HOUR]);
+  }, [rawEvents, bizClose, bizOpen]);
 
   // 월간 뷰 날짜 셀에 요약 주입
   const handleDayCellDidMount = useCallback((arg: { date: Date; el: HTMLElement; view: { type: string } }) => {
@@ -256,7 +266,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       return;
     }
 
-    const totalMin = (CLOSE_HOUR - OPEN_HOUR) * 60;
+    const totalMin = (bizClose - bizOpen) * 60;
     const busyMin = totalMin - (s.freeH * 60 + s.freeM);
     const util = Math.round((busyMin / totalMin) * 100);
     // 5단계 효율 구간: 색상, 배경색, 라벨
@@ -336,7 +346,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     `;
 
     arg.el.appendChild(wrapper);
-  }, [summaryMap, c.primary, c.primaryLight, c.textOnPrimary, c.borderLight, c.text, c.textLight, CLOSE_HOUR, OPEN_HOUR, mob, isHoliday]);
+  }, [summaryMap, c.primary, c.primaryLight, c.textOnPrimary, c.borderLight, c.text, c.textLight, bizClose, bizOpen, mob, isHoliday]);
 
   // 주간/일간 요일 헤더에 뱃지+바 주입
   const injectHeaderSummary = useCallback((el: HTMLElement, dateStr: string) => {
@@ -359,7 +369,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     const s = map[dateStr];
     if (!s) return;
 
-    const totalMin = (CLOSE_HOUR - OPEN_HOUR) * 60;
+    const totalMin = (bizClose - bizOpen) * 60;
     const busyMin = totalMin - (s.freeH * 60 + s.freeM);
     const util = Math.round((busyMin / totalMin) * 100);
     const UTIL_LEVELS = [
@@ -404,7 +414,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       </div>
     `;
     el.appendChild(wrapper);
-  }, [summaryMap, c.primary, c.primaryLight, c.textOnPrimary, c.borderLight, CLOSE_HOUR, OPEN_HOUR, isHoliday]);
+  }, [summaryMap, c.primary, c.primaryLight, c.textOnPrimary, c.borderLight, bizClose, bizOpen, isHoliday]);
 
   const handleDayHeaderDidMount = useCallback((arg: { date: Date; el: HTMLElement; view: { type: string } }) => {
     if (arg.view.type === 'dayGridMonth') return;
@@ -837,7 +847,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
               {/* 요약 정보 */}
               {(() => {
-                const totalMin = (CLOSE_HOUR - OPEN_HOUR) * 60;
+                const totalMin = (bizClose - bizOpen) * 60;
                 const busyMin = s ? totalMin - (s.freeH * 60 + s.freeM) : 0;
                 const util = s ? Math.round((busyMin / totalMin) * 100) : 0;
                 const workStr = s ? `${String(s.workH).padStart(2,'0')}:${String(s.workM).padStart(2,'0')}` : '-';
