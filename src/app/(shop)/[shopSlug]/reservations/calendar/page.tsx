@@ -13,8 +13,9 @@ import { Clock, User, RefreshCw, Sparkles, ClipboardList, ChevronDown, CalendarD
 interface ReservationEvent {
   id: string;
   customerId?: string | null;
+  menuId?: string;
   customer?: { user?: { name: string; phone?: string | null; profileImage?: string | null; birthday?: string | null; gender?: string | null } };
-  menu?: { id?: string; name: string };
+  menu?: { id?: string; name: string; managementFields?: string | null };
   staff?: { user?: { name: string } };
   startTime: string;
   endTime: string;
