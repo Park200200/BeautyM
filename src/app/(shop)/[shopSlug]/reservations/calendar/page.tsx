@@ -1540,7 +1540,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                                     onClick={() => setShowRescheduleDatePicker(!showRescheduleDatePicker)}
                                     style={{ flex: 1, padding: '7px 4px', borderRadius: 8, border: `1px solid ${c.borderLight}`, background: '#fff', cursor: 'pointer', textAlign: 'center', fontSize: 12, fontWeight: 600, color: rescheduleDate ? c.text : c.textLight }}
                                   >
-                                    {rescheduleDate || '날짜 선택'}
+                                    {rescheduleDate ? (() => { const d = new Date(rescheduleDate + 'T00:00:00'); const day = ['일','월','화','수','목','금','토'][d.getDay()]; return `${d.getMonth()+1}.${d.getDate()} (${day})`; })() : '날짜 선택'}
                                   </div>
                                   <button type="button" onClick={() => {
                                     const d = rescheduleDate ? new Date(rescheduleDate) : new Date(); d.setDate(d.getDate() + 1);
