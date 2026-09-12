@@ -112,9 +112,10 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     CANCELLED: { bar: '#EF4444', bg: '#FEE2E2',  text: '#991B1B' },
     NO_SHOW:   { bar: '#DC2626', bg: '#FEE2E2',  text: '#991B1B' },
     REQUESTED: { bar: '#3B82F6', bg: '#DBEAFE',  text: '#1E40AF' },
+    IN_PROGRESS: { bar: '#F59E0B', bg: '#FEF3C7', text: '#92400E' },
   };
 
-  useEffect(() => {
+  const fetchReservations = useCallback(() => {
     fetch(`/api/shops/${shopSlug}/reservations`)
       .then(res => res.json())
       .then(data => {
@@ -139,6 +140,25 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shopSlug]);
+
+  useEffect(() => { fetchReservations(); }, [fetchReservations]);
+
+  // 예약 상태 변경
+  const changeReservationStatus = useCallback(async (reservationId: string, newStatus: string) => {
+    try {
+      const res = await fetch(`/api/shops/${shopSlug}/reservations/${reservationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        fetchReservations();
+        setSelectedEvent(prev => prev ? { ...prev, status: newStatus } : null);
+      }
+    } catch (e) {
+      console.error('상태 변경 실패:', e);
+    }
+  }, [shopSlug, fetchReservations]);
 
   // 일별 요약 맵
   const summaryMap = useCallback((): Record<string, DaySummary> => {
@@ -815,7 +835,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     : [];
 
   const STATUS_LABEL: Record<string, string> = {
-    CONFIRMED: '확정', PENDING: '대기', COMPLETED: '완료', CANCELLED: '취소', NO_SHOW: '노쇼', REQUESTED: '요청',
+    CONFIRMED: '확정', PENDING: '대기', COMPLETED: '완료', CANCELLED: '취소', NO_SHOW: '노쇼', REQUESTED: '요청', IN_PROGRESS: '시술중',
   };
 
   return (
@@ -1318,6 +1338,39 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: c.textLight }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Clock style={{ width: 12, height: 12 }} />{selectedEvent.start} - {selectedEvent.end}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><User style={{ width: 12, height: 12 }} /><span style={{ color: c.text, fontWeight: 500 }}>{selectedEvent.staff || '-'}</span></div>
+                </div>
+
+                {/* 상태 변경 버튼 */}
+                <div style={{ display: 'flex', gap: 5, marginTop: 10, flexWrap: 'wrap' }}>
+                  {([
+                    { key: 'CONFIRMED', label: '확정', bg: `${c.primary}15`, activeBg: c.primary, color: c.primary },
+                    { key: 'IN_PROGRESS', label: '시술중', bg: '#FEF3C7', activeBg: '#F59E0B', color: '#92400E' },
+                    { key: 'COMPLETED', label: '완료', bg: '#F0FDF4', activeBg: '#22C55E', color: '#166534' },
+                    { key: 'CANCELLED', label: '취소', bg: '#FEE2E2', activeBg: '#EF4444', color: '#991B1B' },
+                    { key: 'NO_SHOW', label: '노쇼', bg: '#FEE2E2', activeBg: '#DC2626', color: '#991B1B' },
+                  ] as const).map(s => {
+                    const isActive = selectedEvent.status === s.key;
+                    return (
+                      <button key={s.key}
+                        onClick={() => {
+                          if (isActive) return;
+                          const warns = ['CANCELLED', 'NO_SHOW', 'COMPLETED'];
+                          if (warns.includes(s.key)) {
+                            if (!confirm(`이 예약을 "${s.label}" 상태로 변경하시겠습니까?`)) return;
+                          }
+                          changeReservationStatus(selectedEvent.id, s.key);
+                        }}
+                        style={{
+                          flex: 1, minWidth: 50, padding: '6px 4px', borderRadius: 8, border: 'none', cursor: isActive ? 'default' : 'pointer',
+                          fontSize: 11, fontWeight: 700, transition: 'all .2s',
+                          background: isActive ? s.activeBg : s.bg,
+                          color: isActive ? '#fff' : s.color,
+                          opacity: isActive ? 1 : 0.8,
+                        }}>
+                        {isActive && '✓ '}{s.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
