@@ -1185,38 +1185,27 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             slotLabelFormat={{ hour: 'numeric', minute: '2-digit', hour12: true }}
             events={events}
             height="auto"
-            nowIndicator editable
+            nowIndicator editable eventDurationEditable={false}
+            snapDuration="00:10:00"
             eventDrop={async (info) => {
               const ev = info.event;
               const status = ev.extendedProps?.status;
-              // 과거/완료/취소/노쇼는 이동 불가
               if (status === 'COMPLETED' || status === 'CANCELLED' || status === 'NO_SHOW') {
                 info.revert(); return;
               }
               if (ev.start && ev.start < new Date() && status !== 'IN_PROGRESS') {
                 info.revert(); return;
               }
+              // 원래 duration 유지
+              const oldDuration = info.oldEvent.end && info.oldEvent.start
+                ? info.oldEvent.end.getTime() - info.oldEvent.start.getTime()
+                : 60 * 60000;
+              const newEnd = new Date(ev.start!.getTime() + oldDuration);
               try {
                 const res = await fetch(`/api/shops/${shopSlug}/reservations/${ev.id}`, {
                   method: 'PATCH',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ startTime: ev.start!.toISOString(), endTime: ev.end!.toISOString() }),
-                });
-                if (!res.ok) { info.revert(); return; }
-                fetchReservations();
-              } catch { info.revert(); }
-            }}
-            eventResize={async (info) => {
-              const ev = info.event;
-              const status = ev.extendedProps?.status;
-              if (status === 'COMPLETED' || status === 'CANCELLED' || status === 'NO_SHOW') {
-                info.revert(); return;
-              }
-              try {
-                const res = await fetch(`/api/shops/${shopSlug}/reservations/${ev.id}`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ startTime: ev.start!.toISOString(), endTime: ev.end!.toISOString() }),
+                  body: JSON.stringify({ startTime: ev.start!.toISOString(), endTime: newEnd.toISOString() }),
                 });
                 if (!res.ok) { info.revert(); return; }
                 fetchReservations();
