@@ -449,16 +449,18 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
   // 겹치는 이벤트 → 모든 예약 동시 표시 + 활성 강조 순환
   const overlapIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  useEffect(() => {
-    if (overlapIntervalRef.current) clearInterval(overlapIntervalRef.current);
+  const overlapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const setupOverlap = () => {
+  const setupOverlap = useCallback(() => {
+    if (overlapIntervalRef.current) clearInterval(overlapIntervalRef.current);
+    if (overlapTimerRef.current) clearTimeout(overlapTimerRef.current);
+
+    overlapTimerRef.current = setTimeout(() => {
       document.querySelectorAll('.bm-overlap-badge,.bm-overlap-content').forEach(el => el.remove());
 
       const harnesses = document.querySelectorAll('.fc-timegrid-event-harness') as NodeListOf<HTMLElement>;
       if (!harnesses.length) return;
 
-      // FC inset에서 top 위치 직접 파싱 (스크롤/offsetParent 무관)
       type HInfo = { el: HTMLElement; col: string; top: number; bottom: number; };
       const infos: HInfo[] = [];
       harnesses.forEach(h => {
@@ -466,10 +468,9 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         const insetStr = h.style.inset || '';
         const topPx = parseFloat(insetStr.split(' ')[0]) || 0;
         const height = h.getBoundingClientRect().height;
-        infos.push({ el: h, col, top: topPx, bottom: topPx + height });
+        if (height > 0) infos.push({ el: h, col, top: topPx, bottom: topPx + height });
       });
 
-      // 같은 날짜 컬럼에서 시간 겹치는 그룹
       const groups: HInfo[][] = [];
       const used = new Set<number>();
       for (let i = 0; i < infos.length; i++) {
@@ -479,8 +480,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         for (let j = i + 1; j < infos.length; j++) {
           if (used.has(j)) continue;
           if (infos[i].col !== infos[j].col) continue;
-          const overlap = group.some(g => g.top < infos[j].bottom - 2 && infos[j].top < g.bottom - 2);
-          if (overlap) { group.push(infos[j]); used.add(j); }
+          const ov = group.some(g => g.top < infos[j].bottom - 1 && infos[j].top < g.bottom - 1);
+          if (ov) { group.push(infos[j]); used.add(j); }
         }
         if (group.length > 1) groups.push(group);
       }
@@ -512,17 +513,11 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             });
           }
           if (idx === 0) {
-            // inset에 groupMinTop 포함 (top 별도 설정 불필요)
             info.el.style.inset = `${groupMinTop}px 0px auto 0px`;
             info.el.style.width = '100%';
             info.el.style.height = `${groupHeight}px`;
             info.el.style.zIndex = '15';
-            mainEvent.style.height = '100%';
-            mainEvent.style.minHeight = '100%';
-            mainEvent.style.position = 'relative';
-            mainEvent.style.overflow = 'hidden';
-            mainEvent.style.background = 'rgba(0,0,0,0.04)';
-            mainEvent.style.borderRadius = '6px';
+            mainEvent.style.cssText += `;height:100%;min-height:100%;position:relative;overflow:hidden;background:rgba(0,0,0,0.04);border-radius:6px;`;
             const origMain = mainEvent.querySelector('.fc-event-main') as HTMLElement;
             if (origMain) origMain.style.display = 'none';
           } else {
@@ -535,48 +530,26 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         // "중복 N건" 우상단 뱃지
         const topBadge = document.createElement('div');
         topBadge.className = 'bm-overlap-badge';
-        topBadge.style.cssText = `
-          position:absolute;top:4px;right:4px;
-          background:#EF4444;color:#fff;
-          font-size:10px;font-weight:800;
-          padding:2px 8px;border-radius:8px;
-          z-index:12;
-        `;
+        topBadge.style.cssText = `position:absolute;top:4px;right:4px;background:#EF4444;color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:8px;z-index:12;`;
         topBadge.textContent = `중복 ${items.length}건`;
         mainEvent.appendChild(topBadge);
 
         // 모든 예약을 시간 위치에 동시 배치
         const contentDiv = document.createElement('div');
         contentDiv.className = 'bm-overlap-content';
-        contentDiv.style.cssText = `position:absolute;top:0;left:0;right:0;bottom:0;z-index:11;`;
+        contentDiv.style.cssText = `position:absolute;top:0;left:0;right:0;bottom:0;z-index:11;overflow:hidden;`;
 
         items.forEach((item, idx) => {
           const isActive = idx === 0;
 
-          // 원숫자 뱃지
           const numEl = document.createElement('div');
-          numEl.style.cssText = `
-            position:absolute;top:${item.relTop + 4}px;left:6px;
-            width:18px;height:18px;border-radius:50%;
-            display:flex;align-items:center;justify-content:center;
-            font-size:11px;font-weight:900;z-index:2;
-            transition:all 0.4s ease;
-            background:${isActive ? '#EF4444' : 'rgba(0,0,0,0.15)'};
-            color:${isActive ? '#fff' : 'rgba(0,0,0,0.4)'};
-          `;
+          numEl.style.cssText = `position:absolute;top:${item.relTop + 4}px;left:6px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;z-index:2;transition:all 0.4s ease;background:${isActive ? '#EF4444' : 'rgba(0,0,0,0.15)'};color:${isActive ? '#fff' : 'rgba(0,0,0,0.4)'};`;
           numEl.textContent = String(idx + 1);
           contentDiv.appendChild(numEl);
           item.numEl = numEl;
 
-          // 예약 정보
           const itemEl = document.createElement('div');
-          itemEl.style.cssText = `
-            position:absolute;top:${item.relTop + 24}px;left:6px;right:6px;
-            transition:all 0.4s ease;
-            opacity:${isActive ? '1' : '0.4'};
-            transform:scale(${isActive ? '1' : '0.95'});
-            transform-origin:left top;
-          `;
+          itemEl.style.cssText = `position:absolute;top:${item.relTop + 24}px;left:6px;right:6px;transition:all 0.4s ease;opacity:${isActive ? '1' : '0.4'};transform:scale(${isActive ? '1' : '0.95'});transform-origin:left top;`;
           itemEl.innerHTML = `<div style="font-weight:${isActive ? '700' : '400'}">${item.content}</div>`;
           contentDiv.appendChild(itemEl);
           item.itemEl = itemEl;
@@ -588,7 +561,6 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
       if (cycleGroups.length === 0) return;
 
-      // 2초 간격 강조 순환
       overlapIntervalRef.current = setInterval(() => {
         cycleGroups.forEach(cg => {
           cg.current = (cg.current + 1) % cg.items.length;
@@ -607,14 +579,17 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
           });
         });
       }, 2000);
-    };
+    }, 300);
+  }, []);
 
-    const timer = setTimeout(setupOverlap, 600);
+  // rawEvents 변경 시 + cleanup
+  useEffect(() => {
+    setupOverlap();
     return () => {
-      clearTimeout(timer);
       if (overlapIntervalRef.current) clearInterval(overlapIntervalRef.current);
+      if (overlapTimerRef.current) clearTimeout(overlapTimerRef.current);
     };
-  }, [rawEvents]);
+  }, [rawEvents, setupOverlap]);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const adjustColWidths = useCallback(() => {}, []);
@@ -911,7 +886,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             dayCellDidMount={handleDayCellDidMount}
             dayHeaderDidMount={handleDayHeaderDidMount}
             fixedWeekCount={false}
-            datesSet={adjustColWidths}
+            datesSet={() => { adjustColWidths(); setupOverlap(); }}
             dateClick={handleDateClick}
             navLinks
             navLinkDayClick={(date) => {
