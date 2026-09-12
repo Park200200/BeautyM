@@ -1200,15 +1200,20 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
               const oldDuration = info.oldEvent.end && info.oldEvent.start
                 ? info.oldEvent.end.getTime() - info.oldEvent.start.getTime()
                 : 60 * 60000;
-              const newEnd = new Date(ev.start!.getTime() + oldDuration);
+              const newStart = ev.start!;
+              const newEnd = new Date(newStart.getTime() + oldDuration);
+              // 먼저 이벤트 종료시간 보정 (duration 유지)
+              ev.setEnd(newEnd);
               try {
                 const res = await fetch(`/api/shops/${shopSlug}/reservations/${ev.id}`, {
                   method: 'PATCH',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ startTime: ev.start!.toISOString(), endTime: newEnd.toISOString() }),
+                  body: JSON.stringify({ startTime: newStart.toISOString(), endTime: newEnd.toISOString() }),
                 });
                 if (!res.ok) { info.revert(); return; }
-                fetchReservations();
+                // 겹침 재계산
+                setTimeout(() => setupOverlap(true), 200);
+                setTimeout(() => setupOverlap(false), 800);
               } catch { info.revert(); }
             }}
             allDaySlot={false}
