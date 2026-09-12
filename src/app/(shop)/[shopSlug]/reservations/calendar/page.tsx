@@ -8,7 +8,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
 import { useIsMobile } from '@/hooks/useMediaQuery';
-import { Clock, User, RefreshCw, Sparkles, ClipboardList, ChevronDown } from 'lucide-react';
+import { Clock, User, RefreshCw, Sparkles, ClipboardList, ChevronDown, CalendarDays } from 'lucide-react';
 
 interface ReservationEvent {
   id: string;
@@ -1429,7 +1429,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                             } catch (e) { console.error(e); }
                           }}
                           style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${c.primary}`, background: c.primary, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                          📅 변경
+                          <CalendarDays style={{ width: 13, height: 13 }} /> 변경
                         </button>
                         <button
                           onClick={() => {
@@ -1472,7 +1472,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                       <div style={{ marginTop: 10 }}>
                         <div style={{ background: '#FEF3C7', borderRadius: 10, padding: '12px 14px', border: '1.5px solid #F59E0B' }}>
                           <div style={{ fontSize: 12, fontWeight: 700, color: '#92400E', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
-                            📝 시술 내용 기록
+                            <ClipboardList style={{ width: 13, height: 13 }} /> 시술 내용 기록
                           </div>
                           {fields.length > 0 && fields.map((field: string) => (
                             <div key={field} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
