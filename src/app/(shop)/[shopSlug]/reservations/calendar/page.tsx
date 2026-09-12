@@ -152,13 +152,19 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {
-        fetchReservations();
+        // 로컬 rawEvents 상태만 업데이트 (전체 리로드 방지 → 겹침 감지 유지)
+        setRawEvents(prev => prev.map(r => r.id === reservationId ? { ...r, status: newStatus } : r));
+        setEvents(prev => prev.map(ev => {
+          if (ev.id !== reservationId) return ev;
+          const sc = STATUS_COLORS[newStatus] || STATUS_COLORS.CONFIRMED;
+          return { ...ev, backgroundColor: sc.bg, borderColor: sc.bar, textColor: sc.text, extendedProps: { ...ev.extendedProps, status: newStatus } };
+        }));
         setSelectedEvent(prev => prev ? { ...prev, status: newStatus } : null);
       }
     } catch (e) {
       console.error('상태 변경 실패:', e);
     }
-  }, [shopSlug, fetchReservations]);
+  }, [shopSlug]);
 
   // 일별 요약 맵
   const summaryMap = useCallback((): Record<string, DaySummary> => {
