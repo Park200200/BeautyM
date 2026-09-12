@@ -10,36 +10,40 @@ export async function GET(req: Request, { params }: { params: Promise<{ shopSlug
   const { searchParams } = new URL(req.url);
   const customerId = searchParams.get('customerId');
 
-  // 지난 날짜의 활성 상태 예약 자동 정리
+  // 지난 날짜의 활성 상태 예약 자동 정리 (트랜잭션 없이 일괄 처리)
   const now = new Date();
-  const pastActiveReservations = await prisma.reservation.findMany({
-    where: {
-      shopId: shop.id,
-      endTime: { lt: now },
-      status: { in: ['CONFIRMED', 'IN_PROGRESS', 'PENDING', 'REQUESTED'] },
-    },
-    include: { customerRecord: true },
-  });
-
-  if (pastActiveReservations.length > 0) {
-    await prisma.$transaction(async (tx) => {
-      for (const r of pastActiveReservations) {
-        // CONFIRMED/IN_PROGRESS → 완료, PENDING/REQUESTED → 취소
-        const newStatus = ['CONFIRMED', 'IN_PROGRESS'].includes(r.status) ? 'COMPLETED' : 'CANCELLED';
-        await tx.reservation.update({ where: { id: r.id }, data: { status: newStatus } });
-
-        // 시술카드 자동 생성 (없는 경우만)
-        if (!r.customerRecord) {
-          const content = newStatus === 'COMPLETED' ? '시술 완료 (자동)' : '예약 취소 (미확정 자동)';
-          await tx.customerRecord.create({
-            data: { shopId: shop.id, customerId: r.customerId, staffId: r.staffId, reservationId: r.id, content },
-          });
-          if (newStatus === 'COMPLETED') {
-            await tx.shopMember.update({ where: { id: r.customerId }, data: { visitCount: { increment: 1 } } });
-          }
-        }
-      }
+  try {
+    // 1) 확정/시술중 → 완료
+    const completedIds = await prisma.reservation.findMany({
+      where: { shopId: shop.id, endTime: { lt: now }, status: { in: ['CONFIRMED', 'IN_PROGRESS'] } },
+      select: { id: true, customerId: true, staffId: true },
     });
+    if (completedIds.length > 0) {
+      await prisma.reservation.updateMany({
+        where: { id: { in: completedIds.map(r => r.id) } },
+        data: { status: 'COMPLETED' },
+      });
+      // 시술카드 생성 (이미 있는 것 제외)
+      const existingRecords = await prisma.customerRecord.findMany({
+        where: { reservationId: { in: completedIds.map(r => r.id) } },
+        select: { reservationId: true },
+      });
+      const existingSet = new Set(existingRecords.map(r => r.reservationId));
+      for (const r of completedIds.filter(r => !existingSet.has(r.id))) {
+        await prisma.customerRecord.create({
+          data: { shopId: shop.id, customerId: r.customerId, staffId: r.staffId, reservationId: r.id, content: '시술 완료 (자동)' },
+        });
+        await prisma.shopMember.update({ where: { id: r.customerId }, data: { visitCount: { increment: 1 } } });
+      }
+    }
+
+    // 2) 대기/요청 → 취소
+    await prisma.reservation.updateMany({
+      where: { shopId: shop.id, endTime: { lt: now }, status: { in: ['PENDING', 'REQUESTED'] } },
+      data: { status: 'CANCELLED' },
+    });
+  } catch (e) {
+    console.error('자동 정리 오류 (무시):', e);
   }
 
   const reservations = await prisma.reservation.findMany({
