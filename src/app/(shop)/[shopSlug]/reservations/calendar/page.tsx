@@ -714,11 +714,13 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         contentWrap.className = 'bm-overlap-content';
         contentWrap.style.cssText = `position:absolute;top:0;left:0;right:0;bottom:0;`;
 
+        const badgeH = 22; // 중복 뱃지 높이
         items.forEach((item, idx) => {
           const div = document.createElement('div');
+          const topOffset = idx === 0 ? item.relTop + badgeH : item.relTop;
           div.style.cssText = `
-            position:absolute;top:${item.relTop}px;left:0;right:0;
-            height:${item.height}px;box-sizing:border-box;
+            position:absolute;top:${topOffset}px;left:0;right:0;
+            height:${item.height - (idx === 0 ? badgeH : 0)}px;box-sizing:border-box;
             padding:2px 6px;overflow:hidden;cursor:pointer;
             transition:all 0.3s ease;
           `;
@@ -759,6 +761,9 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
           items.forEach((item, idx) => {
             if (!item.el) return;
             const isActive = idx === current;
+            // 활성 아이템은 뱃지 아래로 밀기
+            item.el.style.top = `${(isActive ? item.relTop + badgeH : item.relTop)}px`;
+            item.el.style.height = `${item.height - (isActive ? badgeH : 0)}px`;
             item.el.style.background = isActive
               ? `linear-gradient(to bottom, #fff ${textH}px, rgba(255,255,255,0.6) ${textH + 10}px, rgba(255,255,255,0) ${textH + 40}px)`
               : 'transparent';
