@@ -266,7 +266,37 @@ export default function CustomerDetailPage() {
   // 구매내역: COMPLETED 상태의 예약에서 메뉴 정보 추출
   const purchaseList = reservations
     .filter((r: any) => r.status === 'COMPLETED' && r.menu)
-    .map((r: any) => ({ id: r.id, menuId: r.menuId, menuName: r.menu?.name, price: r.menu?.price || 0, duration: r.menu?.duration || 0, date: r.startTime, staffName: r.staff?.user?.name }));
+    .map((r: any) => {
+      const totalSessions = r.menu?.sessions || 1;
+      // 해당 메뉴의 완료된 시술 카드 수
+      const completedSessions = records.filter((rec: any) => rec.reservation?.menuId === r.menuId).length;
+      const remainingSessions = Math.max(0, totalSessions - completedSessions);
+
+      // 예상 완료일: 해당 메뉴의 마지막 예약 날짜 기준으로 남은 횟수 × 평균 간격 추정
+      let estimatedCompletion = '';
+      if (remainingSessions > 0) {
+        const menuResvs = reservations
+          .filter((rv: any) => rv.menuId === r.menuId && rv.status !== 'CANCELLED')
+          .sort((a: any, b: any) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+        if (menuResvs.length >= 2) {
+          const first = new Date(menuResvs[0].startTime).getTime();
+          const last = new Date(menuResvs[menuResvs.length - 1].startTime).getTime();
+          const avgInterval = (last - first) / (menuResvs.length - 1);
+          const est = new Date(last + avgInterval * remainingSessions);
+          estimatedCompletion = `${est.getFullYear()}-${String(est.getMonth() + 1).padStart(2, '0')}-${String(est.getDate()).padStart(2, '0')}`;
+        } else if (menuResvs.length === 1) {
+          const base = new Date(menuResvs[0].startTime);
+          base.setDate(base.getDate() + 7 * remainingSessions);
+          estimatedCompletion = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}-${String(base.getDate()).padStart(2, '0')}`;
+        }
+      }
+
+      return {
+        id: r.id, menuId: r.menuId, menuName: r.menu?.name, price: r.menu?.price || 0,
+        duration: r.menu?.duration || 0, date: r.startTime, staffName: r.staff?.user?.name,
+        totalSessions, completedSessions, remainingSessions, estimatedCompletion,
+      };
+    });
 
   const tabs = [
     { id: 'records', label: '\uC2DC\uC220\uCE74\uB4DC', icon: FileText, count: records.length },
@@ -1002,6 +1032,24 @@ export default function CustomerDetailPage() {
                         <div className="font-semibold text-sm" style={{ color: c.text }}>{p.menuName}</div>
                         <div className="text-xs mt-0.5" style={{ color: c.textLight }}>
                           {formatDateTime(p.date)} {'·'} {p.duration}{'분'} {p.staffName && `· ${p.staffName}`}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{
+                            background: p.remainingSessions === 0 ? '#F0FDF4' : `${c.primary}15`,
+                            color: p.remainingSessions === 0 ? '#166534' : c.primary,
+                          }}>
+                            {p.remainingSessions === 0 ? '완료' : '시술중'} {p.completedSessions}/{p.totalSessions}회 {p.remainingSessions > 0 && `(${p.remainingSessions}회 남음)`}
+                          </span>
+                          {p.remainingSessions > 0 && p.estimatedCompletion && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-md" style={{ background: '#FEF3C7', color: '#92400E' }}>
+                              완료예정 {p.estimatedCompletion}
+                            </span>
+                          )}
+                          {p.remainingSessions === 0 && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-md" style={{ background: '#F0FDF4', color: '#166534' }}>
+                              ✓ 전체 완료
+                            </span>
+                          )}
                         </div>
                       </div>
                       <span className="text-sm font-bold" style={{ color: c.text }}>{'₩'}{p.price.toLocaleString()}</span>
