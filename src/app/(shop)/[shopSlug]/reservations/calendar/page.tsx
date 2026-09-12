@@ -1122,9 +1122,11 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
               const end = arg.event.end ? fmt(arg.event.end) : '';
               const phone = p.phone ? fmtPhone(p.phone) : '';
               const isSelected = selectedEvent?.id === arg.event.id;
+              const statusMap: Record<string, string> = { PENDING: '대기', REQUESTED: '요청', IN_PROGRESS: '시술중', COMPLETED: '완료', CANCELLED: '취소', NO_SHOW: '노쇼' };
+              const statusLabel = statusMap[p.status] || '';
+              const sc = STATUS_COLORS[p.status] || STATUS_COLORS.CONFIRMED;
 
               if (mob) {
-                // 모바일: 간결한 표시
                 return {
                   html: `
                     <div style="display:flex;flex-direction:column;gap:0;padding:1px 0;overflow:hidden;${isSelected ? 'opacity:1;' : ''}">
@@ -1138,8 +1140,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
               return {
                 html: `
-                  <div style="display:flex;flex-direction:column;gap:1px;padding:2px 0;overflow:hidden;${isSelected ? 'opacity:1;' : ''}">
-                    <div style="font-size:11px;opacity:.7;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${start} - ${end}</div>
+                  <div style="display:flex;flex-direction:column;gap:1px;padding:2px 0;overflow:hidden;position:relative;${isSelected ? 'opacity:1;' : ''}">
+                    <div style="font-size:11px;opacity:.7;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${start} - ${end}${statusLabel ? ` <span style="font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;background:${sc.bar};color:#fff;margin-left:3px">${statusLabel}</span>` : ''}</div>
                     <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.menu} <span style="font-weight:500;opacity:.7">(${p.session})</span></div>
                     <div style="font-size:11px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.customer}${phone ? ' ' + phone : ''}</div>
                   </div>
