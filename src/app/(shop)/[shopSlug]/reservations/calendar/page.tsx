@@ -1888,16 +1888,30 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         })();
         if (mob) return createPortal(<>
           <div onClick={() => setSelectedEvent(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9998 }} />
-          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 'calc(100dvh - 56px)', overflowY: 'auto', background: c.surface, borderRadius: '20px 20px 0 0', zIndex: 9999, boxShadow: '0 -10px 40px rgba(0,0,0,0.15)', animation: 'slideUp .25s ease-out' }}>
-            <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
+          <div
+            className="bm-popup-scroll"
+            style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 'calc(100dvh - 56px)', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', background: c.surface, borderRadius: '20px 20px 0 0', zIndex: 9999, boxShadow: '0 -10px 40px rgba(0,0,0,0.15)', animation: 'slideUp .25s ease-out', cursor: 'grab' } as any}
+            onMouseDown={e => { const el = e.currentTarget; el.dataset.dragging = 'true'; el.dataset.startY = String(e.clientY); el.dataset.scrollTop = String(el.scrollTop); el.style.cursor = 'grabbing'; }}
+            onMouseMove={e => { const el = e.currentTarget; if (el.dataset.dragging !== 'true') return; e.preventDefault(); el.scrollTop = Number(el.dataset.scrollTop) - (e.clientY - Number(el.dataset.startY)); }}
+            onMouseUp={e => { e.currentTarget.dataset.dragging = 'false'; e.currentTarget.style.cursor = 'grab'; }}
+            onMouseLeave={e => { e.currentTarget.dataset.dragging = 'false'; e.currentTarget.style.cursor = 'grab'; }}
+          >
+            <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}} .bm-popup-scroll::-webkit-scrollbar{display:none}`}</style>
             <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}><div style={{ width: 36, height: 4, borderRadius: 2, background: '#D1D5DB' }} /></div>
             {panelContent}
           </div>
         </>, document.body);
         return createPortal(<>
           <div onClick={() => setSelectedEvent(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 9998 }} />
-          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 380, maxHeight: '80vh', overflowY: 'auto', background: c.surface, borderRadius: 20, zIndex: 9999, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', animation: 'fadeIn .2s ease-out' }}>
-            <style>{`@keyframes fadeIn{from{opacity:0;transform:translate(-50%,-50%) scale(0.95)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}`}</style>
+          <div
+            className="bm-popup-scroll"
+            style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 380, maxHeight: '80vh', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', background: c.surface, borderRadius: 20, zIndex: 9999, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', animation: 'fadeIn .2s ease-out', cursor: 'grab' } as any}
+            onMouseDown={e => { const el = e.currentTarget; el.dataset.dragging = 'true'; el.dataset.startY = String(e.clientY); el.dataset.scrollTop = String(el.scrollTop); el.style.cursor = 'grabbing'; }}
+            onMouseMove={e => { const el = e.currentTarget; if (el.dataset.dragging !== 'true') return; e.preventDefault(); el.scrollTop = Number(el.dataset.scrollTop) - (e.clientY - Number(el.dataset.startY)); }}
+            onMouseUp={e => { e.currentTarget.dataset.dragging = 'false'; e.currentTarget.style.cursor = 'grab'; }}
+            onMouseLeave={e => { e.currentTarget.dataset.dragging = 'false'; e.currentTarget.style.cursor = 'grab'; }}
+          >
+            <style>{`@keyframes fadeIn{from{opacity:0;transform:translate(-50%,-50%) scale(0.95)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}} .bm-popup-scroll::-webkit-scrollbar{display:none}`}</style>
             {panelContent}
           </div>
         </>, document.body);
