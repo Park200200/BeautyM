@@ -750,12 +750,23 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             div.style.opacity = '0.3';
             div.style.fontWeight = '400';
           }
-          // 클릭: 활성→상세팝업, 비활성→활성으로 전환
+          // 클릭: 활성→오버레이 해제(개별 드래그 가능), 비활성→활성으로 전환
           div.addEventListener('click', (e) => {
             e.stopPropagation();
             e.preventDefault();
             if (idx === current) {
-              openDetail(item);
+              // 오버레이 해제 → 개별 카드 보이게
+              document.querySelectorAll('.bm-overlap-badge,.bm-overlap-content').forEach(el => el.remove());
+              document.querySelectorAll('.fc-timegrid-event-harness[data-bm-overlap]').forEach(h => {
+                const el = h as HTMLElement;
+                el.style.opacity = el.getAttribute('data-bm-orig-opacity') || '1';
+                el.style.zIndex = el.getAttribute('data-bm-orig-z') || '';
+                el.removeAttribute('data-bm-overlap');
+                el.removeAttribute('data-bm-orig-opacity');
+                el.removeAttribute('data-bm-orig-z');
+              });
+              // 5초 후 자동 재그룹핑
+              setTimeout(() => setupOverlap(true), 5000);
             } else {
               current = idx;
               updateActive();
