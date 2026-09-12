@@ -302,24 +302,17 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       pointer-events:none; font-size:9px; line-height:1.3;
     `;
 
-    // 5단계 프로그레스 바 세그먼트 생성
-    const segColors = UTIL_LEVELS.map(l => l.color);
-    const filledSegments = UTIL_LEVELS.findIndex(l => util >= l.min && util < l.max);
-    const activeIdx = filledSegments >= 0 ? filledSegments : 4;
-    const segmentsHtml = segColors.map((col, i) => {
-      const filled = i <= activeIdx;
-      const bgColor = filled ? utilColor : col;
-      const opacity = filled ? '1' : '0.15';
-      return `<div style="flex:1;height:100%;background:${bgColor};opacity:${opacity};${i === 0 ? 'border-radius:3px 0 0 3px;' : ''}${i === 4 ? 'border-radius:0 3px 3px 0;' : ''}"></div>`;
-    }).join('');
+    // 실제 %만큼 채워지는 단일 프로그레스 바
+    const barWidth = Math.min(util, 100);
+    const barHtml = `<div style="width:${barWidth}%;height:100%;background:${utilColor};border-radius:3px;transition:width 0.3s;"></div>`;
 
     // 아이콘 SVG (모바일용)
     const ico = (path: string, color: string) => `<svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg>`;
-    const icoBook = ico('M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', c.primary); // 예약
-    const icoStart = ico('M12 2v20M2 12l10-10M22 12l-10-10', '#10B981'); // 시작 (▶)
-    const icoEnd = ico('M18 6L6 18M6 6l12 12', '#EF4444'); // 종료 (✕)
-    const icoWork = ico('M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 6v6l4 2', '#6366F1'); // 근무 (시계)
-    const icoEff = ico('M18 20V10M12 20V4M6 20v-6', utilColor); // 효율 (차트)
+    const icoBook = ico('M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', c.primary);
+    const icoStart = ico('M12 2v20M2 12l10-10M22 12l-10-10', '#10B981');
+    const icoEnd = ico('M18 6L6 18M6 6l12 12', '#EF4444');
+    const icoWork = ico('M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 6v6l4 2', '#6366F1');
+    const icoEff = ico('M18 20V10M12 20V4M6 20v-6', utilColor);
 
     const lbl = (icon: string, label: string) => mob ? icon : `<span>${label}</span>`;
 
@@ -340,8 +333,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         ${lbl(icoEff, '효율')}
         <span style="font-weight:800;color:${utilColor};font-size:10px">${util}% <span style="font-size:8px;font-weight:600;opacity:0.8">${level.label}</span></span>
       </div>
-      <div style="width:100%;height:6px;border-radius:3px;background:${c.borderLight};overflow:hidden;margin-top:2px;display:flex;gap:1px">
-        ${segmentsHtml}
+      <div style="width:100%;height:6px;border-radius:3px;background:${c.borderLight};overflow:hidden;margin-top:2px;">
+        ${barHtml}
       </div>
     `;
 
