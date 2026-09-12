@@ -1446,8 +1446,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             {/* 닫기 */}
             <button onClick={() => setSelectedEvent(null)} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: c.textLight, padding: 4, lineHeight: 1, zIndex: 1 }}>✕</button>
 
-            {/* 프로필 헤더 */}
-            <div style={{ padding: '20px 24px 16px', display: 'flex', alignItems: 'center', gap: 14, background: `linear-gradient(180deg, ${c.primaryLight}40 0%, transparent 100%)` }}>
+            {/* 프로필 헤더 - 고정 */}
+            <div className="bm-popup-header" style={{ padding: '20px 24px 16px', display: 'flex', alignItems: 'center', gap: 14, background: `linear-gradient(180deg, ${c.primaryLight}40 0%, ${c.surface} 100%)`, flexShrink: 0 }}>
               {selectedEvent.profileImage ? (
                 <img src={selectedEvent.profileImage} alt="" style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: `2px solid ${c.surface}`, boxShadow: '0 3px 10px rgba(0,0,0,0.1)' }} />
               ) : (
@@ -1460,6 +1460,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
               </div>
             </div>
 
+            {/* 스크롤 가능 영역 */}
+            <div className="bm-popup-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' } as any}>
             {/* 선택된 예약 카드 */}
             <div style={{ padding: '0 20px', marginTop: -4 }}>
               <div style={{ borderRadius: 14, padding: '14px 18px', background: c.surface, border: `1px solid ${c.borderLight}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
@@ -1883,35 +1885,22 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 </div>
               )}
             </div>
+            </div>{/* bm-popup-body end */}
           </>
           );
         })();
         if (mob) return createPortal(<>
           <div onClick={() => setSelectedEvent(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9998 }} />
-          <div
-            className="bm-popup-scroll"
-            style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 'calc(100dvh - 56px)', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', background: c.surface, borderRadius: '20px 20px 0 0', zIndex: 9999, boxShadow: '0 -10px 40px rgba(0,0,0,0.15)', animation: 'slideUp .25s ease-out', cursor: 'grab' } as any}
-            onMouseDown={e => { const el = e.currentTarget; el.dataset.dragging = 'true'; el.dataset.startY = String(e.clientY); el.dataset.scrollTop = String(el.scrollTop); el.style.cursor = 'grabbing'; }}
-            onMouseMove={e => { const el = e.currentTarget; if (el.dataset.dragging !== 'true') return; e.preventDefault(); el.scrollTop = Number(el.dataset.scrollTop) - (e.clientY - Number(el.dataset.startY)); }}
-            onMouseUp={e => { e.currentTarget.dataset.dragging = 'false'; e.currentTarget.style.cursor = 'grab'; }}
-            onMouseLeave={e => { e.currentTarget.dataset.dragging = 'false'; e.currentTarget.style.cursor = 'grab'; }}
-          >
-            <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}} .bm-popup-scroll::-webkit-scrollbar{display:none}`}</style>
+          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 'calc(100dvh - 56px)', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: c.surface, borderRadius: '20px 20px 0 0', zIndex: 9999, boxShadow: '0 -10px 40px rgba(0,0,0,0.15)', animation: 'slideUp .25s ease-out' }}>
+            <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}} .bm-popup-body::-webkit-scrollbar{display:none}`}</style>
             <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}><div style={{ width: 36, height: 4, borderRadius: 2, background: '#D1D5DB' }} /></div>
             {panelContent}
           </div>
         </>, document.body);
         return createPortal(<>
           <div onClick={() => setSelectedEvent(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 9998 }} />
-          <div
-            className="bm-popup-scroll"
-            style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 380, maxHeight: '80vh', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', background: c.surface, borderRadius: 20, zIndex: 9999, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', animation: 'fadeIn .2s ease-out', cursor: 'grab' } as any}
-            onMouseDown={e => { const el = e.currentTarget; el.dataset.dragging = 'true'; el.dataset.startY = String(e.clientY); el.dataset.scrollTop = String(el.scrollTop); el.style.cursor = 'grabbing'; }}
-            onMouseMove={e => { const el = e.currentTarget; if (el.dataset.dragging !== 'true') return; e.preventDefault(); el.scrollTop = Number(el.dataset.scrollTop) - (e.clientY - Number(el.dataset.startY)); }}
-            onMouseUp={e => { e.currentTarget.dataset.dragging = 'false'; e.currentTarget.style.cursor = 'grab'; }}
-            onMouseLeave={e => { e.currentTarget.dataset.dragging = 'false'; e.currentTarget.style.cursor = 'grab'; }}
-          >
-            <style>{`@keyframes fadeIn{from{opacity:0;transform:translate(-50%,-50%) scale(0.95)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}} .bm-popup-scroll::-webkit-scrollbar{display:none}`}</style>
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 380, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: c.surface, borderRadius: 20, zIndex: 9999, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', animation: 'fadeIn .2s ease-out' }}>
+            <style>{`@keyframes fadeIn{from{opacity:0;transform:translate(-50%,-50%) scale(0.95)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}} .bm-popup-body::-webkit-scrollbar{display:none}`}</style>
             {panelContent}
           </div>
         </>, document.body);
