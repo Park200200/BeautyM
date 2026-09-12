@@ -497,6 +497,11 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         const mainEvent = main.el.querySelector('.fc-timegrid-event') as HTMLElement;
         if (!mainEvent) return;
 
+        // 그룹 전체 시간 범위 계산 (가장 빠른 시작 ~ 가장 늦은 종료)
+        const groupMinTop = Math.min(...group.map(g => g.top));
+        const groupMaxBottom = Math.max(...group.map(g => g.bottom));
+        const groupHeight = groupMaxBottom - groupMinTop;
+
         // 모든 이벤트의 콘텐츠 수집
         const contents: string[] = [];
         group.forEach((info, idx) => {
@@ -504,11 +509,20 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
           if (eventMain) contents.push(eventMain.innerHTML);
 
           if (idx === 0) {
-            // 첫 번째: 전체 너비
-            const insetParts = info.origInset.split(' ');
-            info.el.style.inset = `${insetParts[0] || '0px'} 0px auto 0px`;
+            // 첫 번째: 전체 너비 + 그룹 전체 범위로 확장
+            const parentEl = info.el.offsetParent as HTMLElement;
+            const parentH = parentEl ? parentEl.getBoundingClientRect().height : 1;
+            const topPct = (groupMinTop / parentH) * 100;
+            info.el.style.inset = `0px 0px auto 0px`;
+            info.el.style.top = `${groupMinTop}px`;
             info.el.style.width = '100%';
+            info.el.style.height = `${groupHeight}px`;
             info.el.style.zIndex = '15';
+            // 내부 이벤트도 높이 확장
+            if (mainEvent) {
+              mainEvent.style.height = '100%';
+              mainEvent.style.minHeight = '100%';
+            }
           } else {
             // 나머지: 숨김
             info.el.style.display = 'none';
