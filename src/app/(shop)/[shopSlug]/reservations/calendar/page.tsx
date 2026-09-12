@@ -366,21 +366,14 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     const busyMin = totalMin - (s.freeH * 60 + s.freeM);
     const util = Math.round((busyMin / totalMin) * 100);
     const UTIL_LEVELS = [
-      { min: 0,  max: 20,  color: '#93C5FD' },
-      { min: 20, max: 40,  color: '#6EE7B7' },
-      { min: 40, max: 60,  color: '#FCD34D' },
-      { min: 60, max: 80,  color: '#FB923C' },
-      { min: 80, max: 101, color: '#EF4444' },
+      { min: 0,  max: 20,  color: '#93C5FD', label: '여유' },
+      { min: 20, max: 40,  color: '#6EE7B7', label: '보통' },
+      { min: 40, max: 60,  color: '#FCD34D', label: '적정' },
+      { min: 60, max: 80,  color: '#FB923C', label: '바쁨' },
+      { min: 80, max: 101, color: '#EF4444', label: '풀' },
     ];
-    const activeIdx = UTIL_LEVELS.findIndex(l => util >= l.min && util < l.max);
-    const idx = activeIdx >= 0 ? activeIdx : 4;
-    const activeColor = UTIL_LEVELS[idx].color;
-    const segmentsHtml = UTIL_LEVELS.map((l, i) => {
-      const filled = i <= idx;
-      const bgColor = filled ? activeColor : l.color;
-      const opacity = filled ? '1' : '0.15';
-      return `<div style="flex:1;height:100%;background:${bgColor};opacity:${opacity};${i === 0 ? 'border-radius:2px 0 0 2px;' : ''}${i === 4 ? 'border-radius:0 2px 2px 0;' : ''}"></div>`;
-    }).join('');
+    const level = UTIL_LEVELS.find(l => util >= l.min && util < l.max) || UTIL_LEVELS[4];
+    const barWidth = Math.min(util, 100);
 
     const wrapper = document.createElement('div');
     wrapper.className = 'bm-header-summary';
@@ -397,13 +390,14 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     }
 
     wrapper.innerHTML = `
-      <div style="
-        display:inline-flex;align-items:center;gap:4px;
-        color:${c.textLight};
-        font-size:9px;font-weight:400;
-      ">${s.firstTime}~${s.lastTime}</div>
-      <div style="width:80%;height:4px;border-radius:2px;background:${c.borderLight};overflow:hidden;display:flex;gap:1px">
-        ${segmentsHtml}
+      <div style="display:inline-flex;align-items:center;gap:4px;color:${c.textLight};font-size:9px;font-weight:400;">
+        ${s.firstTime}~${s.lastTime}
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;width:90%;">
+        <div style="flex:1;height:6px;border-radius:3px;background:${c.borderLight};overflow:hidden;">
+          <div style="width:${barWidth}%;height:100%;background:${level.color};border-radius:3px;"></div>
+        </div>
+        <span style="font-size:9px;font-weight:700;color:${level.color};white-space:nowrap;">${util}%</span>
       </div>
     `;
     el.appendChild(wrapper);
