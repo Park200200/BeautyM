@@ -458,17 +458,18 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       const harnesses = document.querySelectorAll('.fc-timegrid-event-harness') as NodeListOf<HTMLElement>;
       if (!harnesses.length) return;
 
-      type HInfo = { el: HTMLElement; col: string; top: number; bottom: number; origInset: string; };
+      // FC inset에서 top 위치 직접 파싱 (스크롤/offsetParent 무관)
+      type HInfo = { el: HTMLElement; col: string; top: number; bottom: number; };
       const infos: HInfo[] = [];
       harnesses.forEach(h => {
         const col = h.closest('.fc-timegrid-col')?.getAttribute('data-date') || '';
-        const rect = h.getBoundingClientRect();
-        const parentRect = h.offsetParent?.getBoundingClientRect();
-        const actualTop = parentRect ? rect.top - parentRect.top : 0;
-        const actualBottom = parentRect ? rect.bottom - parentRect.top : rect.height;
-        infos.push({ el: h, col, top: actualTop, bottom: actualBottom, origInset: h.style.inset || '' });
+        const insetStr = h.style.inset || '';
+        const topPx = parseFloat(insetStr.split(' ')[0]) || 0;
+        const height = h.getBoundingClientRect().height;
+        infos.push({ el: h, col, top: topPx, bottom: topPx + height });
       });
 
+      // 같은 날짜 컬럼에서 시간 겹치는 그룹
       const groups: HInfo[][] = [];
       const used = new Set<number>();
       for (let i = 0; i < infos.length; i++) {
@@ -478,7 +479,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         for (let j = i + 1; j < infos.length; j++) {
           if (used.has(j)) continue;
           if (infos[i].col !== infos[j].col) continue;
-          const overlap = group.some(g => g.top < infos[j].bottom && infos[j].top < g.bottom);
+          const overlap = group.some(g => g.top < infos[j].bottom - 2 && infos[j].top < g.bottom - 2);
           if (overlap) { group.push(infos[j]); used.add(j); }
         }
         if (group.length > 1) groups.push(group);
@@ -511,8 +512,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             });
           }
           if (idx === 0) {
-            info.el.style.inset = `0px 0px auto 0px`;
-            info.el.style.top = `${groupMinTop}px`;
+            // inset에 groupMinTop 포함 (top 별도 설정 불필요)
+            info.el.style.inset = `${groupMinTop}px 0px auto 0px`;
             info.el.style.width = '100%';
             info.el.style.height = `${groupHeight}px`;
             info.el.style.zIndex = '15';
@@ -522,7 +523,6 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             mainEvent.style.overflow = 'hidden';
             mainEvent.style.background = 'rgba(0,0,0,0.04)';
             mainEvent.style.borderRadius = '6px';
-            // 기존 fc-event-main 내용 숨김
             const origMain = mainEvent.querySelector('.fc-event-main') as HTMLElement;
             if (origMain) origMain.style.display = 'none';
           } else {
