@@ -45,7 +45,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [rawEvents, setRawEvents] = useState<ReservationEvent[]>([]);
   const [mounted, setMounted] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<{ id: string; menu: string; customer: string; phone: string; staff: string; status: string; session: string; start: string; end: string; customerId: string; menuName: string; profileImage: string; birthday: string; gender: string; eventDate?: string; managementFields?: any[]; managementData?: Record<string, string>; enablePhotos?: boolean } | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<{ id: string; menu: string; customer: string; phone: string; staff: string; status: string; session: string; start: string; end: string; customerId: string; menuName: string; profileImage: string; birthday: string; gender: string; eventDate?: string; managementFields?: any[]; managementGroups?: { treatmentName: string; steps: any[] }[]; managementData?: Record<string, string>; enablePhotos?: boolean } | null>(null);
   const [treatmentData, setTreatmentData] = useState<Record<string, string>>({});
   const [treatmentMemo, setTreatmentMemo] = useState('');
   const [showTreatmentForm, setShowTreatmentForm] = useState(false);
@@ -137,19 +137,23 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             const staffName = r.staff?.user?.name || '';
             const session = `${r.currentSession || 1}/${r.totalSessions || 1}`;
             let mgmtFields: any[] = [];
-            // 1) Treatment의 processSteps에서 시술과정 가져오기
+            let mgmtGroups: { treatmentName: string; steps: any[] }[] = [];
+            // 1) Treatment의 processSteps에서 시술과정 가져오기 (시술별 그룹)
             try {
               const mts = (r as any).menu?.menuTreatments || [];
               for (const mt of mts) {
                 if (mt.treatment?.processSteps) {
                   const steps = typeof mt.treatment.processSteps === 'string' ? JSON.parse(mt.treatment.processSteps) : mt.treatment.processSteps;
-                  if (Array.isArray(steps)) mgmtFields.push(...steps);
+                  if (Array.isArray(steps) && steps.length > 0) {
+                    mgmtGroups.push({ treatmentName: mt.treatment.name || '시술', steps });
+                    mgmtFields.push(...steps);
+                  }
                 }
               }
             } catch {}
             // 2) Menu의 managementFields (보조 - processSteps가 없을 때)
             if (mgmtFields.length === 0) {
-              try { if (r.menu?.managementFields) { const parsed = typeof r.menu.managementFields === 'string' ? JSON.parse(r.menu.managementFields) : r.menu.managementFields; if (Array.isArray(parsed)) mgmtFields = parsed; } } catch {}
+              try { if (r.menu?.managementFields) { const parsed = typeof r.menu.managementFields === 'string' ? JSON.parse(r.menu.managementFields) : r.menu.managementFields; if (Array.isArray(parsed)) { mgmtFields = parsed; mgmtGroups = [{ treatmentName: '', steps: parsed }]; } } } catch {}
             }
             // enablePhotos 플래그 확인 (Menu 또는 Treatment에서)
             let enablePhotos = !!(r.menu as any)?.enablePhotos;
@@ -161,7 +165,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
               title: menuName,
               start: r.startTime, end: r.endTime,
               backgroundColor: sc.bg, borderColor: sc.bar, textColor: sc.text,
-              extendedProps: { menu: menuName, customer: custName, phone: custPhone, staff: staffName, status: r.status, session, customerId: r.customerId || '', menuName, profileImage: r.customer?.user?.profileImage || '', birthday: r.customer?.user?.birthday || '', gender: r.customer?.user?.gender || '', menuId: r.menuId || '', managementFields: mgmtFields, managementData: mgmtData, enablePhotos },
+              extendedProps: { menu: menuName, customer: custName, phone: custPhone, staff: staffName, status: r.status, session, customerId: r.customerId || '', menuName, profileImage: r.customer?.user?.profileImage || '', birthday: r.customer?.user?.birthday || '', gender: r.customer?.user?.gender || '', menuId: r.menuId || '', managementFields: mgmtFields, managementGroups: mgmtGroups, managementData: mgmtData, enablePhotos },
             };
           }));
         }
@@ -726,6 +730,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             profileImage: p.profileImage, birthday: p.birthday, gender: p.gender,
             eventDate: ev.start?.toISOString() || '',
             managementFields: p.managementFields || [],
+            managementGroups: p.managementGroups || [],
             managementData: p.managementData || {},
             enablePhotos: p.enablePhotos || false,
           });
@@ -1192,6 +1197,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 profileImage: p.profileImage, birthday: p.birthday, gender: p.gender,
                 eventDate: info.event.start?.toISOString() || '',
                 managementFields: p.managementFields || [],
+                managementGroups: p.managementGroups || [],
                 managementData: p.managementData || {},
                 enablePhotos: p.enablePhotos || false,
               });
@@ -1553,7 +1559,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                     );
                   }
 
-                  // 완료 상태: 시술 내용 표시 (읽기 전용) + 수정 버튼
+                  // 완료 상태: 관리 내용 표시 (읽기 전용) + 수정 버튼
                   if (selectedEvent.status === 'COMPLETED' && !showTreatmentForm) {
                     const mgmt = selectedEvent.managementData || {};
                     const fields = Object.entries(mgmt).filter(([k]) => !k.startsWith('_'));
@@ -1564,7 +1570,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                         {hasData ? (
                           <div style={{ background: '#F0FDF4', borderRadius: 10, padding: '12px 14px', border: '1.5px solid #86EFAC' }}>
                             <div style={{ fontSize: 12, fontWeight: 700, color: '#166534', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
-                              <ClipboardList style={{ width: 13, height: 13 }} /> 시술 내용
+                              <ClipboardList style={{ width: 13, height: 13 }} /> 관리 내용
                             </div>
                             {fields.map(([key, val]) => (
                               <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -1597,7 +1603,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                           </div>
                         ) : (
                           <div style={{ background: '#F3F4F6', borderRadius: 10, padding: '10px 14px', textAlign: 'center', color: '#6B7280', fontSize: 12 }}>
-                            시술 내용이 기록되지 않았습니다
+                            관리 내용이 기록되지 않았습니다
                           </div>
                         )}
                         <button
@@ -1617,13 +1623,13 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                             setShowTreatmentForm(true);
                           }}
                           style={{ width: '100%', marginTop: 8, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${c.primary}`, background: '#fff', color: c.primary, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-                          <ClipboardList style={{ width: 13, height: 13 }} /> {hasData ? '시술 내용 수정' : '시술 내용 추가'}
+                          <ClipboardList style={{ width: 13, height: 13 }} /> {hasData ? '관리 내용 수정' : '관리 내용 추가'}
                         </button>
                       </div>
                     );
                   }
 
-                  // 시술중 상태이거나 폼 표시 상태: 시술 내용 입력 폼
+                  // 시술중 상태이거나 폼 표시 상태: 관리 내용 입력 폼
                   if (selectedEvent.status === 'IN_PROGRESS' || showTreatmentForm) {
                     const fields = selectedEvent.managementFields || [];
                     // showTreatmentForm이 열릴 때 기본값 자동 채우기
@@ -1639,25 +1645,57 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                       <div style={{ marginTop: 10 }}>
                         <div style={{ background: '#FEF3C7', borderRadius: 10, padding: '12px 14px', border: '1.5px solid #F59E0B' }}>
                           <div style={{ fontSize: 12, fontWeight: 700, color: '#92400E', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <ClipboardList style={{ width: 13, height: 13 }} /> 시술 내용 기록
+                            <ClipboardList style={{ width: 13, height: 13 }} /> 관리 내용 기록
                           </div>
-                          {fields.length > 0 && fields.map((field: any, idx: number) => {
-                            const name = typeof field === 'object' ? field.name : String(field);
-                            const unit = typeof field === 'object' ? field.unit : '';
-                            return (
-                              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                                <label style={{ fontSize: 12, fontWeight: 600, color: '#78350F', minWidth: 90, whiteSpace: 'nowrap' }}>{name}</label>
-                                <span style={{ color: '#92400E', fontSize: 12 }}>=</span>
-                                <input
-                                  value={treatmentData[name] || ''}
-                                  onChange={e => setTreatmentData(prev => ({ ...prev, [name]: e.target.value }))}
-                                  placeholder={typeof field === 'object' ? field.value : ''}
-                                  style={{ width: 60, padding: '5px 8px', borderRadius: 6, border: '1px solid #D1D5DB', fontSize: 12, outline: 'none', textAlign: 'center', fontWeight: 700 }}
-                                />
-                                {unit && <span style={{ fontSize: 11, color: '#78350F', fontWeight: 500 }}>{unit}</span>}
-                              </div>
-                            );
-                          })}
+                          {fields.length > 0 && (() => {
+                            const groups = selectedEvent.managementGroups || [];
+                            if (groups.length > 0) {
+                              return groups.map((group, gi) => (
+                                <div key={gi} style={{ marginBottom: gi < groups.length - 1 ? 10 : 0 }}>
+                                  {group.treatmentName && (
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: '#B45309', marginBottom: 5, paddingBottom: 3, borderBottom: '1px solid #FDE68A', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                      <Sparkles style={{ width: 11, height: 11 }} />{group.treatmentName}
+                                    </div>
+                                  )}
+                                  {group.steps.map((field: any, idx: number) => {
+                                    const name = typeof field === 'object' ? field.name : String(field);
+                                    const unit = typeof field === 'object' ? field.unit : '';
+                                    return (
+                                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+                                        <label style={{ fontSize: 12, fontWeight: 600, color: '#78350F', minWidth: 90, whiteSpace: 'nowrap' }}>{name}</label>
+                                        <span style={{ color: '#92400E', fontSize: 12 }}>=</span>
+                                        <input
+                                          value={treatmentData[name] || ''}
+                                          onChange={e => setTreatmentData(prev => ({ ...prev, [name]: e.target.value }))}
+                                          placeholder={typeof field === 'object' ? field.value : ''}
+                                          style={{ width: 60, padding: '5px 8px', borderRadius: 6, border: '1px solid #D1D5DB', fontSize: 12, outline: 'none', textAlign: 'center', fontWeight: 700 }}
+                                        />
+                                        {unit && <span style={{ fontSize: 11, color: '#78350F', fontWeight: 500 }}>{unit}</span>}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ));
+                            }
+                            // fallback: 그룹 없으면 flat
+                            return fields.map((field: any, idx: number) => {
+                              const name = typeof field === 'object' ? field.name : String(field);
+                              const unit = typeof field === 'object' ? field.unit : '';
+                              return (
+                                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                                  <label style={{ fontSize: 12, fontWeight: 600, color: '#78350F', minWidth: 90, whiteSpace: 'nowrap' }}>{name}</label>
+                                  <span style={{ color: '#92400E', fontSize: 12 }}>=</span>
+                                  <input
+                                    value={treatmentData[name] || ''}
+                                    onChange={e => setTreatmentData(prev => ({ ...prev, [name]: e.target.value }))}
+                                    placeholder={typeof field === 'object' ? field.value : ''}
+                                    style={{ width: 60, padding: '5px 8px', borderRadius: 6, border: '1px solid #D1D5DB', fontSize: 12, outline: 'none', textAlign: 'center', fontWeight: 700 }}
+                                  />
+                                  {unit && <span style={{ fontSize: 11, color: '#78350F', fontWeight: 500 }}>{unit}</span>}
+                                </div>
+                              );
+                            });
+                          })()}
                           <textarea
                             value={treatmentMemo}
                             onChange={e => setTreatmentMemo(e.target.value)}
@@ -1710,7 +1748,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                         <div style={{ display: 'flex', gap: 5, marginTop: 8 }}>
                           <button
                             onClick={async () => {
-                              if (!confirm(selectedEvent.status === 'COMPLETED' ? '시술 내용을 저장하시겠습니까?' : '시술을 완료 처리하시겠습니까?')) return;
+                              if (!confirm(selectedEvent.status === 'COMPLETED' ? '관리 내용을 저장하시겠습니까?' : '시술을 완료 처리하시겠습니까?')) return;
                               const mgmtData: Record<string, string> = { ...treatmentData, _memo: treatmentMemo };
                               if (beforePhoto) mgmtData._beforePhoto = beforePhoto;
                               if (afterPhoto) mgmtData._afterPhoto = afterPhoto;
