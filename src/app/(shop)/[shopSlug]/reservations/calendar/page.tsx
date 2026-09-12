@@ -659,8 +659,51 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     };
   }, [rawEvents, setupOverlap]);
 
+  // 건수 뱃지 줄바꿈 동기화: 하나라도 줄바꿈이면 모두 줄바꿈
+  const syncBadgeLayout = useCallback(() => {
+    requestAnimationFrame(() => {
+      const badges = document.querySelectorAll('.bm-count-badge') as NodeListOf<HTMLElement>;
+      if (badges.length === 0) return;
+
+      // 먼저 모든 cushion을 wrap 모드로 리셋
+      badges.forEach(badge => {
+        const parent = badge.parentElement as HTMLElement;
+        if (parent) {
+          parent.style.flexDirection = '';
+        }
+      });
+
+      // 줄바꿈 여부 확인
+      let anyWrapped = false;
+      badges.forEach(badge => {
+        const parent = badge.parentElement;
+        if (!parent) return;
+        const textEl = parent.querySelector('a, span:not(.bm-count-badge)') as HTMLElement;
+        if (textEl && badge.offsetTop > textEl.offsetTop + 2) {
+          anyWrapped = true;
+        }
+      });
+
+      if (anyWrapped) {
+        badges.forEach(badge => {
+          const parent = badge.parentElement as HTMLElement;
+          if (parent) {
+            parent.style.flexDirection = 'column';
+          }
+        });
+      }
+    });
+  }, []);
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const adjustColWidths = useCallback(() => {}, []);
+  const adjustColWidths = useCallback(() => { syncBadgeLayout(); }, [syncBadgeLayout]);
+
+  // 윈도우 리사이즈 시 뱃지 동기화
+  useEffect(() => {
+    const handleResize = () => syncBadgeLayout();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [syncBadgeLayout]);
 
   // dateClick: 싱글클릭 → 셀 강조, 더블클릭 → 일간 뷰
   const lastClickRef = useRef<{ date: string; time: number }>({ date: '', time: 0 });
