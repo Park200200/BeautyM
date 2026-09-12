@@ -172,7 +172,6 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         } else if (newStatus === 'CONFIRMED') {
           // 되돌리기 → 전체 리로드하여 이벤트 복원
           fetchReservations();
-          setTimeout(() => { setupOverlap(); }, 500);
         } else {
           // FC 이벤트 속성 직접 변경
           const sc = STATUS_COLORS[newStatus] || STATUS_COLORS.CONFIRMED;
@@ -190,7 +189,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     } catch (e) {
       console.error('상태 변경 실패:', e);
     }
-  }, [shopSlug, fetchReservations, setupOverlap]);
+  }, [shopSlug, fetchReservations]);
 
   // 일별 요약 맵
   const summaryMap = useCallback((): Record<string, DaySummary> => {
