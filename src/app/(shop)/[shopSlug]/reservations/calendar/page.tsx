@@ -135,8 +135,9 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     rawEvents
       .filter((r) => r.status !== 'CANCELLED')
       .forEach((r) => {
-        const d = new Date(r.startTime);
-        const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        // KST(UTC+9) 보정된 날짜 키 사용
+        const d = new Date(new Date(r.startTime).getTime() + 9 * 60 * 60 * 1000);
+        const day = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
         if (!dayMap[day]) dayMap[day] = [];
         dayMap[day].push(r);
       });
@@ -163,7 +164,10 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       const busyMin = merged.reduce((sum, m) => sum + (m.e.getTime() - m.s.getTime()) / 60000, 0);
       const freeMin = Math.max(0, totalMin - busyMin);
 
-      const fmt = (d: Date) => `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+      const fmt = (d: Date) => {
+        const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+        return `${kst.getUTCHours()}:${String(kst.getUTCMinutes()).padStart(2, '0')}`;
+      };
 
       const workMin = Math.round((last.getTime() - first.getTime()) / 60000);
 
