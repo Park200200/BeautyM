@@ -1533,7 +1533,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                     );
                   }
 
-                  // 완료 상태: 시술 내용 표시 (읽기 전용)
+                  // 완료 상태: 시술 내용 표시 (읽기 전용) + 수정 버튼
                   if (selectedEvent.status === 'COMPLETED' && !showTreatmentForm) {
                     const mgmt = selectedEvent.managementData || {};
                     const fields = Object.entries(mgmt).filter(([k]) => k !== '_memo');
@@ -1563,12 +1563,25 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                             시술 내용이 기록되지 않았습니다
                           </div>
                         )}
+                        <button
+                          onClick={() => {
+                            // 기존 데이터를 폼에 채움
+                            const existingData = { ...mgmt };
+                            const memoVal = existingData._memo || '';
+                            delete existingData._memo;
+                            setTreatmentData(existingData);
+                            setTreatmentMemo(memoVal);
+                            setShowTreatmentForm(true);
+                          }}
+                          style={{ width: '100%', marginTop: 8, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${c.primary}`, background: '#fff', color: c.primary, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                          <ClipboardList style={{ width: 13, height: 13 }} /> {hasData ? '시술 내용 수정' : '시술 내용 추가'}
+                        </button>
                       </div>
                     );
                   }
 
-                  // 시술중/완료 상태이거나 폼 표시 상태: 시술 내용 입력 폼
-                  if ((selectedEvent.status === 'IN_PROGRESS' || showTreatmentForm) && !isPast) {
+                  // 시술중 상태이거나 폼 표시 상태: 시술 내용 입력 폼
+                  if (selectedEvent.status === 'IN_PROGRESS' || showTreatmentForm) {
                     const fields = selectedEvent.managementFields || [];
                     return (
                       <div style={{ marginTop: 10 }}>
@@ -1598,7 +1611,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                         <div style={{ display: 'flex', gap: 5, marginTop: 8 }}>
                           <button
                             onClick={async () => {
-                              if (!confirm('시술을 완료 처리하시겠습니까?')) return;
+                              if (!confirm(selectedEvent.status === 'COMPLETED' ? '시술 내용을 저장하시겠습니까?' : '시술을 완료 처리하시겠습니까?')) return;
                               const mgmtData = { ...treatmentData, _memo: treatmentMemo };
                               try {
                                 const res = await fetch(`/api/shops/${shopSlug}/reservations/${selectedEvent.id}`, {
@@ -1607,7 +1620,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                                   body: JSON.stringify({ status: 'COMPLETED', managementData: mgmtData }),
                                 });
                                 if (res.ok) {
-                                  setSelectedEvent(prev => prev ? { ...prev, status: 'COMPLETED' } : null);
+                                  setSelectedEvent(prev => prev ? { ...prev, status: 'COMPLETED', managementData: mgmtData } : null);
                                   const calApi = calendarRef.current?.getApi();
                                   if (calApi) {
                                     const fcEvent = calApi.getEventById(selectedEvent.id);
@@ -1617,6 +1630,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                                       fcEvent.setProp('borderColor', sc.bar);
                                       fcEvent.setProp('textColor', sc.text);
                                       fcEvent.setExtendedProp('status', 'COMPLETED');
+                                      fcEvent.setExtendedProp('managementData', mgmtData);
                                     }
                                   }
                                   setTreatmentData({});
@@ -1626,7 +1640,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                               } catch (e) { console.error(e); }
                             }}
                             style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: 'none', background: '#22C55E', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                            <Check style={{ width: 13, height: 13 }} /> 완료
+                            <Check style={{ width: 13, height: 13 }} /> {selectedEvent.status === 'COMPLETED' ? '저장' : '완료'}
                           </button>
                           <button
                             onClick={() => { setShowTreatmentForm(false); }}
