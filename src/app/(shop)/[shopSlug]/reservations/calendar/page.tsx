@@ -496,34 +496,42 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         const groupMaxBottom = Math.max(...group.map(g => g.bottom));
         const groupHeight = groupMaxBottom - groupMinTop;
 
-        // FC calendarRef에서 이벤트 객체 매핑
+        // FC 이벤트 객체 매핑
         const api = calendarRef.current?.getApi();
         const allFcEvents = api?.getEvents() || [];
+        const colDate = group[0].col;
 
         type OverlapItem = { content: string; relTop: number; height: number; el?: HTMLElement; eventData?: typeof allFcEvents[0]; };
         const items: OverlapItem[] = [];
+        const usedIds = new Set<string>();
+
         group.forEach((info, idx) => {
           const eventMain = info.el.querySelector('.fc-event-main');
-          // harness에서 FC 이벤트 ID 찾기
-          const eventEl = info.el.querySelector('.fc-timegrid-event');
-          const fcEventLink = eventEl?.querySelector('a.fc-event');
-          const fcId = fcEventLink?.getAttribute('data-event-id')
-            || info.el.closest('[data-event-id]')?.getAttribute('data-event-id')
-            || '';
-          // FC 이벤트 매칭: inset top + col date 기준
-          const colDate = info.col;
-          const matchedEvent = allFcEvents.find(ev => {
-            if (!ev.start) return false;
-            const evDate = `${ev.start.getFullYear()}-${String(ev.start.getMonth() + 1).padStart(2, '0')}-${String(ev.start.getDate()).padStart(2, '0')}`;
-            if (evDate !== colDate) return false;
-            // 이미 사용된 이벤트 건너뛰기
-            if (items.some(it => it.eventData?.id === ev.id)) return false;
-            return true;
-          });
+          const htmlContent = eventMain?.innerHTML || '';
+
+          // 콘텐츠에서 시간 추출 (예: "8:30 - 9:15")
+          const timeMatch = htmlContent.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
+          let matchedEvent: typeof allFcEvents[0] | undefined;
+
+          if (timeMatch) {
+            const startH = parseInt(timeMatch[1]);
+            const startM = parseInt(timeMatch[2]);
+            matchedEvent = allFcEvents.find(ev => {
+              if (!ev.start || usedIds.has(ev.id)) return false;
+              const d = ev.start;
+              const evDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+              if (evDate !== colDate) return false;
+              // KST 보정: UTC+9
+              const kstH = (d.getUTCHours() + 9) % 24;
+              const kstM = d.getUTCMinutes();
+              return kstH === startH && kstM === startM;
+            });
+          }
+          if (matchedEvent) usedIds.add(matchedEvent.id);
 
           if (eventMain) {
             items.push({
-              content: eventMain.innerHTML,
+              content: htmlContent,
               relTop: info.top - groupMinTop,
               height: info.bottom - info.top,
               eventData: matchedEvent,
