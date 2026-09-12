@@ -531,18 +531,22 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
           items.forEach((item, idx) => {
             const isActive = idx === current;
             if (item.numEl) {
-              item.numEl.style.background = isActive ? '#EF4444' : 'rgba(0,0,0,0.15)';
-              item.numEl.style.color = isActive ? '#fff' : 'rgba(0,0,0,0.4)';
+              item.numEl.style.display = 'none';
             }
             if (item.itemEl) {
-              item.itemEl.style.opacity = isActive ? '1' : '0.35';
-              item.itemEl.style.transform = `scale(${isActive ? '1' : '0.95'})`;
-              item.itemEl.style.background = isActive ? '#fff' : 'transparent';
-              item.itemEl.style.borderRadius = isActive ? '6px' : '0';
-              item.itemEl.style.padding = isActive ? '4px 6px' : '0';
-              item.itemEl.style.boxShadow = isActive ? '0 1px 4px rgba(0,0,0,0.1)' : 'none';
-              const inner = item.itemEl.querySelector('div') as HTMLElement;
-              if (inner) inner.style.fontWeight = isActive ? '700' : '400';
+              if (isActive) {
+                item.itemEl.style.display = '';
+                item.itemEl.style.top = `${item.relTop}px`;
+                item.itemEl.style.opacity = '1';
+                item.itemEl.style.background = '#fff';
+                item.itemEl.style.borderRadius = '6px';
+                item.itemEl.style.padding = '4px 6px';
+                item.itemEl.style.boxShadow = '0 1px 4px rgba(0,0,0,0.08)';
+                const inner = item.itemEl.querySelector('div') as HTMLElement;
+                if (inner) inner.style.fontWeight = '700';
+              } else {
+                item.itemEl.style.display = 'none';
+              }
             }
           });
         };
@@ -571,13 +575,12 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
           const isActive = idx === 0;
 
           const numEl = document.createElement('div');
-          numEl.style.cssText = `position:absolute;top:${item.relTop + 4}px;left:6px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;z-index:2;transition:all 0.3s ease;background:${isActive ? '#EF4444' : 'rgba(0,0,0,0.15)'};color:${isActive ? '#fff' : 'rgba(0,0,0,0.4)'};`;
-          numEl.textContent = String(idx + 1);
+          numEl.style.cssText = `display:none;`;
           contentDiv.appendChild(numEl);
           item.numEl = numEl;
 
           const itemEl = document.createElement('div');
-          itemEl.style.cssText = `position:absolute;top:${item.relTop + 24}px;left:6px;right:6px;transition:all 0.3s ease;opacity:${isActive ? '1' : '0.35'};transform:scale(${isActive ? '1' : '0.95'});transform-origin:left top;background:${isActive ? '#fff' : 'transparent'};border-radius:${isActive ? '6px' : '0'};padding:${isActive ? '4px 6px' : '0'};box-shadow:${isActive ? '0 1px 4px rgba(0,0,0,0.1)' : 'none'};`;
+          itemEl.style.cssText = `position:absolute;top:${item.relTop}px;left:6px;right:6px;display:${isActive ? '' : 'none'};opacity:${isActive ? '1' : '0'};background:${isActive ? '#fff' : 'transparent'};border-radius:${isActive ? '6px' : '0'};padding:${isActive ? '4px 6px' : '0'};box-shadow:${isActive ? '0 1px 4px rgba(0,0,0,0.08)' : 'none'};`;
           itemEl.innerHTML = `<div style="font-weight:${isActive ? '700' : '400'}">${item.content}</div>`;
           contentDiv.appendChild(itemEl);
           item.itemEl = itemEl;
