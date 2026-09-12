@@ -1583,23 +1583,38 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                   // 시술중 상태이거나 폼 표시 상태: 시술 내용 입력 폼
                   if (selectedEvent.status === 'IN_PROGRESS' || showTreatmentForm) {
                     const fields = selectedEvent.managementFields || [];
+                    // showTreatmentForm이 열릴 때 기본값 자동 채우기
+                    if (fields.length > 0 && Object.keys(treatmentData).length === 0) {
+                      const defaults: Record<string, string> = {};
+                      fields.forEach((f: any) => {
+                        if (typeof f === 'object' && f.name) defaults[f.name] = f.value || '';
+                        else defaults[String(f)] = '';
+                      });
+                      setTimeout(() => setTreatmentData(defaults), 0);
+                    }
                     return (
                       <div style={{ marginTop: 10 }}>
                         <div style={{ background: '#FEF3C7', borderRadius: 10, padding: '12px 14px', border: '1.5px solid #F59E0B' }}>
                           <div style={{ fontSize: 12, fontWeight: 700, color: '#92400E', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
                             <ClipboardList style={{ width: 13, height: 13 }} /> 시술 내용 기록
                           </div>
-                          {fields.length > 0 && fields.map((field: string) => (
-                            <div key={field} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                              <label style={{ fontSize: 12, fontWeight: 600, color: '#78350F', minWidth: 70 }}>{field}</label>
-                              <input
-                                value={treatmentData[field] || ''}
-                                onChange={e => setTreatmentData(prev => ({ ...prev, [field]: e.target.value }))}
-                                placeholder={`${field} 입력`}
-                                style={{ flex: 1, padding: '5px 8px', borderRadius: 6, border: '1px solid #D1D5DB', fontSize: 12, outline: 'none' }}
-                              />
-                            </div>
-                          ))}
+                          {fields.length > 0 && fields.map((field: any, idx: number) => {
+                            const name = typeof field === 'object' ? field.name : String(field);
+                            const unit = typeof field === 'object' ? field.unit : '';
+                            return (
+                              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                                <label style={{ fontSize: 12, fontWeight: 600, color: '#78350F', minWidth: 90, whiteSpace: 'nowrap' }}>{name}</label>
+                                <span style={{ color: '#92400E', fontSize: 12 }}>=</span>
+                                <input
+                                  value={treatmentData[name] || ''}
+                                  onChange={e => setTreatmentData(prev => ({ ...prev, [name]: e.target.value }))}
+                                  placeholder={typeof field === 'object' ? field.value : ''}
+                                  style={{ width: 60, padding: '5px 8px', borderRadius: 6, border: '1px solid #D1D5DB', fontSize: 12, outline: 'none', textAlign: 'center', fontWeight: 700 }}
+                                />
+                                {unit && <span style={{ fontSize: 11, color: '#78350F', fontWeight: 500 }}>{unit}</span>}
+                              </div>
+                            );
+                          })}
                           <textarea
                             value={treatmentMemo}
                             onChange={e => setTreatmentMemo(e.target.value)}
