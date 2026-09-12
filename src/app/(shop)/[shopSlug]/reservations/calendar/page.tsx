@@ -592,11 +592,17 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             div.style.opacity = '0.3';
             div.style.fontWeight = '400';
           }
-          // 클릭 시 상세 팝업
+          // 클릭: 활성→상세팝업, 비활성→활성으로 전환
           div.addEventListener('click', (e) => {
             e.stopPropagation();
             e.preventDefault();
-            openDetail(item);
+            if (idx === current) {
+              openDetail(item);
+            } else {
+              current = idx;
+              updateActive();
+              topBadge.textContent = `중복(${current + 1}/${items.length})건`;
+            }
           });
           contentWrap.appendChild(div);
           item.el = div;
