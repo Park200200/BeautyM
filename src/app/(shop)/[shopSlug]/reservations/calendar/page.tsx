@@ -134,8 +134,21 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             const menuName = r.menu?.name || '';
             const staffName = r.staff?.user?.name || '';
             const session = `${r.currentSession || 1}/${r.totalSessions || 1}`;
-            let mgmtFields: string[] = [];
-            try { if (r.menu?.managementFields) mgmtFields = typeof r.menu.managementFields === 'string' ? JSON.parse(r.menu.managementFields) : r.menu.managementFields; } catch {}
+            let mgmtFields: any[] = [];
+            // 1) Treatment의 processSteps에서 시술과정 가져오기
+            try {
+              const mts = (r as any).menu?.menuTreatments || [];
+              for (const mt of mts) {
+                if (mt.treatment?.processSteps) {
+                  const steps = typeof mt.treatment.processSteps === 'string' ? JSON.parse(mt.treatment.processSteps) : mt.treatment.processSteps;
+                  if (Array.isArray(steps)) mgmtFields.push(...steps);
+                }
+              }
+            } catch {}
+            // 2) Menu의 managementFields (보조 - processSteps가 없을 때)
+            if (mgmtFields.length === 0) {
+              try { if (r.menu?.managementFields) { const parsed = typeof r.menu.managementFields === 'string' ? JSON.parse(r.menu.managementFields) : r.menu.managementFields; if (Array.isArray(parsed)) mgmtFields = parsed; } } catch {}
+            }
             let mgmtData: Record<string, string> = {};
             try { const rec = (r as any).customerRecord; if (rec?.managementData) mgmtData = typeof rec.managementData === 'string' ? JSON.parse(rec.managementData) : rec.managementData; } catch {}
             return {
