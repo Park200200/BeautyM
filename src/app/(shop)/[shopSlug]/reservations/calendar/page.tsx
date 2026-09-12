@@ -8,7 +8,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
 import { useIsMobile } from '@/hooks/useMediaQuery';
-import { Clock, User, RefreshCw, Sparkles, ClipboardList, ChevronDown, CalendarDays, Check, X, UserX, Play, Undo2 } from 'lucide-react';
+import { Clock, User, RefreshCw, Sparkles, ClipboardList, ChevronDown, CalendarDays, Check, X, UserX, Play, Undo2, Camera, ImagePlus } from 'lucide-react';
 
 interface ReservationEvent {
   id: string;
@@ -45,10 +45,12 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [rawEvents, setRawEvents] = useState<ReservationEvent[]>([]);
   const [mounted, setMounted] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<{ id: string; menu: string; customer: string; phone: string; staff: string; status: string; session: string; start: string; end: string; customerId: string; menuName: string; profileImage: string; birthday: string; gender: string; eventDate?: string; managementFields?: string[] } | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<{ id: string; menu: string; customer: string; phone: string; staff: string; status: string; session: string; start: string; end: string; customerId: string; menuName: string; profileImage: string; birthday: string; gender: string; eventDate?: string; managementFields?: any[]; managementData?: Record<string, string>; enablePhotos?: boolean } | null>(null);
   const [treatmentData, setTreatmentData] = useState<Record<string, string>>({});
   const [treatmentMemo, setTreatmentMemo] = useState('');
   const [showTreatmentForm, setShowTreatmentForm] = useState(false);
+  const [beforePhoto, setBeforePhoto] = useState<string>('');
+  const [afterPhoto, setAfterPhoto] = useState<string>('');
   const [historyTab, setHistoryTab] = useState<'menu' | 'all'>('menu');
   const [activeDate, setActiveDate] = useState<string>(''); // 클릭한 날짜 (YYYY-MM-DD)
   const [popupDate, setPopupDate] = useState<string | null>(null); // 월간 클릭 팝업
@@ -149,6 +151,9 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             if (mgmtFields.length === 0) {
               try { if (r.menu?.managementFields) { const parsed = typeof r.menu.managementFields === 'string' ? JSON.parse(r.menu.managementFields) : r.menu.managementFields; if (Array.isArray(parsed)) mgmtFields = parsed; } } catch {}
             }
+            // enablePhotos 플래그 확인
+            let enablePhotos = false;
+            try { const mts = (r as any).menu?.menuTreatments || []; for (const mt of mts) { if (mt.treatment?.enablePhotos) enablePhotos = true; } } catch {}
             let mgmtData: Record<string, string> = {};
             try { const rec = (r as any).customerRecord; if (rec?.managementData) mgmtData = typeof rec.managementData === 'string' ? JSON.parse(rec.managementData) : rec.managementData; } catch {}
             return {
@@ -156,7 +161,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
               title: menuName,
               start: r.startTime, end: r.endTime,
               backgroundColor: sc.bg, borderColor: sc.bar, textColor: sc.text,
-              extendedProps: { menu: menuName, customer: custName, phone: custPhone, staff: staffName, status: r.status, session, customerId: r.customerId || '', menuName, profileImage: r.customer?.user?.profileImage || '', birthday: r.customer?.user?.birthday || '', gender: r.customer?.user?.gender || '', menuId: r.menuId || '', managementFields: mgmtFields, managementData: mgmtData },
+              extendedProps: { menu: menuName, customer: custName, phone: custPhone, staff: staffName, status: r.status, session, customerId: r.customerId || '', menuName, profileImage: r.customer?.user?.profileImage || '', birthday: r.customer?.user?.birthday || '', gender: r.customer?.user?.gender || '', menuId: r.menuId || '', managementFields: mgmtFields, managementData: mgmtData, enablePhotos },
             };
           }));
         }
@@ -722,6 +727,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             eventDate: ev.start?.toISOString() || '',
             managementFields: p.managementFields || [],
             managementData: p.managementData || {},
+            enablePhotos: p.enablePhotos || false,
           });
           setHistoryTab('menu');
         };
@@ -1187,6 +1193,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 eventDate: info.event.start?.toISOString() || '',
                 managementFields: p.managementFields || [],
                 managementData: p.managementData || {},
+                enablePhotos: p.enablePhotos || false,
               });
               setHistoryTab('menu');
             }}
@@ -1549,9 +1556,9 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                   // 완료 상태: 시술 내용 표시 (읽기 전용) + 수정 버튼
                   if (selectedEvent.status === 'COMPLETED' && !showTreatmentForm) {
                     const mgmt = selectedEvent.managementData || {};
-                    const fields = Object.entries(mgmt).filter(([k]) => k !== '_memo');
+                    const fields = Object.entries(mgmt).filter(([k]) => !k.startsWith('_'));
                     const memo = mgmt._memo || '';
-                    const hasData = fields.length > 0 || memo;
+                    const hasData = fields.length > 0 || memo || mgmt._beforePhoto || mgmt._afterPhoto;
                     return (
                       <div style={{ marginTop: 10 }}>
                         {hasData ? (
@@ -1570,6 +1577,23 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                                 📝 {memo}
                               </div>
                             )}
+                            {/* 전/후 사진 표시 */}
+                            {(mgmt._beforePhoto || mgmt._afterPhoto) && (
+                              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                {mgmt._beforePhoto && (
+                                  <div style={{ flex: 1, textAlign: 'center' }}>
+                                    <div style={{ fontSize: 10, fontWeight: 600, color: '#15803D', marginBottom: 3 }}>시술 전</div>
+                                    <img src={mgmt._beforePhoto} alt="before" style={{ width: '100%', height: 60, objectFit: 'cover', borderRadius: 6, border: '1px solid #BBF7D0' }} />
+                                  </div>
+                                )}
+                                {mgmt._afterPhoto && (
+                                  <div style={{ flex: 1, textAlign: 'center' }}>
+                                    <div style={{ fontSize: 10, fontWeight: 600, color: '#15803D', marginBottom: 3 }}>시술 후</div>
+                                    <img src={mgmt._afterPhoto} alt="after" style={{ width: '100%', height: 60, objectFit: 'cover', borderRadius: 6, border: '1px solid #BBF7D0' }} />
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <div style={{ background: '#F3F4F6', borderRadius: 10, padding: '10px 14px', textAlign: 'center', color: '#6B7280', fontSize: 12 }}>
@@ -1581,9 +1605,15 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                             // 기존 데이터를 폼에 채움
                             const existingData = { ...mgmt };
                             const memoVal = existingData._memo || '';
+                            const bPhoto = existingData._beforePhoto || '';
+                            const aPhoto = existingData._afterPhoto || '';
                             delete existingData._memo;
+                            delete existingData._beforePhoto;
+                            delete existingData._afterPhoto;
                             setTreatmentData(existingData);
                             setTreatmentMemo(memoVal);
+                            setBeforePhoto(bPhoto);
+                            setAfterPhoto(aPhoto);
                             setShowTreatmentForm(true);
                           }}
                           style={{ width: '100%', marginTop: 8, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${c.primary}`, background: '#fff', color: c.primary, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
@@ -1636,11 +1666,54 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                             style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #D1D5DB', fontSize: 12, resize: 'vertical', outline: 'none', marginTop: fields.length > 0 ? 4 : 0, boxSizing: 'border-box' }}
                           />
                         </div>
+                        {/* 전/후 사진 업로드 */}
+                        {selectedEvent.enablePhotos && (
+                          <div style={{ marginTop: 8, background: '#FFF7ED', borderRadius: 10, padding: '10px 12px', border: '1px solid #FDBA74' }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: '#EA580C', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <Camera style={{ width: 13, height: 13 }} /> 전/후 사진
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              {['before', 'after'].map(type => {
+                                const photo = type === 'before' ? beforePhoto : afterPhoto;
+                                const setPhoto = type === 'before' ? setBeforePhoto : setAfterPhoto;
+                                return (
+                                  <div key={type} style={{ flex: 1, textAlign: 'center' }}>
+                                    <div style={{ fontSize: 10, fontWeight: 600, color: '#92400E', marginBottom: 4 }}>{type === 'before' ? '시술 전' : '시술 후'}</div>
+                                    {photo ? (
+                                      <div style={{ position: 'relative' }}>
+                                        <img src={photo} alt={type} style={{ width: '100%', height: 70, objectFit: 'cover', borderRadius: 8, border: '1px solid #E5E7EB' }} />
+                                        <button onClick={() => setPhoto('')} style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, borderRadius: '50%', background: '#EF4444', color: '#fff', border: 'none', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                                      </div>
+                                    ) : (
+                                      <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: 70, borderRadius: 8, border: '2px dashed #FDBA74', background: '#FFFBEB', cursor: 'pointer', color: '#F97316', fontSize: 10 }}>
+                                        <ImagePlus style={{ width: 18, height: 18, marginBottom: 2 }} />
+                                        추가
+                                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
+                                          const file = e.target.files?.[0];
+                                          if (!file) return;
+                                          const fd = new FormData();
+                                          fd.append('file', file);
+                                          try {
+                                            const res = await fetch('/api/upload', { method: 'POST', body: fd });
+                                            const data = await res.json();
+                                            if (data.url) setPhoto(data.url);
+                                          } catch (err) { console.error(err); }
+                                        }} />
+                                      </label>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                         <div style={{ display: 'flex', gap: 5, marginTop: 8 }}>
                           <button
                             onClick={async () => {
                               if (!confirm(selectedEvent.status === 'COMPLETED' ? '시술 내용을 저장하시겠습니까?' : '시술을 완료 처리하시겠습니까?')) return;
-                              const mgmtData = { ...treatmentData, _memo: treatmentMemo };
+                              const mgmtData: Record<string, string> = { ...treatmentData, _memo: treatmentMemo };
+                              if (beforePhoto) mgmtData._beforePhoto = beforePhoto;
+                              if (afterPhoto) mgmtData._afterPhoto = afterPhoto;
                               try {
                                 const res = await fetch(`/api/shops/${shopSlug}/reservations/${selectedEvent.id}`, {
                                   method: 'PATCH',
@@ -1664,6 +1737,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                                   setTreatmentData({});
                                   setTreatmentMemo('');
                                   setShowTreatmentForm(false);
+                                  setBeforePhoto('');
+                                  setAfterPhoto('');
                                 }
                               } catch (e) { console.error(e); }
                             }}

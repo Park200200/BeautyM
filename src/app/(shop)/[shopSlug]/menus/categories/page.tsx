@@ -40,6 +40,7 @@ export default function TreatmentDetailPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingTreatment, setEditingTreatment] = useState<string | null>(null);
   const [tForm, setTForm] = useState({ name: '', duration: '60', features: '', processSteps: '' });
+  const [enablePhotos, setEnablePhotos] = useState(false);
   const [equipmentTags, setEquipmentTags] = useState<string[]>([]);
   const [productTags, setProductTags] = useState<string[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
@@ -101,6 +102,7 @@ export default function TreatmentDetailPage() {
   // Treatment modal
   const openNewTreatment = () => {
     setTForm({ name: '', duration: '60', features: '', processSteps: '' });
+    setEnablePhotos(false);
     setEquipmentTags([]); setProductTags([]);
     setPhotoUrls([]); setEditingTreatment(null); setShowModal(true);
   };
@@ -116,6 +118,7 @@ export default function TreatmentDetailPage() {
       }
     } catch {}
     setTForm({ name: t.name, duration: String(t.duration), features: t.features || '', processSteps: processText });
+    setEnablePhotos(!!(t as any).enablePhotos);
     // Parse equipment JSON
     let eqTags: string[] = [], prTags: string[] = [];
     if (t.equipment) {
@@ -158,7 +161,7 @@ export default function TreatmentDetailPage() {
       });
       processStepsJson = JSON.stringify(steps);
     }
-    const body = { categoryId: catId, name: tForm.name, duration: parseInt(tForm.duration) || 60, features: tForm.features || null, equipment: equipmentData, photos: photoUrls.length > 0 ? photoUrls : null, processSteps: processStepsJson };
+    const body = { categoryId: catId, name: tForm.name, duration: parseInt(tForm.duration) || 60, features: tForm.features || null, equipment: equipmentData, photos: photoUrls.length > 0 ? photoUrls : null, processSteps: processStepsJson, enablePhotos };
     const url = editingTreatment ? `/api/shops/${shopSlug}/treatments/${editingTreatment}` : `/api/shops/${shopSlug}/treatments`;
     const method = editingTreatment ? 'PATCH' : 'POST';
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -400,6 +403,21 @@ export default function TreatmentDetailPage() {
                     })}
                   </div>
                 )}
+              </div>
+
+              {/* 전후 사진 등록 옵션 */}
+              <div className="flex items-center justify-between px-3 py-2.5 rounded-xl" style={{ background: enablePhotos ? '#FFF7ED' : '#F9FAFB', border: `1px solid ${enablePhotos ? '#FDBA74' : '#E5E7EB'}` }}>
+                <div className="flex items-center gap-2">
+                  <Camera className="w-3.5 h-3.5" style={{ color: enablePhotos ? '#EA580C' : '#9CA3AF' }} />
+                  <span className="text-xs font-medium" style={{ color: enablePhotos ? '#EA580C' : '#6B7280' }}>시술 전/후 사진 등록</span>
+                </div>
+                <button
+                  onClick={() => setEnablePhotos(!enablePhotos)}
+                  className="relative w-9 h-5 rounded-full transition-colors"
+                  style={{ background: enablePhotos ? '#F97316' : '#D1D5DB' }}>
+                  <div className="absolute top-0.5 transition-all w-4 h-4 rounded-full bg-white shadow-sm"
+                    style={{ left: enablePhotos ? 18 : 2 }} />
+                </button>
               </div>
 
               <div><label className="text-xs font-medium block mb-1" style={{ color: c.textLight }}>

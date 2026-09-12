@@ -237,6 +237,7 @@ model Treatment {
   equipment    String?  // 사용장비 및 케어상품
   photos       String?  // JSON: 사진 URL 배열
   processSteps String?  // JSON: 시술과정 [{name,value,unit}]
+  enablePhotos Boolean  @default(false) // 전후 사진 등록 여부
   sortOrder  Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

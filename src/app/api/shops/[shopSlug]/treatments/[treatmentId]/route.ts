@@ -68,7 +68,7 @@ export async function PATCH(
   try {
     const { shopSlug, treatmentId } = await params;
     const body = await request.json();
-    const { categoryId, name, duration, features, equipment, photos, sortOrder, processSteps } = body;
+    const { categoryId, name, duration, features, equipment, photos, sortOrder, processSteps, enablePhotos } = body;
 
     const shop = await prisma.shop.findUnique({
       where: { slug: shopSlug },
@@ -107,6 +107,7 @@ export async function PATCH(
     }
     if (sortOrder !== undefined) data.sortOrder = Number(sortOrder);
     if (processSteps !== undefined) data.processSteps = processSteps;
+    if (enablePhotos !== undefined) data.enablePhotos = enablePhotos;
 
     const updatedTreatment = await prisma.treatment.update({
       where: { id: treatmentId },
