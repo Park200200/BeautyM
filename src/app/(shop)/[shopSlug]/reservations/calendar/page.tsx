@@ -794,14 +794,15 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
   }, []);
 
   useEffect(() => {
-    setupOverlap();
-    // DOM 렌더링 후 한 번 더 실행
-    const extra = setTimeout(() => setupOverlap(), 800);
+    // FullCalendar가 events를 DOM에 렌더링 완료할 때까지 여러 번 재시도
+    const timers = [300, 800, 1500, 2500].map(ms =>
+      setTimeout(() => setupOverlap(), ms)
+    );
     return () => {
       if (overlapTimerRef.current) clearTimeout(overlapTimerRef.current);
-      clearTimeout(extra);
+      timers.forEach(t => clearTimeout(t));
     };
-  }, [rawEvents, setupOverlap]);
+  }, [events, setupOverlap]);
 
   // 건수 뱃지 줄바꿈 동기화: 하나라도 줄바꿈이면 모두 줄바꿈
   const syncBadgeLayout = useCallback(() => {
