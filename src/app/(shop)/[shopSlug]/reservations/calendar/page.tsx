@@ -659,6 +659,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             start: fmt(ev.start), end: fmt(ev.end),
             customerId: p.customerId, menuName: p.menuName,
             profileImage: p.profileImage, birthday: p.birthday, gender: p.gender,
+            eventDate: ev.start?.toISOString() || '',
           });
           setHistoryTab('menu');
         };
@@ -1100,6 +1101,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 start: fmt(info.event.start), end: fmt(info.event.end),
                 customerId: p.customerId, menuName: p.menuName,
                 profileImage: p.profileImage, birthday: p.birthday, gender: p.gender,
+                eventDate: info.event.start?.toISOString() || '',
               });
               setHistoryTab('menu');
             }}
@@ -1372,30 +1374,40 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 </div>
 
                 {/* 상태 변경 버튼 */}
-                {selectedEvent.status === 'CANCELLED' || selectedEvent.status === 'NO_SHOW' ? (
-                  <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
-                    <div style={{ flex: 1, padding: '8px 12px', borderRadius: 8, background: '#FEE2E2', color: '#991B1B', fontSize: 12, fontWeight: 700, textAlign: 'center' }}>
-                      {selectedEvent.status === 'CANCELLED' ? '✕ 취소됨' : '✕ 노쇼'}
-                    </div>
-                    <button
-                      onClick={() => {
-                        if (confirm('이 예약을 "확정" 상태로 되돌리시겠습니까?\n(자동 생성된 시술카드가 삭제됩니다)')) {
-                          changeReservationStatus(selectedEvent.id, 'CONFIRMED');
-                        }
-                      }}
-                      style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${c.primary}`, background: '#fff', color: c.primary, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                      ↩ 되돌리기
-                    </button>
-                  </div>
-                ) : (
+                {(() => {
+                  const isPast = selectedEvent.eventDate ? new Date(selectedEvent.eventDate) < new Date() : false;
+                  const allButtons = [
+                    { key: 'CONFIRMED', label: '확정', bg: `${c.primary}15`, activeBg: c.primary, color: c.primary },
+                    { key: 'IN_PROGRESS', label: '시술중', bg: '#FEF3C7', activeBg: '#F59E0B', color: '#92400E' },
+                    { key: 'COMPLETED', label: '완료', bg: '#F0FDF4', activeBg: '#22C55E', color: '#166534' },
+                    { key: 'CANCELLED', label: '취소', bg: '#FEE2E2', activeBg: '#EF4444', color: '#991B1B' },
+                    { key: 'NO_SHOW', label: '노쇼', bg: '#FEE2E2', activeBg: '#DC2626', color: '#991B1B' },
+                  ];
+                  // 과거: 완료/취소/노쇼만, 미래: 전체
+                  const buttons = isPast ? allButtons.filter(b => ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(b.key)) : allButtons;
+
+                  if (selectedEvent.status === 'CANCELLED' || selectedEvent.status === 'NO_SHOW') {
+                    return (
+                      <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                        <div style={{ flex: 1, padding: '8px 12px', borderRadius: 8, background: '#FEE2E2', color: '#991B1B', fontSize: 12, fontWeight: 700, textAlign: 'center' }}>
+                          {selectedEvent.status === 'CANCELLED' ? '✕ 취소됨' : '✕ 노쇼'}
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (confirm('이 예약을 "확정" 상태로 되돌리시겠습니까?\n(자동 생성된 시술카드가 삭제됩니다)')) {
+                              changeReservationStatus(selectedEvent.id, 'CONFIRMED');
+                            }
+                          }}
+                          style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${c.primary}`, background: '#fff', color: c.primary, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                          ↩ 되돌리기
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  return (
                   <div style={{ display: 'flex', gap: 5, marginTop: 10, flexWrap: 'wrap' }}>
-                    {([
-                      { key: 'CONFIRMED', label: '확정', bg: `${c.primary}15`, activeBg: c.primary, color: c.primary },
-                      { key: 'IN_PROGRESS', label: '시술중', bg: '#FEF3C7', activeBg: '#F59E0B', color: '#92400E' },
-                      { key: 'COMPLETED', label: '완료', bg: '#F0FDF4', activeBg: '#22C55E', color: '#166534' },
-                      { key: 'CANCELLED', label: '취소', bg: '#FEE2E2', activeBg: '#EF4444', color: '#991B1B' },
-                      { key: 'NO_SHOW', label: '노쇼', bg: '#FEE2E2', activeBg: '#DC2626', color: '#991B1B' },
-                    ] as const).map(s => {
+                    {buttons.map(s => {
                       const isActive = selectedEvent.status === s.key;
                       return (
                         <button key={s.key}
@@ -1427,7 +1439,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                       );
                     })}
                   </div>
-                )}
+                  );
+                })()}
               </div>
             </div>
 
