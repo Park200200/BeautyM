@@ -1243,9 +1243,9 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             </div>
 
             {/* 시술 이력 */}
-            <div style={{ padding: '12px 20px 0' }}>
+            <div style={{ padding: '0 20px', marginTop: 4 }}>
               <div onClick={() => setHistoryTab(historyTab === 'menu' ? 'all' : 'menu')}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', cursor: 'pointer', userSelect: 'none' }}>
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', cursor: 'pointer', userSelect: 'none', borderRadius: 10, background: historyTab === 'menu' ? `${c.primaryLight}60` : '#F9FAFB', border: `1px solid ${historyTab === 'menu' ? `${c.primary}20` : c.borderLight}`, transition: 'all .2s' }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: historyTab === 'menu' ? c.primary : c.textLight, display: 'flex', alignItems: 'center', gap: 4, transition: 'color .15s' }}>
                   <Sparkles style={{ width: 14, height: 14 }} /> {selectedEvent.menuName} 이력
                 </div>
@@ -1255,7 +1255,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 </div>
               </div>
               {historyTab === 'menu' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 220, overflowY: 'auto', paddingBottom: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 220, overflowY: 'auto', padding: '6px 0 8px', borderBottom: `1px solid ${c.borderLight}` }}>
                   {menuHistory.length > 0 ? menuHistory.map(h => historyItem(h, false)) : (
                     <div style={{ fontSize: 12, color: c.textLight, textAlign: 'center', padding: 16 }}>이력 없음</div>
                   )}
@@ -1264,9 +1264,9 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             </div>
 
             {/* 전체 방문 이력 */}
-            <div style={{ padding: '0 20px 20px' }}>
+            <div style={{ padding: '6px 20px 20px' }}>
               <div onClick={() => setHistoryTab(historyTab === 'all' ? 'menu' : 'all')}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', cursor: 'pointer', userSelect: 'none', borderTop: `1px solid ${c.borderLight}` }}>
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', cursor: 'pointer', userSelect: 'none', borderRadius: 10, background: historyTab === 'all' ? `${c.primaryLight}60` : '#F9FAFB', border: `1px solid ${historyTab === 'all' ? `${c.primary}20` : c.borderLight}`, transition: 'all .2s' }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: historyTab === 'all' ? c.primary : c.textLight, display: 'flex', alignItems: 'center', gap: 4, transition: 'color .15s' }}>
                   <ClipboardList style={{ width: 14, height: 14 }} /> 전체 방문 이력
                 </div>
@@ -1276,7 +1276,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 </div>
               </div>
               {historyTab === 'all' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 220, overflowY: 'auto', paddingBottom: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 220, overflowY: 'auto', padding: '6px 0 8px' }}>
                   {customerHistory.length > 0 ? customerHistory.map(h => historyItem(h, true)) : (
                     <div style={{ fontSize: 12, color: c.textLight, textAlign: 'center', padding: 16 }}>이력 없음</div>
                   )}
