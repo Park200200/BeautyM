@@ -1240,6 +1240,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 if (main) main.style.display = '';
               });
             }}
+            slotEventOverlap
+            eventMaxStack={1}
             allDaySlot={false}
             slotMinTime="08:00:00" slotMaxTime="22:00:00" scrollTime="09:00:00"
             expandRows stickyHeaderDates firstDay={0} eventDisplay="block"
