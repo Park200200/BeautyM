@@ -121,7 +121,9 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       .then(data => {
         if (data.reservations) {
           setRawEvents(data.reservations);
-          setEvents(data.reservations.map((r: ReservationEvent) => {
+          setEvents(data.reservations
+            .filter((r: ReservationEvent) => r.status !== 'CANCELLED')
+            .map((r: ReservationEvent) => {
             const sc = STATUS_COLORS[r.status] || STATUS_COLORS.CONFIRMED;
             const custName = r.customer?.user?.name || '미정';
             const custPhone = r.customer?.user?.phone || '';
@@ -144,33 +146,51 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
   useEffect(() => { fetchReservations(); }, [fetchReservations]);
 
   // 예약 상태 변경
-  const changeReservationStatus = useCallback(async (reservationId: string, newStatus: string) => {
+  const changeReservationStatus = useCallback(async (reservationId: string, newStatus: string, cancelReason?: string) => {
     try {
+      const bodyData: any = { status: newStatus };
+      if (cancelReason) bodyData.cancelReason = cancelReason;
+
       const res = await fetch(`/api/shops/${shopSlug}/reservations/${reservationId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify(bodyData),
       });
       if (res.ok) {
         // 팝업 상태만 즉시 반영
         setSelectedEvent(prev => prev ? { ...prev, status: newStatus } : null);
-        // FC 이벤트 속성 직접 변경 (React 재렌더/setupOverlap 재실행 없음)
-        const sc = STATUS_COLORS[newStatus] || STATUS_COLORS.CONFIRMED;
+
         const calApi = calendarRef.current?.getApi();
-        if (calApi) {
-          const fcEvent = calApi.getEventById(reservationId);
-          if (fcEvent) {
-            fcEvent.setProp('backgroundColor', sc.bg);
-            fcEvent.setProp('borderColor', sc.bar);
-            fcEvent.setProp('textColor', sc.text);
-            fcEvent.setExtendedProp('status', newStatus);
+        if (newStatus === 'CANCELLED') {
+          // 취소 → 캘린더에서 이벤트 제거
+          if (calApi) {
+            const fcEvent = calApi.getEventById(reservationId);
+            if (fcEvent) fcEvent.remove();
+          }
+          // 팝업 닫기
+          setTimeout(() => setSelectedEvent(null), 500);
+        } else if (newStatus === 'CONFIRMED') {
+          // 되돌리기 → 전체 리로드하여 이벤트 복원
+          fetchReservations();
+          setTimeout(() => { setupOverlap(); }, 500);
+        } else {
+          // FC 이벤트 속성 직접 변경
+          const sc = STATUS_COLORS[newStatus] || STATUS_COLORS.CONFIRMED;
+          if (calApi) {
+            const fcEvent = calApi.getEventById(reservationId);
+            if (fcEvent) {
+              fcEvent.setProp('backgroundColor', sc.bg);
+              fcEvent.setProp('borderColor', sc.bar);
+              fcEvent.setProp('textColor', sc.text);
+              fcEvent.setExtendedProp('status', newStatus);
+            }
           }
         }
       }
     } catch (e) {
       console.error('상태 변경 실패:', e);
     }
-  }, [shopSlug]);
+  }, [shopSlug, fetchReservations, setupOverlap]);
 
   // 일별 요약 맵
   const summaryMap = useCallback((): Record<string, DaySummary> => {
@@ -1353,37 +1373,62 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 </div>
 
                 {/* 상태 변경 버튼 */}
-                <div style={{ display: 'flex', gap: 5, marginTop: 10, flexWrap: 'wrap' }}>
-                  {([
-                    { key: 'CONFIRMED', label: '확정', bg: `${c.primary}15`, activeBg: c.primary, color: c.primary },
-                    { key: 'IN_PROGRESS', label: '시술중', bg: '#FEF3C7', activeBg: '#F59E0B', color: '#92400E' },
-                    { key: 'COMPLETED', label: '완료', bg: '#F0FDF4', activeBg: '#22C55E', color: '#166534' },
-                    { key: 'CANCELLED', label: '취소', bg: '#FEE2E2', activeBg: '#EF4444', color: '#991B1B' },
-                    { key: 'NO_SHOW', label: '노쇼', bg: '#FEE2E2', activeBg: '#DC2626', color: '#991B1B' },
-                  ] as const).map(s => {
-                    const isActive = selectedEvent.status === s.key;
-                    return (
-                      <button key={s.key}
-                        onClick={() => {
-                          if (isActive) return;
-                          const warns = ['CANCELLED', 'NO_SHOW', 'COMPLETED'];
-                          if (warns.includes(s.key)) {
-                            if (!confirm(`이 예약을 "${s.label}" 상태로 변경하시겠습니까?`)) return;
-                          }
-                          changeReservationStatus(selectedEvent.id, s.key);
-                        }}
-                        style={{
-                          flex: 1, minWidth: 50, padding: '6px 4px', borderRadius: 8, border: 'none', cursor: isActive ? 'default' : 'pointer',
-                          fontSize: 11, fontWeight: 700, transition: 'all .2s',
-                          background: isActive ? s.activeBg : s.bg,
-                          color: isActive ? '#fff' : s.color,
-                          opacity: isActive ? 1 : 0.8,
-                        }}>
-                        {isActive && '✓ '}{s.label}
-                      </button>
-                    );
-                  })}
-                </div>
+                {selectedEvent.status === 'CANCELLED' || selectedEvent.status === 'NO_SHOW' ? (
+                  <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                    <div style={{ flex: 1, padding: '8px 12px', borderRadius: 8, background: '#FEE2E2', color: '#991B1B', fontSize: 12, fontWeight: 700, textAlign: 'center' }}>
+                      {selectedEvent.status === 'CANCELLED' ? '✕ 취소됨' : '✕ 노쇼'}
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (confirm('이 예약을 "확정" 상태로 되돌리시겠습니까?\n(자동 생성된 시술카드가 삭제됩니다)')) {
+                          changeReservationStatus(selectedEvent.id, 'CONFIRMED');
+                        }
+                      }}
+                      style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${c.primary}`, background: '#fff', color: c.primary, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      ↩ 되돌리기
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: 5, marginTop: 10, flexWrap: 'wrap' }}>
+                    {([
+                      { key: 'CONFIRMED', label: '확정', bg: `${c.primary}15`, activeBg: c.primary, color: c.primary },
+                      { key: 'IN_PROGRESS', label: '시술중', bg: '#FEF3C7', activeBg: '#F59E0B', color: '#92400E' },
+                      { key: 'COMPLETED', label: '완료', bg: '#F0FDF4', activeBg: '#22C55E', color: '#166534' },
+                      { key: 'CANCELLED', label: '취소', bg: '#FEE2E2', activeBg: '#EF4444', color: '#991B1B' },
+                      { key: 'NO_SHOW', label: '노쇼', bg: '#FEE2E2', activeBg: '#DC2626', color: '#991B1B' },
+                    ] as const).map(s => {
+                      const isActive = selectedEvent.status === s.key;
+                      return (
+                        <button key={s.key}
+                          onClick={() => {
+                            if (isActive) return;
+                            if (s.key === 'CANCELLED') {
+                              const reason = prompt('취소 사유를 입력해주세요:');
+                              if (reason === null) return; // 취소 누름
+                              changeReservationStatus(selectedEvent.id, 'CANCELLED', reason || undefined);
+                            } else if (s.key === 'NO_SHOW') {
+                              if (!confirm('이 예약을 "노쇼" 상태로 변경하시겠습니까?')) return;
+                              changeReservationStatus(selectedEvent.id, 'NO_SHOW');
+                            } else if (s.key === 'COMPLETED') {
+                              if (!confirm('이 예약을 "완료" 상태로 변경하시겠습니까?')) return;
+                              changeReservationStatus(selectedEvent.id, 'COMPLETED');
+                            } else {
+                              changeReservationStatus(selectedEvent.id, s.key);
+                            }
+                          }}
+                          style={{
+                            flex: 1, minWidth: 50, padding: '6px 4px', borderRadius: 8, border: 'none', cursor: isActive ? 'default' : 'pointer',
+                            fontSize: 11, fontWeight: 700, transition: 'all .2s',
+                            background: isActive ? s.activeBg : s.bg,
+                            color: isActive ? '#fff' : s.color,
+                            opacity: isActive ? 1 : 0.8,
+                          }}>
+                          {isActive && '✓ '}{s.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 

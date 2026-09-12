@@ -62,7 +62,7 @@ export async function PATCH(
   try {
     const { shopSlug, reservationId } = await params;
     const body = await request.json();
-    const { status, managementData } = body;
+    const { status, managementData, cancelReason } = body;
 
     const shop = await prisma.shop.findUnique({
       where: { slug: shopSlug },
@@ -95,11 +95,27 @@ export async function PATCH(
         }
       });
 
-      // 2. Automatic record logic
+      // 2. 되돌리기: CONFIRMED으로 복원 시 기존 자동생성 시술카드 삭제
+      if (status === 'CONFIRMED' && existingReservation.customerRecord) {
+        const autoContents = ['시술 완료', '예약 취소', '당일 노쇼'];
+        const content = existingReservation.customerRecord.content || '';
+        if (autoContents.some(ac => content.startsWith(ac))) {
+          await tx.customerRecord.delete({ where: { id: existingReservation.customerRecord.id } });
+          // 완료→되돌리기 시 방문횟수 복원
+          if (content.startsWith('시술 완료')) {
+            await tx.shopMember.update({
+              where: { id: existingReservation.customerId },
+              data: { visitCount: { decrement: 1 } }
+            });
+          }
+        }
+      }
+
+      // 3. Automatic record logic
       if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(status) && !existingReservation.customerRecord) {
         let content = '';
         if (status === 'COMPLETED') content = '시술 완료';
-        else if (status === 'CANCELLED') content = '예약 취소';
+        else if (status === 'CANCELLED') content = cancelReason ? `예약 취소: ${cancelReason}` : '예약 취소';
         else if (status === 'NO_SHOW') content = '당일 노쇼';
 
         const recordData: any = {
