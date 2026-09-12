@@ -449,6 +449,34 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     });
   }, [rawEvents, handleDayCellDidMount, injectHeaderSummary, isHoliday]);
 
+  // 헤더 렌더링 후 뱃지 동기화
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const badges = document.querySelectorAll('.bm-count-badge') as NodeListOf<HTMLElement>;
+      if (badges.length === 0) return;
+      badges.forEach(badge => {
+        const parent = badge.parentElement as HTMLElement;
+        if (parent) parent.style.flexDirection = '';
+      });
+      requestAnimationFrame(() => {
+        let anyWrapped = false;
+        badges.forEach(badge => {
+          const parent = badge.parentElement;
+          if (!parent) return;
+          const textEl = parent.querySelector('a') as HTMLElement;
+          if (textEl && badge.offsetTop > textEl.offsetTop + 2) anyWrapped = true;
+        });
+        if (anyWrapped) {
+          badges.forEach(badge => {
+            const parent = badge.parentElement as HTMLElement;
+            if (parent) parent.style.flexDirection = 'column';
+          });
+        }
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [rawEvents]);
+
   // 겹치는 이벤트 → 뱃지 클릭으로 수동 전환
   const overlapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -661,7 +689,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
   // 건수 뱃지 줄바꿈 동기화: 하나라도 줄바꿈이면 모두 줄바꿈
   const syncBadgeLayout = useCallback(() => {
-    requestAnimationFrame(() => {
+    const doSync = () => {
       const badges = document.querySelectorAll('.bm-count-badge') as NodeListOf<HTMLElement>;
       if (badges.length === 0) return;
 
@@ -673,26 +701,31 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         }
       });
 
-      // 줄바꿈 여부 확인
-      let anyWrapped = false;
-      badges.forEach(badge => {
-        const parent = badge.parentElement;
-        if (!parent) return;
-        const textEl = parent.querySelector('a, span:not(.bm-count-badge)') as HTMLElement;
-        if (textEl && badge.offsetTop > textEl.offsetTop + 2) {
-          anyWrapped = true;
-        }
-      });
-
-      if (anyWrapped) {
+      // 한 프레임 후 줄바꿈 여부 확인
+      requestAnimationFrame(() => {
+        let anyWrapped = false;
         badges.forEach(badge => {
-          const parent = badge.parentElement as HTMLElement;
-          if (parent) {
-            parent.style.flexDirection = 'column';
+          const parent = badge.parentElement;
+          if (!parent) return;
+          const textEl = parent.querySelector('a') as HTMLElement;
+          if (textEl && badge.offsetTop > textEl.offsetTop + 2) {
+            anyWrapped = true;
           }
         });
-      }
-    });
+
+        if (anyWrapped) {
+          badges.forEach(badge => {
+            const parent = badge.parentElement as HTMLElement;
+            if (parent) {
+              parent.style.flexDirection = 'column';
+            }
+          });
+        }
+      });
+    };
+    // 즉시 + 딜레이 두 번 실행 (헤더 렌더링 타이밍 보장)
+    doSync();
+    setTimeout(doSync, 300);
   }, []);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
