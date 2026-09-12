@@ -454,25 +454,33 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     const timer = setTimeout(() => {
       const badges = document.querySelectorAll('.bm-count-badge') as NodeListOf<HTMLElement>;
       if (badges.length === 0) return;
+
+      // 1) 모두 row(한 줄)로 리셋
+      const cushions: HTMLElement[] = [];
       badges.forEach(badge => {
         const parent = badge.parentElement as HTMLElement;
-        if (parent) parent.style.flexDirection = '';
-      });
-      requestAnimationFrame(() => {
-        let anyWrapped = false;
-        badges.forEach(badge => {
-          const parent = badge.parentElement;
-          if (!parent) return;
-          const textEl = parent.querySelector('a') as HTMLElement;
-          if (textEl && badge.offsetTop > textEl.offsetTop + 2) anyWrapped = true;
-        });
-        if (anyWrapped) {
-          badges.forEach(badge => {
-            const parent = badge.parentElement as HTMLElement;
-            if (parent) parent.style.flexDirection = 'column';
-          });
+        if (parent) {
+          parent.style.flexDirection = 'row';
+          cushions.push(parent);
         }
       });
+
+      // 2) 리플로우 강제 → 실제 높이 측정
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+      document.body.offsetHeight;
+
+      // 3) 한 줄 기준 높이 측정 (가장 작은 cushion 높이가 한 줄)
+      let minH = Infinity;
+      cushions.forEach(c => { if (c.offsetHeight < minH) minH = c.offsetHeight; });
+
+      // 4) 어떤 cushion이든 한 줄보다 높으면 → 줄바꿈 발생
+      let anyWrapped = false;
+      cushions.forEach(c => { if (c.offsetHeight > minH + 4) anyWrapped = true; });
+
+      // 5) 하나라도 줄바꿈이면 모두 column
+      if (anyWrapped) {
+        cushions.forEach(c => { c.style.flexDirection = 'column'; });
+      }
     }, 500);
     return () => clearTimeout(timer);
   }, [rawEvents]);
@@ -693,35 +701,27 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       const badges = document.querySelectorAll('.bm-count-badge') as NodeListOf<HTMLElement>;
       if (badges.length === 0) return;
 
-      // 먼저 모든 cushion을 wrap 모드로 리셋
+      const cushions: HTMLElement[] = [];
       badges.forEach(badge => {
         const parent = badge.parentElement as HTMLElement;
         if (parent) {
-          parent.style.flexDirection = '';
+          parent.style.flexDirection = 'row';
+          cushions.push(parent);
         }
       });
 
-      // 한 프레임 후 줄바꿈 여부 확인
-      requestAnimationFrame(() => {
-        let anyWrapped = false;
-        badges.forEach(badge => {
-          const parent = badge.parentElement;
-          if (!parent) return;
-          const textEl = parent.querySelector('a') as HTMLElement;
-          if (textEl && badge.offsetTop > textEl.offsetTop + 2) {
-            anyWrapped = true;
-          }
-        });
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+      document.body.offsetHeight;
 
-        if (anyWrapped) {
-          badges.forEach(badge => {
-            const parent = badge.parentElement as HTMLElement;
-            if (parent) {
-              parent.style.flexDirection = 'column';
-            }
-          });
-        }
-      });
+      let minH = Infinity;
+      cushions.forEach(c => { if (c.offsetHeight < minH) minH = c.offsetHeight; });
+
+      let anyWrapped = false;
+      cushions.forEach(c => { if (c.offsetHeight > minH + 4) anyWrapped = true; });
+
+      if (anyWrapped) {
+        cushions.forEach(c => { c.style.flexDirection = 'column'; });
+      }
     };
     // 즉시 + 딜레이 두 번 실행 (헤더 렌더링 타이밍 보장)
     doSync();
