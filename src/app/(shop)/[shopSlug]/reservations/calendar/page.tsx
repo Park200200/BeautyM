@@ -550,6 +550,24 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     overlapTimerRef.current = setTimeout(() => {
       document.querySelectorAll('.bm-overlap-badge,.bm-overlap-content').forEach(el => el.remove());
 
+      // 이전 setupOverlap에서 변형된 harness 복원
+      const allHarnesses = document.querySelectorAll('.fc-timegrid-event-harness') as NodeListOf<HTMLElement>;
+      allHarnesses.forEach(h => {
+        h.style.display = '';
+        h.style.width = '';
+        h.style.height = '';
+        h.style.zIndex = '';
+        const ev = h.querySelector('.fc-timegrid-event') as HTMLElement;
+        if (ev) {
+          ev.style.height = '';
+          ev.style.minHeight = '';
+          ev.style.position = '';
+          ev.style.overflow = '';
+        }
+        const main = h.querySelector('.fc-event-main') as HTMLElement;
+        if (main) main.style.display = '';
+      });
+
       const harnesses = document.querySelectorAll('.fc-timegrid-event-harness') as NodeListOf<HTMLElement>;
       if (!harnesses.length) return;
 
