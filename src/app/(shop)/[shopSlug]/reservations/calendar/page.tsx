@@ -1196,14 +1196,11 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
               if (ev.start && ev.start < new Date() && status !== 'IN_PROGRESS') {
                 info.revert(); return;
               }
-              // 원래 duration 유지
               const oldDuration = info.oldEvent.end && info.oldEvent.start
                 ? info.oldEvent.end.getTime() - info.oldEvent.start.getTime()
                 : 60 * 60000;
               const newStart = ev.start!;
               const newEnd = new Date(newStart.getTime() + oldDuration);
-              // 먼저 이벤트 종료시간 보정 (duration 유지)
-              ev.setEnd(newEnd);
               try {
                 const res = await fetch(`/api/shops/${shopSlug}/reservations/${ev.id}`, {
                   method: 'PATCH',
@@ -1211,9 +1208,14 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                   body: JSON.stringify({ startTime: newStart.toISOString(), endTime: newEnd.toISOString() }),
                 });
                 if (!res.ok) { info.revert(); return; }
-                // 겹침 재계산
-                setTimeout(() => setupOverlap(true), 200);
-                setTimeout(() => setupOverlap(false), 800);
+                // 현재 뷰 범위로 데이터 재로딩
+                const api = calendarRef.current?.getApi();
+                if (api) {
+                  const v = api.view;
+                  fetchReservations(v.activeStart.toISOString(), v.activeEnd.toISOString());
+                } else {
+                  fetchReservations();
+                }
               } catch { info.revert(); }
             }}
             allDaySlot={false}
