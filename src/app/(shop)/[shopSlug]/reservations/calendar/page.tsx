@@ -1245,13 +1245,13 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             {/* 시술 이력 */}
             <div style={{ padding: '0 20px', marginTop: 4 }}>
               <div onClick={() => setHistoryTab(historyTab === 'menu' ? 'all' : 'menu')}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', cursor: 'pointer', userSelect: 'none', borderRadius: 10, background: historyTab === 'menu' ? `${c.primaryLight}60` : '#F9FAFB', border: `1px solid ${historyTab === 'menu' ? `${c.primary}20` : c.borderLight}`, transition: 'all .2s' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: historyTab === 'menu' ? c.primary : c.textLight, display: 'flex', alignItems: 'center', gap: 4, transition: 'color .15s' }}>
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', cursor: 'pointer', userSelect: 'none', borderRadius: 10, background: historyTab === 'menu' ? c.primary : '#EBEDF0', border: `1.5px solid ${historyTab === 'menu' ? c.primary : '#D1D5DB'}`, transition: 'all .2s' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: historyTab === 'menu' ? '#fff' : '#4B5563', display: 'flex', alignItems: 'center', gap: 5, transition: 'color .15s' }}>
                   <Sparkles style={{ width: 14, height: 14 }} /> {selectedEvent.menuName} 이력
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: historyTab === 'menu' ? c.primaryLight : '#F3F4F6', color: historyTab === 'menu' ? c.primary : '#6B7280' }}>{menuHistory.length}건</span>
-                  <ChevronDown style={{ width: 14, height: 14, color: c.textLight, transition: 'transform .2s', transform: historyTab === 'menu' ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 10, background: historyTab === 'menu' ? 'rgba(255,255,255,0.25)' : '#D1D5DB', color: historyTab === 'menu' ? '#fff' : '#374151' }}>{menuHistory.length}건</span>
+                  <ChevronDown style={{ width: 14, height: 14, color: historyTab === 'menu' ? '#fff' : '#6B7280', transition: 'transform .2s', transform: historyTab === 'menu' ? 'rotate(180deg)' : 'rotate(0deg)' }} />
                 </div>
               </div>
               {historyTab === 'menu' && (
@@ -1266,13 +1266,13 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             {/* 전체 방문 이력 */}
             <div style={{ padding: '6px 20px 20px' }}>
               <div onClick={() => setHistoryTab(historyTab === 'all' ? 'menu' : 'all')}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', cursor: 'pointer', userSelect: 'none', borderRadius: 10, background: historyTab === 'all' ? `${c.primaryLight}60` : '#F9FAFB', border: `1px solid ${historyTab === 'all' ? `${c.primary}20` : c.borderLight}`, transition: 'all .2s' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: historyTab === 'all' ? c.primary : c.textLight, display: 'flex', alignItems: 'center', gap: 4, transition: 'color .15s' }}>
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', cursor: 'pointer', userSelect: 'none', borderRadius: 10, background: historyTab === 'all' ? c.primary : '#EBEDF0', border: `1.5px solid ${historyTab === 'all' ? c.primary : '#D1D5DB'}`, transition: 'all .2s' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: historyTab === 'all' ? '#fff' : '#4B5563', display: 'flex', alignItems: 'center', gap: 5, transition: 'color .15s' }}>
                   <ClipboardList style={{ width: 14, height: 14 }} /> 전체 방문 이력
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: historyTab === 'all' ? c.primaryLight : '#F3F4F6', color: historyTab === 'all' ? c.primary : '#6B7280' }}>{customerHistory.length}건</span>
-                  <ChevronDown style={{ width: 14, height: 14, color: c.textLight, transition: 'transform .2s', transform: historyTab === 'all' ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 10, background: historyTab === 'all' ? 'rgba(255,255,255,0.25)' : '#D1D5DB', color: historyTab === 'all' ? '#fff' : '#374151' }}>{customerHistory.length}건</span>
+                  <ChevronDown style={{ width: 14, height: 14, color: historyTab === 'all' ? '#fff' : '#6B7280', transition: 'transform .2s', transform: historyTab === 'all' ? 'rotate(180deg)' : 'rotate(0deg)' }} />
                 </div>
               </div>
               {historyTab === 'all' && (
