@@ -137,7 +137,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             let mgmtFields: string[] = [];
             try { if (r.menu?.managementFields) mgmtFields = typeof r.menu.managementFields === 'string' ? JSON.parse(r.menu.managementFields) : r.menu.managementFields; } catch {}
             let mgmtData: Record<string, string> = {};
-            try { const rec = (r as any).records?.[0]; if (rec?.managementData) mgmtData = typeof rec.managementData === 'string' ? JSON.parse(rec.managementData) : rec.managementData; } catch {}
+            try { const rec = (r as any).customerRecord; if (rec?.managementData) mgmtData = typeof rec.managementData === 'string' ? JSON.parse(rec.managementData) : rec.managementData; } catch {}
             return {
               id: r.id,
               title: menuName,
