@@ -115,9 +115,9 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
   const STATUS_COLORS: Record<string, { bar: string; bg: string; text: string }> = {
     CONFIRMED: { bar: c.primary, bg: `${c.primary}18`, text: c.text },
     PENDING:   { bar: '#F59E0B', bg: '#FEF3C7',  text: '#92400E' },
-    COMPLETED: { bar: '#6B7280', bg: '#F3F4F6',  text: '#374151' },
-    CANCELLED: { bar: '#EF4444', bg: '#FEE2E2',  text: '#991B1B' },
-    NO_SHOW:   { bar: '#DC2626', bg: '#FEE2E2',  text: '#991B1B' },
+    COMPLETED: { bar: '#3B82F6', bg: '#DBEAFE',  text: '#1E40AF' },
+    CANCELLED: { bar: '#9CA3AF', bg: '#F3F4F6',  text: '#6B7280' },
+    NO_SHOW:   { bar: '#EF4444', bg: '#FEE2E2',  text: '#991B1B' },
     REQUESTED: { bar: '#3B82F6', bg: '#DBEAFE',  text: '#1E40AF' },
     IN_PROGRESS: { bar: '#F59E0B', bg: '#FEF3C7', text: '#92400E' },
   };
