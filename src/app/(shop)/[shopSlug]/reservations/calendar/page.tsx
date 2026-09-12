@@ -679,10 +679,20 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
               : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGrid3Day,timeGridDay' }
             }
             views={{
+              dayGridMonth: {
+                dayHeaderFormat: { weekday: 'short' },
+              },
+              timeGridWeek: {
+                dayHeaderFormat: { weekday: 'short', day: 'numeric', omitCommas: true },
+              },
               timeGrid3Day: {
                 type: 'timeGrid',
                 duration: { days: 3 },
                 buttonText: '삼일',
+                dayHeaderFormat: { weekday: 'short', day: 'numeric', omitCommas: true },
+              },
+              timeGridDay: {
+                dayHeaderFormat: { weekday: 'short', day: 'numeric', omitCommas: true },
               },
             }}
             buttonText={mob
@@ -690,7 +700,6 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
               : { today: '오늘', month: '당월', week: '칠일', day: '당일' }
             }
             titleFormat={{ month: 'long', day: 'numeric' }}
-            dayHeaderFormat={{ weekday: 'short', day: 'numeric', omitCommas: true }}
             slotLabelFormat={{ hour: 'numeric', minute: '2-digit', hour12: true }}
             events={events}
             height="auto"
