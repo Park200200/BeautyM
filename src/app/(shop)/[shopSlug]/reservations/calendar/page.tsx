@@ -596,26 +596,11 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       const modified = document.querySelectorAll('.fc-timegrid-event-harness[data-bm-overlap]');
       modified.forEach(h => {
         const el = h as HTMLElement;
-        el.style.display = el.getAttribute('data-bm-orig-display') || '';
-        el.style.inset = el.getAttribute('data-bm-orig-inset') || '';
-        el.style.width = el.getAttribute('data-bm-orig-width') || '';
-        el.style.height = el.getAttribute('data-bm-orig-height') || '';
+        el.style.opacity = el.getAttribute('data-bm-orig-opacity') || '1';
         el.style.zIndex = el.getAttribute('data-bm-orig-z') || '';
         el.removeAttribute('data-bm-overlap');
-        el.removeAttribute('data-bm-orig-display');
-        el.removeAttribute('data-bm-orig-inset');
-        el.removeAttribute('data-bm-orig-width');
-        el.removeAttribute('data-bm-orig-height');
+        el.removeAttribute('data-bm-orig-opacity');
         el.removeAttribute('data-bm-orig-z');
-        const ev = el.querySelector('.fc-timegrid-event') as HTMLElement;
-        if (ev) {
-          ev.style.height = '';
-          ev.style.minHeight = '';
-          ev.style.position = '';
-          ev.style.overflow = '';
-        }
-        const main = el.querySelector('.fc-event-main') as HTMLElement;
-        if (main) main.style.display = '';
       });
 
       // 복원 후 DOM 리플로우를 기다린 다음 겹침 감지
@@ -673,7 +658,6 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
           const eventMain = info.el.querySelector('.fc-event-main');
           const htmlContent = eventMain?.innerHTML || '';
 
-          // 콘텐츠에서 시간 추출 (예: "8:30 - 9:15")
           const timeMatch = htmlContent.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
           let matchedEvent: typeof allFcEvents[0] | undefined;
 
@@ -685,7 +669,6 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
               const d = ev.start;
               const evDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
               if (evDate !== colDate) return false;
-              // KST 보정: UTC+9
               const kstH = (d.getUTCHours() + 9) % 24;
               const kstM = d.getUTCMinutes();
               return kstH === startH && kstM === startM;
@@ -701,28 +684,12 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
               eventData: matchedEvent,
             });
           }
-          if (idx === 0) {
-            // 원래 스타일 저장
-            info.el.setAttribute('data-bm-overlap', '1');
-            info.el.setAttribute('data-bm-orig-inset', info.el.style.inset || '');
-            info.el.setAttribute('data-bm-orig-width', info.el.style.width || '');
-            info.el.setAttribute('data-bm-orig-height', info.el.style.height || '');
-            info.el.setAttribute('data-bm-orig-z', info.el.style.zIndex || '');
-            info.el.style.inset = `${groupMinTop}px 0px auto 0px`;
-            info.el.style.width = '100%';
-            info.el.style.height = `${groupHeight}px`;
-            info.el.style.zIndex = '15';
-            mainEvent.style.height = '100%';
-            mainEvent.style.minHeight = '100%';
-            mainEvent.style.position = 'relative';
-            mainEvent.style.overflow = 'hidden';
-            const origMain = mainEvent.querySelector('.fc-event-main') as HTMLElement;
-            if (origMain) origMain.style.display = 'none';
-          } else {
-            info.el.setAttribute('data-bm-overlap', '1');
-            info.el.setAttribute('data-bm-orig-display', info.el.style.display || '');
-            info.el.style.display = 'none';
-          }
+          // harness를 숨기지 않고 opacity로 투명하게 (드래그용 유지)
+          info.el.setAttribute('data-bm-overlap', '1');
+          info.el.setAttribute('data-bm-orig-opacity', info.el.style.opacity || '');
+          info.el.setAttribute('data-bm-orig-z', info.el.style.zIndex || '');
+          info.el.style.opacity = '0';
+          info.el.style.zIndex = '5';
         });
 
         if (items.length <= 1) return;
@@ -751,9 +718,13 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
           setHistoryTab('menu');
         };
 
+        // 오버레이를 컬럼에 직접 추가 (harness 위에 겹침)
+        const colEl = main.el.closest('.fc-timegrid-col-events') as HTMLElement;
+        if (!colEl) return;
+
         const contentWrap = document.createElement('div');
         contentWrap.className = 'bm-overlap-content';
-        contentWrap.style.cssText = `position:absolute;top:0;left:0;right:0;bottom:0;`;
+        contentWrap.style.cssText = `position:absolute;top:${groupMinTop}px;left:0;right:0;height:${groupHeight}px;z-index:20;pointer-events:auto;`;
 
         const badgeH = 22; // 중복 뱃지 높이
         items.forEach((item, idx) => {
@@ -795,8 +766,6 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
           item.el = div;
         });
 
-        mainEvent.appendChild(contentWrap);
-
         const textH = 52;
         const updateActive = () => {
           items.forEach((item, idx) => {
@@ -818,7 +787,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
         const topBadge = document.createElement('div');
         topBadge.className = 'bm-overlap-badge';
-        topBadge.style.cssText = `position:absolute;top:2px;right:2px;background:#EF4444;color:#fff;font-size:9px;font-weight:800;padding:2px 8px;border-radius:8px;z-index:12;cursor:pointer;user-select:none;transition:transform 0.15s;`;
+        topBadge.style.cssText = `position:absolute;top:${groupMinTop + 2}px;right:2px;background:#EF4444;color:#fff;font-size:9px;font-weight:800;padding:2px 8px;border-radius:8px;z-index:25;cursor:pointer;user-select:none;transition:transform 0.15s;`;
         topBadge.textContent = `중복(1/${items.length})건`;
         topBadge.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -829,7 +798,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
           topBadge.style.transform = 'scale(0.9)';
           setTimeout(() => { topBadge.style.transform = 'scale(1)'; }, 150);
         });
-        mainEvent.appendChild(topBadge);
+        colEl.appendChild(topBadge);
+        colEl.appendChild(contentWrap);
       });
       }; // end runDetection
 
@@ -1221,25 +1191,15 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
               } catch { info.revert(); }
             }}
             eventDragStart={(info) => {
-              // 드래그 시작 시 overlap DOM 정리 (display:none 복원)
+              // 드래그 시작 시 오버레이 제거 + harness opacity 복원
               document.querySelectorAll('.bm-overlap-badge,.bm-overlap-content').forEach(el => el.remove());
               document.querySelectorAll('.fc-timegrid-event-harness[data-bm-overlap]').forEach(h => {
                 const el = h as HTMLElement;
-                el.style.display = el.getAttribute('data-bm-orig-display') || '';
-                el.style.inset = el.getAttribute('data-bm-orig-inset') || '';
-                el.style.width = el.getAttribute('data-bm-orig-width') || '';
-                el.style.height = el.getAttribute('data-bm-orig-height') || '';
+                el.style.opacity = el.getAttribute('data-bm-orig-opacity') || '1';
                 el.style.zIndex = el.getAttribute('data-bm-orig-z') || '';
                 el.removeAttribute('data-bm-overlap');
-                el.removeAttribute('data-bm-orig-display');
-                el.removeAttribute('data-bm-orig-inset');
-                el.removeAttribute('data-bm-orig-width');
-                el.removeAttribute('data-bm-orig-height');
+                el.removeAttribute('data-bm-orig-opacity');
                 el.removeAttribute('data-bm-orig-z');
-                const ev = el.querySelector('.fc-timegrid-event') as HTMLElement;
-                if (ev) { ev.style.height = ''; ev.style.minHeight = ''; ev.style.position = ''; ev.style.overflow = ''; }
-                const main = el.querySelector('.fc-event-main') as HTMLElement;
-                if (main) main.style.display = '';
               });
             }}
             eventDragStop={() => {
