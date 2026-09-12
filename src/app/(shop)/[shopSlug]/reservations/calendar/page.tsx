@@ -447,69 +447,120 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     });
   }, [rawEvents, handleDayCellDidMount, injectHeaderSummary, isHoliday]);
 
-  // 겹치는 이벤트 감지 → 중복 뱃지 + 빨간 경고 + 펄스 효과
+  // 겹치는 이벤트 → 카드 스택 (오프셋 + 마우스오버로 앞으로)
   useEffect(() => {
     const setupOverlap = () => {
       // 기존 중복 뱃지 제거
       document.querySelectorAll('.bm-overlap-badge').forEach(el => el.remove());
 
-      // rawEvents에서 시간 기반 겹침 감지
-      const active = rawEvents.filter(r => r.status !== 'CANCELLED');
-      const overlapIds = new Set<string>();
+      const harnesses = document.querySelectorAll('.fc-timegrid-event-harness') as NodeListOf<HTMLElement>;
+      if (!harnesses.length) return;
 
-      for (let i = 0; i < active.length; i++) {
-        for (let j = i + 1; j < active.length; j++) {
-          const a = active[i], b = active[j];
-          const aStart = new Date(a.startTime).getTime();
-          const aEnd = new Date(a.endTime).getTime();
-          const bStart = new Date(b.startTime).getTime();
-          const bEnd = new Date(b.endTime).getTime();
-          // 같은 날 + 시간 겹침
-          if (aStart < bEnd && bStart < aEnd) {
-            overlapIds.add(a.id);
-            overlapIds.add(b.id);
+      // harness 위치 정보 수집 (FC가 부여한 inset 기반)
+      type HInfo = { el: HTMLElement; col: string; top: number; bottom: number; origInset: string; };
+      const infos: HInfo[] = [];
+      harnesses.forEach(h => {
+        const col = h.closest('.fc-timegrid-col')?.getAttribute('data-date') || '';
+        const style = h.style;
+        const insetParts = (style.inset || '').split(' ');
+        const topPx = parseFloat(insetParts[0]) || 0;
+        // bottom은 inset의 2번째 값 (auto면 height로 계산)
+        const rect = h.getBoundingClientRect();
+        const parentRect = h.offsetParent?.getBoundingClientRect();
+        const actualTop = parentRect ? rect.top - parentRect.top : topPx;
+        const actualBottom = parentRect ? rect.bottom - parentRect.top : topPx + rect.height;
+        infos.push({ el: h, col, top: actualTop, bottom: actualBottom, origInset: style.inset || '' });
+      });
+
+      // 같은 컬럼에서 시간이 겹치는 그룹 찾기
+      const groups: HInfo[][] = [];
+      const used = new Set<number>();
+      for (let i = 0; i < infos.length; i++) {
+        if (used.has(i)) continue;
+        const group = [infos[i]];
+        used.add(i);
+        for (let j = i + 1; j < infos.length; j++) {
+          if (used.has(j)) continue;
+          if (infos[i].col !== infos[j].col) continue;
+          // 겹침 체크: 어느 한쪽이라도 겹치면
+          const overlap = group.some(g => g.top < infos[j].bottom && infos[j].top < g.bottom);
+          if (overlap) {
+            group.push(infos[j]);
+            used.add(j);
           }
         }
+        if (group.length > 1) groups.push(group);
       }
 
-      if (overlapIds.size === 0) return;
+      if (groups.length === 0) return;
 
-      // 겹치는 이벤트 카드에 시각 표시 적용
-      const eventEls = document.querySelectorAll('.fc-timegrid-event');
-      eventEls.forEach(evtEl => {
-        const fcEvent = evtEl.querySelector('.fc-event-main');
-        if (!fcEvent) return;
-        // FC 이벤트 ID 매칭 (data-event-id 또는 내부 텍스트 기반)
-        const harness = evtEl.closest('.fc-timegrid-event-harness') as HTMLElement;
-        if (!harness) return;
+      // 카드 스택 스타일 적용
+      const OFFSET = 15; // 각 카드 오프셋(px)
+      groups.forEach(group => {
+        // 시간순 정렬
+        group.sort((a, b) => a.top - b.top);
 
-        // FC가 이벤트 너비를 줄였는지 확인 (나란히 배치 = 겹침)
-        const inset = harness.style.inset || '';
-        const rightVal = inset.split(' ')[3]; // inset의 4번째 값 = right
-        const isNarrow = rightVal && rightVal !== '0%' && rightVal !== '0px' && rightVal !== '';
+        group.forEach((info, idx) => {
+          const h = info.el;
+          // 원래 inset에서 top만 유지, left/right 조정
+          const insetParts = info.origInset.split(' ');
+          const origTop = insetParts[0] || '0px';
 
-        if (isNarrow) {
-          // 빨간 경고 좌측 선
-          (evtEl as HTMLElement).style.borderLeftColor = '#EF4444';
-          (evtEl as HTMLElement).style.borderLeftWidth = '3px';
+          // 전체 너비 + 오프셋
+          h.style.inset = `${origTop} 0px auto ${idx * OFFSET}px`;
+          h.style.width = `calc(100% - ${idx * OFFSET}px)`;
+          h.style.zIndex = String(10 + idx);
+          h.style.transition = 'z-index 0.1s, box-shadow 0.2s, transform 0.2s';
+          h.style.position = 'absolute';
 
-          // 중복 뱃지 추가
-          if (!evtEl.querySelector('.bm-overlap-badge')) {
+          // 이벤트 카드에 그림자 추가 (스택 효과)
+          const eventEl = h.querySelector('.fc-timegrid-event') as HTMLElement;
+          if (eventEl) {
+            eventEl.style.boxShadow = idx > 0 
+              ? '−2px 0 8px rgba(0,0,0,0.15)' 
+              : '1px 1px 4px rgba(0,0,0,0.08)';
+          }
+
+          // 마우스오버 → 맨 앞으로
+          h.addEventListener('mouseenter', () => {
+            group.forEach(g => {
+              g.el.style.zIndex = '10';
+              g.el.style.transform = '';
+              const gEvt = g.el.querySelector('.fc-timegrid-event') as HTMLElement;
+              if (gEvt) gEvt.style.boxShadow = '1px 1px 4px rgba(0,0,0,0.08)';
+            });
+            h.style.zIndex = '30';
+            h.style.transform = 'scale(1.02)';
+            if (eventEl) eventEl.style.boxShadow = '0 4px 16px rgba(0,0,0,0.2)';
+          });
+
+          h.addEventListener('mouseleave', () => {
+            group.forEach((g, gi) => {
+              g.el.style.zIndex = String(10 + gi);
+              g.el.style.transform = '';
+              const gEvt = g.el.querySelector('.fc-timegrid-event') as HTMLElement;
+              if (gEvt) gEvt.style.boxShadow = gi > 0 
+                ? '-2px 0 8px rgba(0,0,0,0.15)' 
+                : '1px 1px 4px rgba(0,0,0,0.08)';
+            });
+          });
+
+          // 중복 갯수 뱃지 (첫 번째 카드에만)
+          if (idx === 0 && eventEl && !eventEl.querySelector('.bm-overlap-badge')) {
             const badge = document.createElement('div');
             badge.className = 'bm-overlap-badge';
             badge.style.cssText = `
-              position:absolute;top:-1px;right:-1px;
+              position:absolute;top:2px;right:2px;
               background:#EF4444;color:#fff;
               font-size:8px;font-weight:800;
-              padding:1px 4px;border-radius:0 6px 0 6px;
-              z-index:10;letter-spacing:0.5px;
-              animation:bm-pulse 2s ease-in-out infinite;
+              padding:1px 5px;border-radius:8px;
+              z-index:10;
             `;
-            badge.textContent = '중복';
-            (evtEl as HTMLElement).style.position = 'relative';
-            evtEl.appendChild(badge);
+            badge.textContent = `${group.length}건 중복`;
+            eventEl.style.position = 'relative';
+            eventEl.appendChild(badge);
           }
-        }
+        });
       });
     };
 
