@@ -1428,7 +1428,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                               }
                             } catch (e) { console.error(e); }
                           }}
-                          style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${c.primary}`, background: c.primary, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                          style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${c.primary}`, background: c.primary, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                           <CalendarDays style={{ width: 13, height: 13 }} /> 변경
                         </button>
                         <button
