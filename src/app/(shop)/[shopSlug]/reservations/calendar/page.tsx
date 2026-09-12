@@ -1218,6 +1218,28 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 }
               } catch { info.revert(); }
             }}
+            eventDragStart={() => {
+              // 드래그 시작 시 overlap DOM 정리 (display:none 복원)
+              document.querySelectorAll('.bm-overlap-badge,.bm-overlap-content').forEach(el => el.remove());
+              document.querySelectorAll('.fc-timegrid-event-harness[data-bm-overlap]').forEach(h => {
+                const el = h as HTMLElement;
+                el.style.display = el.getAttribute('data-bm-orig-display') || '';
+                el.style.inset = el.getAttribute('data-bm-orig-inset') || '';
+                el.style.width = el.getAttribute('data-bm-orig-width') || '';
+                el.style.height = el.getAttribute('data-bm-orig-height') || '';
+                el.style.zIndex = el.getAttribute('data-bm-orig-z') || '';
+                el.removeAttribute('data-bm-overlap');
+                el.removeAttribute('data-bm-orig-display');
+                el.removeAttribute('data-bm-orig-inset');
+                el.removeAttribute('data-bm-orig-width');
+                el.removeAttribute('data-bm-orig-height');
+                el.removeAttribute('data-bm-orig-z');
+                const ev = el.querySelector('.fc-timegrid-event') as HTMLElement;
+                if (ev) { ev.style.height = ''; ev.style.minHeight = ''; ev.style.position = ''; ev.style.overflow = ''; }
+                const main = el.querySelector('.fc-event-main') as HTMLElement;
+                if (main) main.style.display = '';
+              });
+            }}
             allDaySlot={false}
             slotMinTime="08:00:00" slotMaxTime="22:00:00" scrollTime="09:00:00"
             expandRows stickyHeaderDates firstDay={0} eventDisplay="block"
