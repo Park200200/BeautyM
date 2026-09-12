@@ -111,6 +111,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     COMPLETED: { bar: '#6B7280', bg: '#F3F4F6',  text: '#374151' },
     CANCELLED: { bar: '#EF4444', bg: '#FEE2E2',  text: '#991B1B' },
     NO_SHOW:   { bar: '#DC2626', bg: '#FEE2E2',  text: '#991B1B' },
+    REQUESTED: { bar: '#3B82F6', bg: '#DBEAFE',  text: '#1E40AF' },
   };
 
   useEffect(() => {
@@ -735,7 +736,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     : [];
 
   const STATUS_LABEL: Record<string, string> = {
-    CONFIRMED: '확정', PENDING: '대기', COMPLETED: '완료', CANCELLED: '취소', NO_SHOW: '노쇼',
+    CONFIRMED: '확정', PENDING: '대기', COMPLETED: '완료', CANCELLED: '취소', NO_SHOW: '노쇼', REQUESTED: '요청',
   };
 
   return (
