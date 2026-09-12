@@ -151,8 +151,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             if (mgmtFields.length === 0) {
               try { if (r.menu?.managementFields) { const parsed = typeof r.menu.managementFields === 'string' ? JSON.parse(r.menu.managementFields) : r.menu.managementFields; if (Array.isArray(parsed)) mgmtFields = parsed; } } catch {}
             }
-            // enablePhotos 플래그 확인
-            let enablePhotos = false;
+            // enablePhotos 플래그 확인 (Menu 또는 Treatment에서)
+            let enablePhotos = !!(r.menu as any)?.enablePhotos;
             try { const mts = (r as any).menu?.menuTreatments || []; for (const mt of mts) { if (mt.treatment?.enablePhotos) enablePhotos = true; } } catch {}
             let mgmtData: Record<string, string> = {};
             try { const rec = (r as any).customerRecord; if (rec?.managementData) mgmtData = typeof rec.managementData === 'string' ? JSON.parse(rec.managementData) : rec.managementData; } catch {}

@@ -51,7 +51,7 @@ export async function PATCH(
   try {
     const { shopSlug, menuId } = await params;
     const body = await request.json();
-    const { name, price, duration, categoryId, managementFields, description, sessions, sessionInterval, isActive, isPublic, treatmentIds } = body;
+    const { name, price, duration, categoryId, managementFields, description, sessions, sessionInterval, isActive, isPublic, treatmentIds, photos, enablePhotos } = body;
 
     const shop = await prisma.shop.findUnique({
       where: { slug: shopSlug },
@@ -80,6 +80,8 @@ export async function PATCH(
     if (isActive !== undefined) data.isActive = isActive;
     if (isPublic !== undefined) data.isPublic = isPublic;
     if (managementFields !== undefined) data.managementFields = managementFields ? JSON.stringify(managementFields) : null;
+    if (photos !== undefined) data.photos = photos ? JSON.stringify(photos) : null;
+    if (enablePhotos !== undefined) data.enablePhotos = enablePhotos;
 
     const updatedMenu = await prisma.menu.update({
       where: { id: menuId },

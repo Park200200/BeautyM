@@ -273,6 +273,8 @@ model Menu {
   isActive    Boolean  @default(true)
   isPublic    Boolean  @default(true)
   managementFields String? // JSON: 시술 관리항목
+  photos       String?  // JSON: [{url,description}] 상품 사진
+  enablePhotos Boolean  @default(false) // 시술 전후 사진 옵션
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

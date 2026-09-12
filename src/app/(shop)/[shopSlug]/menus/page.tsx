@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Trash2, X, Package, Sparkles, Search, Check } from 'lucide-react';
+import { Plus, Trash2, X, Package, Sparkles, Search, Check, Camera, ImagePlus, XCircle } from 'lucide-react';
 import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
 
@@ -42,7 +42,9 @@ export default function MenusPage() {
   // Modal
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', description: '', price: '', duration: '', sessions: '', sessionInterval: '', categoryId: '', isActive: true, isPublic: true, treatmentProcess: '' });
+  const [form, setForm] = useState({ name: '', description: '', price: '', duration: '', sessions: '', sessionInterval: '', categoryId: '', isActive: true, isPublic: true });
+  const [menuPhotos, setMenuPhotos] = useState<{ url: string; description: string }[]>([]);
+  const [enablePhotos, setEnablePhotos] = useState(false);
   const [selectedTreatmentIds, setSelectedTreatmentIds] = useState<string[]>([]);
   const [treatmentSearch, setTreatmentSearch] = useState('');
   const [showTreatmentPicker, setShowTreatmentPicker] = useState(false);
@@ -74,7 +76,8 @@ export default function MenusPage() {
 
   // Modal open
   const openNew = () => {
-    setForm({ name: '', description: '', price: '', duration: '', sessions: '', sessionInterval: '', categoryId: '', isActive: true, isPublic: true, treatmentProcess: '' });
+    setForm({ name: '', description: '', price: '', duration: '', sessions: '', sessionInterval: '', categoryId: '', isActive: true, isPublic: true });
+    setMenuPhotos([]); setEnablePhotos(false);
     setSelectedTreatmentIds([]); setTreatmentSearch(''); setShowTreatmentPicker(false);
     setEditingId(null); setShowModal(true);
   };
@@ -88,27 +91,23 @@ export default function MenusPage() {
   }, [searchParams]);
 
   const openEdit = (m: Menu) => {
-    // managementFields를 textarea 형식으로 변환
-    let processText = '';
-    try {
-      if (m.managementFields) {
-        const parsed = typeof m.managementFields === 'string' ? JSON.parse(m.managementFields) : m.managementFields;
-        if (Array.isArray(parsed)) {
-          processText = parsed.map((f: any) => {
-            if (typeof f === 'object' && f.name) return `${f.name},${f.value || ''}-${f.unit || ''}`;
-            return String(f); // 이전 형식 호환
-          }).join('\n');
-        }
-      }
-    } catch {}
     setForm({
       name: m.name, description: m.description || '',
       price: m.price.toLocaleString(), duration: String(m.duration),
       sessions: m.sessions ? String(m.sessions) : '',
       sessionInterval: m.sessionInterval ? String(m.sessionInterval) : '',
       categoryId: m.categoryId || '', isActive: m.isActive, isPublic: m.isPublic,
-      treatmentProcess: processText,
     });
+    // photos 로드
+    let photos: { url: string; description: string }[] = [];
+    try {
+      if ((m as any).photos) {
+        const parsed = typeof (m as any).photos === 'string' ? JSON.parse((m as any).photos) : (m as any).photos;
+        if (Array.isArray(parsed)) photos = parsed;
+      }
+    } catch {}
+    setMenuPhotos(photos);
+    setEnablePhotos(!!(m as any).enablePhotos);
     setSelectedTreatmentIds((m.menuTreatments || []).map(mt => mt.treatmentId));
     setTreatmentSearch(''); setShowTreatmentPicker(false);
     setEditingId(m.id); setShowModal(true);
@@ -124,17 +123,8 @@ export default function MenusPage() {
       body.sessions = form.sessions ? parseInt(form.sessions) || null : null;
       body.sessionInterval = form.sessionInterval ? parseInt(form.sessionInterval) || null : null;
       body.treatmentIds = selectedTreatmentIds;
-      // treatmentProcess → managementFields 변환
-      if (form.treatmentProcess.trim()) {
-        body.managementFields = form.treatmentProcess.trim().split('\n').filter(Boolean).map(line => {
-          const [name, rest] = line.split(',');
-          const [value, unit] = (rest || '').split('-');
-          return { name: (name || '').trim(), value: (value || '').trim(), unit: (unit || '').trim() };
-        });
-      } else {
-        body.managementFields = [];
-      }
-      delete body.treatmentProcess;
+      body.photos = menuPhotos.length > 0 ? menuPhotos : null;
+      body.enablePhotos = enablePhotos;
       const url = editingId ? `/api/shops/${shopSlug}/menus/${editingId}` : `/api/shops/${shopSlug}/menus`;
       const method = editingId ? 'PATCH' : 'POST';
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -316,35 +306,63 @@ export default function MenusPage() {
             <div><label className="text-xs font-medium block mb-1" style={{ color: c.textLight }}>{'\uC124\uBA85'}</label>
               <Textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={2} placeholder={'\uC0C1\uD488 \uC124\uBA85\uC744 \uC785\uB825\uD558\uC138\uC694'} className="rounded-xl" /></div>
 
-            {/* 시술과정 등록 */}
+            {/* 상품 사진 등록 */}
             <div>
               <label className="text-xs font-medium block mb-1" style={{ color: c.textLight }}>
-                <Sparkles className="w-3.5 h-3.5 inline mr-1" />시술과정
+                <Camera className="w-3.5 h-3.5 inline mr-1" />상품 사진
               </label>
-              <Textarea
-                value={form.treatmentProcess}
-                onChange={e => setForm({...form, treatmentProcess: e.target.value})}
-                rows={4}
-                placeholder={'시술명,숫자-단위 (한 줄에 하나씩)\n예:\n페이스 마사지,20-분\n레이저샷,20-샷\n오일 진정 마사지,50-회'}
-                className="rounded-xl font-mono text-xs"
-              />
-              {form.treatmentProcess.trim() && (
-                <div className="mt-2 p-2.5 rounded-lg" style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
-                  <div className="text-[10px] font-bold mb-1.5" style={{ color: '#166534' }}>미리보기</div>
-                  {form.treatmentProcess.trim().split('\n').filter(Boolean).map((line, i) => {
-                    const [name, rest] = line.split(',');
-                    const [value, unit] = (rest || '').split('-');
-                    return (
-                      <div key={i} className="flex items-center gap-2 text-xs" style={{ color: '#15803D' }}>
-                        <span className="font-medium" style={{ minWidth: 100 }}>{(name || '').trim()}</span>
-                        <span>=</span>
-                        <span className="font-bold">{(value || '').trim()}</span>
-                        <span>{(unit || '').trim()}</span>
-                      </div>
-                    );
-                  })}
+              {/* 등록된 사진 목록 */}
+              {menuPhotos.map((photo, idx) => (
+                <div key={idx} className="flex items-start gap-2 mb-2 p-2 rounded-lg" style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
+                  <img src={photo.url} alt="" className="w-14 h-14 rounded-md object-cover flex-shrink-0" style={{ border: '1px solid #D1D5DB' }} />
+                  <div className="flex-1 min-w-0">
+                    <input
+                      value={photo.description}
+                      onChange={e => setMenuPhotos(prev => prev.map((p, i) => i === idx ? { ...p, description: e.target.value } : p))}
+                      placeholder="사진 설명 입력"
+                      className="w-full text-xs p-1.5 rounded-md border outline-none"
+                      style={{ borderColor: '#D1D5DB' }}
+                    />
+                  </div>
+                  <button onClick={() => setMenuPhotos(prev => prev.filter((_, i) => i !== idx))}
+                    className="flex-shrink-0 mt-1">
+                    <XCircle className="w-4 h-4 text-red-400 hover:text-red-600" />
+                  </button>
                 </div>
-              )}
+              ))}
+              {/* 사진 추가 버튼 */}
+              <label className="flex items-center justify-center gap-2 w-full py-3 rounded-xl cursor-pointer transition-colors"
+                style={{ border: '2px dashed #D1D5DB', background: '#FAFAFA', color: '#9CA3AF' }}>
+                <ImagePlus className="w-4 h-4" />
+                <span className="text-xs font-medium">사진 추가</span>
+                <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const fd = new FormData();
+                  fd.append('file', file);
+                  try {
+                    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+                    const data = await res.json();
+                    if (data.url) setMenuPhotos(prev => [...prev, { url: data.url, description: '' }]);
+                  } catch (err) { console.error(err); }
+                  e.target.value = '';
+                }} />
+              </label>
+            </div>
+
+            {/* 시술 전후 사진 옵션 */}
+            <div className="flex items-center justify-between px-3 py-2.5 rounded-xl" style={{ background: enablePhotos ? '#FFF7ED' : '#F9FAFB', border: `1px solid ${enablePhotos ? '#FDBA74' : '#E5E7EB'}` }}>
+              <div className="flex items-center gap-2">
+                <Camera className="w-3.5 h-3.5" style={{ color: enablePhotos ? '#EA580C' : '#9CA3AF' }} />
+                <span className="text-xs font-medium" style={{ color: enablePhotos ? '#EA580C' : '#6B7280' }}>시술 전/후 사진 등록</span>
+              </div>
+              <button
+                onClick={() => setEnablePhotos(!enablePhotos)}
+                className="relative w-9 h-5 rounded-full transition-colors"
+                style={{ background: enablePhotos ? '#F97316' : '#D1D5DB' }}>
+                <div className="absolute top-0.5 transition-all w-4 h-4 rounded-full bg-white shadow-sm"
+                  style={{ left: enablePhotos ? 18 : 2 }} />
+              </button>
             </div>
 
             {/* 시술 선택 */}
