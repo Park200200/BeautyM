@@ -550,21 +550,28 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     overlapTimerRef.current = setTimeout(() => {
       document.querySelectorAll('.bm-overlap-badge,.bm-overlap-content').forEach(el => el.remove());
 
-      // 이전 setupOverlap에서 변형된 harness 복원
-      const allHarnesses = document.querySelectorAll('.fc-timegrid-event-harness') as NodeListOf<HTMLElement>;
-      allHarnesses.forEach(h => {
-        h.style.display = '';
-        h.style.width = '';
-        h.style.height = '';
-        h.style.zIndex = '';
-        const ev = h.querySelector('.fc-timegrid-event') as HTMLElement;
+      // 이전 setupOverlap에서 변형된 harness만 복원 (data-bm-overlap 마킹된 것)
+      document.querySelectorAll('.fc-timegrid-event-harness[data-bm-overlap]').forEach(h => {
+        const el = h as HTMLElement;
+        el.style.display = el.getAttribute('data-bm-orig-display') || '';
+        el.style.inset = el.getAttribute('data-bm-orig-inset') || '';
+        el.style.width = el.getAttribute('data-bm-orig-width') || '';
+        el.style.height = el.getAttribute('data-bm-orig-height') || '';
+        el.style.zIndex = el.getAttribute('data-bm-orig-z') || '';
+        el.removeAttribute('data-bm-overlap');
+        el.removeAttribute('data-bm-orig-display');
+        el.removeAttribute('data-bm-orig-inset');
+        el.removeAttribute('data-bm-orig-width');
+        el.removeAttribute('data-bm-orig-height');
+        el.removeAttribute('data-bm-orig-z');
+        const ev = el.querySelector('.fc-timegrid-event') as HTMLElement;
         if (ev) {
           ev.style.height = '';
           ev.style.minHeight = '';
           ev.style.position = '';
           ev.style.overflow = '';
         }
-        const main = h.querySelector('.fc-event-main') as HTMLElement;
+        const main = el.querySelector('.fc-event-main') as HTMLElement;
         if (main) main.style.display = '';
       });
 
@@ -650,6 +657,12 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             });
           }
           if (idx === 0) {
+            // 원래 스타일 저장
+            info.el.setAttribute('data-bm-overlap', '1');
+            info.el.setAttribute('data-bm-orig-inset', info.el.style.inset || '');
+            info.el.setAttribute('data-bm-orig-width', info.el.style.width || '');
+            info.el.setAttribute('data-bm-orig-height', info.el.style.height || '');
+            info.el.setAttribute('data-bm-orig-z', info.el.style.zIndex || '');
             info.el.style.inset = `${groupMinTop}px 0px auto 0px`;
             info.el.style.width = '100%';
             info.el.style.height = `${groupHeight}px`;
@@ -661,6 +674,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             const origMain = mainEvent.querySelector('.fc-event-main') as HTMLElement;
             if (origMain) origMain.style.display = 'none';
           } else {
+            info.el.setAttribute('data-bm-overlap', '1');
+            info.el.setAttribute('data-bm-orig-display', info.el.style.display || '');
             info.el.style.display = 'none';
           }
         });
