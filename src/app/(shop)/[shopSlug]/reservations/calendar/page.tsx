@@ -761,9 +761,10 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
           items.forEach((item, idx) => {
             if (!item.el) return;
             const isActive = idx === current;
-            // 활성 아이템은 뱃지 아래로 밀기
-            item.el.style.top = `${(isActive ? item.relTop + badgeH : item.relTop)}px`;
-            item.el.style.height = `${item.height - (isActive ? badgeH : 0)}px`;
+            // 첫 번째 아이템은 항상 뱃지 아래
+            const needOffset = idx === 0;
+            item.el.style.top = `${item.relTop + (needOffset ? badgeH : 0)}px`;
+            item.el.style.height = `${item.height - (needOffset ? badgeH : 0)}px`;
             item.el.style.background = isActive
               ? `linear-gradient(to bottom, #fff ${textH}px, rgba(255,255,255,0.6) ${textH + 10}px, rgba(255,255,255,0) ${textH + 40}px)`
               : 'transparent';
