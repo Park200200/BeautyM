@@ -380,12 +380,13 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     wrapper.className = 'bm-header-summary';
     wrapper.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 8px 6px;';
 
-    // 건수를 요일 타이틀 옆에 인라인 표시
-    const cushion = el.querySelector('.fc-col-header-cell-cushion');
+    // 건수를 요일 아래에 표시
+    const cushion = el.querySelector('.fc-col-header-cell-cushion') as HTMLElement;
     if (cushion && !el.querySelector('.bm-count-badge')) {
+      cushion.style.cssText += ';display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:2px;';
       const countBadge = document.createElement('span');
       countBadge.className = 'bm-count-badge';
-      countBadge.style.cssText = `font-size:10px;font-weight:700;color:${c.textOnPrimary};background:${c.primary};border-radius:8px;padding:0 5px;margin-left:4px;`;
+      countBadge.style.cssText = `font-size:10px;font-weight:700;color:${c.textOnPrimary};background:${c.primary};border-radius:8px;padding:0 5px;`;
       countBadge.textContent = `${s.count}건`;
       cushion.appendChild(countBadge);
     }
