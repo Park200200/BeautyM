@@ -545,10 +545,13 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
   // 겹치는 이벤트 → 뱃지 클릭으로 수동 전환
   const overlapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const setupOverlap = useCallback(() => {
+  const setupOverlap = useCallback((force = true) => {
     if (overlapTimerRef.current) clearTimeout(overlapTimerRef.current);
 
     overlapTimerRef.current = setTimeout(() => {
+      // force가 아닌 경우, 이미 겹침 처리가 되어있으면 건너뜀
+      if (!force && document.querySelectorAll('.bm-overlap-badge').length > 0) return;
+
       document.querySelectorAll('.bm-overlap-badge,.bm-overlap-content').forEach(el => el.remove());
 
       // 이전 setupOverlap에서 변형된 harness만 복원 (data-bm-overlap 마킹된 것)
@@ -794,13 +797,16 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
   }, []);
 
   useEffect(() => {
-    // FullCalendar가 events를 DOM에 렌더링 완료할 때까지 여러 번 재시도
-    const timers = [300, 800, 1500, 2500].map(ms =>
-      setTimeout(() => setupOverlap(), ms)
+    // 첫 시도: force로 실행 (기존 겹침 제거 후 재감지)
+    const t1 = setTimeout(() => setupOverlap(true), 300);
+    // 이후 재시도: 이미 성공했으면 건너뜀
+    const retries = [800, 1500, 2500].map(ms =>
+      setTimeout(() => setupOverlap(false), ms)
     );
     return () => {
       if (overlapTimerRef.current) clearTimeout(overlapTimerRef.current);
-      timers.forEach(t => clearTimeout(t));
+      clearTimeout(t1);
+      retries.forEach(t => clearTimeout(t));
     };
   }, [events, setupOverlap]);
 
@@ -1139,7 +1145,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             dayCellDidMount={handleDayCellDidMount}
             dayHeaderDidMount={handleDayHeaderDidMount}
             fixedWeekCount={false}
-            datesSet={() => { adjustColWidths(); setupOverlap(); setTimeout(() => setupOverlap(), 800); }}
+            datesSet={() => { adjustColWidths(); setupOverlap(true); setTimeout(() => setupOverlap(false), 800); }}
             dateClick={handleDateClick}
             navLinks
             navLinkDayClick={(date) => {
