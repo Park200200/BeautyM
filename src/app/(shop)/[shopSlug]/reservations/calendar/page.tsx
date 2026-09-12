@@ -447,79 +447,74 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     });
   }, [rawEvents, handleDayCellDidMount, injectHeaderSummary, isHoliday]);
 
-  // 겹치는 이벤트 감지 → 20px 오프셋 + 2초 순환 (비활성도 유지)
-  const overlapIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // 겹치는 이벤트 감지 → 중복 뱃지 + 빨간 경고 + 펄스 효과
   useEffect(() => {
-    if (overlapIntervalRef.current) clearInterval(overlapIntervalRef.current);
-
     const setupOverlap = () => {
-      const harnesses = document.querySelectorAll('.fc-timegrid-event-harness');
-      if (!harnesses.length) return;
+      // 기존 중복 뱃지 제거
+      document.querySelectorAll('.bm-overlap-badge').forEach(el => el.remove());
 
-      // harness 위치 정보 수집
-      type HarnessInfo = { el: HTMLElement; col: string; top: number; bottom: number; };
-      const infos: HarnessInfo[] = [];
-      harnesses.forEach(h => {
-        const el = h as HTMLElement;
-        const col = el.closest('.fc-timegrid-col')?.getAttribute('data-date') || '';
-        const rect = el.getBoundingClientRect();
-        const parentRect = el.offsetParent?.getBoundingClientRect() || rect;
-        infos.push({ el, col, top: rect.top - parentRect.top, bottom: rect.bottom - parentRect.top });
-      });
+      // rawEvents에서 시간 기반 겹침 감지
+      const active = rawEvents.filter(r => r.status !== 'CANCELLED');
+      const overlapIds = new Set<string>();
 
-      // 같은 컬럼에서 시간 겹치는 그룹 찾기
-      const groups: HarnessInfo[][] = [];
-      const used = new Set<number>();
-      for (let i = 0; i < infos.length; i++) {
-        if (used.has(i)) continue;
-        const group = [infos[i]];
-        used.add(i);
-        for (let j = i + 1; j < infos.length; j++) {
-          if (used.has(j)) continue;
-          if (infos[i].col !== infos[j].col) continue;
-          if (infos[i].top < infos[j].bottom && infos[j].top < infos[i].bottom) {
-            group.push(infos[j]);
-            used.add(j);
+      for (let i = 0; i < active.length; i++) {
+        for (let j = i + 1; j < active.length; j++) {
+          const a = active[i], b = active[j];
+          const aStart = new Date(a.startTime).getTime();
+          const aEnd = new Date(a.endTime).getTime();
+          const bStart = new Date(b.startTime).getTime();
+          const bEnd = new Date(b.endTime).getTime();
+          // 같은 날 + 시간 겹침
+          if (aStart < bEnd && bStart < aEnd) {
+            overlapIds.add(a.id);
+            overlapIds.add(b.id);
           }
         }
-        if (group.length > 1) groups.push(group);
       }
 
-      // 각 그룹에 스타일 적용: 활성=선명, 비활성=흐리게 유지
-      groups.forEach(group => {
-        group.forEach((info, idx) => {
-          info.el.style.left = `${idx * 20}px`;
-          info.el.style.right = '0';
-          info.el.style.width = `calc(100% - ${idx * 20}px)`;
-          info.el.style.zIndex = String(10 + (group.length - idx));
-          info.el.style.opacity = idx === 0 ? '1' : '0.35';
-          info.el.style.transition = 'opacity 0.6s ease, z-index 0.3s, transform 0.4s ease';
-          info.el.style.transform = idx === 0 ? 'scale(1)' : 'scale(0.98)';
-        });
+      if (overlapIds.size === 0) return;
+
+      // 겹치는 이벤트 카드에 시각 표시 적용
+      const eventEls = document.querySelectorAll('.fc-timegrid-event');
+      eventEls.forEach(evtEl => {
+        const fcEvent = evtEl.querySelector('.fc-event-main');
+        if (!fcEvent) return;
+        // FC 이벤트 ID 매칭 (data-event-id 또는 내부 텍스트 기반)
+        const harness = evtEl.closest('.fc-timegrid-event-harness') as HTMLElement;
+        if (!harness) return;
+
+        // FC가 이벤트 너비를 줄였는지 확인 (나란히 배치 = 겹침)
+        const inset = harness.style.inset || '';
+        const rightVal = inset.split(' ')[3]; // inset의 4번째 값 = right
+        const isNarrow = rightVal && rightVal !== '0%' && rightVal !== '0px' && rightVal !== '';
+
+        if (isNarrow) {
+          // 빨간 경고 좌측 선
+          (evtEl as HTMLElement).style.borderLeftColor = '#EF4444';
+          (evtEl as HTMLElement).style.borderLeftWidth = '3px';
+
+          // 중복 뱃지 추가
+          if (!evtEl.querySelector('.bm-overlap-badge')) {
+            const badge = document.createElement('div');
+            badge.className = 'bm-overlap-badge';
+            badge.style.cssText = `
+              position:absolute;top:-1px;right:-1px;
+              background:#EF4444;color:#fff;
+              font-size:8px;font-weight:800;
+              padding:1px 4px;border-radius:0 6px 0 6px;
+              z-index:10;letter-spacing:0.5px;
+              animation:bm-pulse 2s ease-in-out infinite;
+            `;
+            badge.textContent = '중복';
+            (evtEl as HTMLElement).style.position = 'relative';
+            evtEl.appendChild(badge);
+          }
+        }
       });
-
-      if (groups.length === 0) return;
-
-      // 2초 간격으로 활성 이벤트 순환 (비활성은 흐리게 유지)
-      const counters = groups.map(() => 0);
-      overlapIntervalRef.current = setInterval(() => {
-        groups.forEach((group, gi) => {
-          counters[gi] = (counters[gi] + 1) % group.length;
-          group.forEach((info, idx) => {
-            const isActive = idx === counters[gi];
-            info.el.style.opacity = isActive ? '1' : '0.35';
-            info.el.style.zIndex = isActive ? '20' : '10';
-            info.el.style.transform = isActive ? 'scale(1)' : 'scale(0.98)';
-          });
-        });
-      }, 2000);
     };
 
-    const timer = setTimeout(setupOverlap, 500);
-    return () => {
-      clearTimeout(timer);
-      if (overlapIntervalRef.current) clearInterval(overlapIntervalRef.current);
-    };
+    const timer = setTimeout(setupOverlap, 600);
+    return () => clearTimeout(timer);
   }, [rawEvents]);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -609,6 +604,10 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="rounded-2xl border overflow-hidden" style={{ background: c.surface, borderColor: c.borderLight }}>
           <style>{`
+            @keyframes bm-pulse {
+              0%, 100% { opacity: 1; transform: scale(1); }
+              50% { opacity: 0.6; transform: scale(0.95); }
+            }
             .fc {
               --fc-border-color: ${c.borderLight};
               --fc-today-bg-color: transparent;
@@ -806,7 +805,6 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             allDaySlot={false}
             slotMinTime="08:00:00" slotMaxTime="22:00:00" scrollTime="09:00:00"
             expandRows stickyHeaderDates firstDay={0} eventDisplay="block"
-            slotEventOverlap
             dayCellDidMount={handleDayCellDidMount}
             dayHeaderDidMount={handleDayHeaderDidMount}
             fixedWeekCount={false}
