@@ -8,7 +8,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
 import { useIsMobile } from '@/hooks/useMediaQuery';
-import { Clock, User, RefreshCw, Sparkles, ClipboardList, ChevronDown, CalendarDays } from 'lucide-react';
+import { Clock, User, RefreshCw, Sparkles, ClipboardList, ChevronDown, CalendarDays, Check, X, UserX, Play } from 'lucide-react';
 
 interface ReservationEvent {
   id: string;
@@ -47,6 +47,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
   const [selectedEvent, setSelectedEvent] = useState<{ id: string; menu: string; customer: string; phone: string; staff: string; status: string; session: string; start: string; end: string; customerId: string; menuName: string; profileImage: string; birthday: string; gender: string; eventDate?: string; managementFields?: string[] } | null>(null);
   const [treatmentData, setTreatmentData] = useState<Record<string, string>>({});
   const [treatmentMemo, setTreatmentMemo] = useState('');
+  const [showTreatmentForm, setShowTreatmentForm] = useState(false);
   const [historyTab, setHistoryTab] = useState<'menu' | 'all'>('menu');
   const [activeDate, setActiveDate] = useState<string>(''); // 클릭한 날짜 (YYYY-MM-DD)
   const [popupDate, setPopupDate] = useState<string | null>(null); // 월간 클릭 팝업
@@ -1465,8 +1466,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                     );
                   }
 
-                  // 시술중 상태: 시술 내용 입력 폼
-                  if (selectedEvent.status === 'IN_PROGRESS' && !isPast) {
+                  // 시술중/완료 상태이거나 폼 표시 상태: 시술 내용 입력 폼
+                  if ((selectedEvent.status === 'IN_PROGRESS' || showTreatmentForm) && !isPast) {
                     const fields = selectedEvent.managementFields || [];
                     return (
                       <div style={{ marginTop: 10 }}>
@@ -1519,25 +1520,29 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                                   }
                                   setTreatmentData({});
                                   setTreatmentMemo('');
+                                  setShowTreatmentForm(false);
                                 }
                               } catch (e) { console.error(e); }
                             }}
-                            style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: 'none', background: '#22C55E', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                            ✓ 완료
+                            style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: 'none', background: '#22C55E', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                            <Check style={{ width: 13, height: 13 }} /> 완료
                           </button>
                           <button
-                            onClick={() => {
-                              const reason = prompt('취소 사유를 입력해주세요:');
-                              if (reason === null) return;
-                              changeReservationStatus(selectedEvent.id, 'CANCELLED', reason || undefined);
-                            }}
-                            style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: 'none', background: '#FEE2E2', color: '#991B1B', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                            취소
+                            onClick={() => { setShowTreatmentForm(false); }}
+                            style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid #D1D5DB', background: '#fff', color: '#6B7280', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                            닫기
                           </button>
                         </div>
                       </div>
                     );
                   }
+
+                  const btnIcon: Record<string, any> = {
+                    IN_PROGRESS: <Play style={{ width: 11, height: 11 }} />,
+                    COMPLETED: <Check style={{ width: 11, height: 11 }} />,
+                    CANCELLED: <X style={{ width: 11, height: 11 }} />,
+                    NO_SHOW: <UserX style={{ width: 11, height: 11 }} />,
+                  };
 
                   return (
                   <div style={{ display: 'flex', gap: 5, marginTop: 10, flexWrap: 'wrap' }}>
@@ -1554,14 +1559,14 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                             } else if (s.key === 'NO_SHOW') {
                               if (!confirm('이 예약을 "노쇼" 상태로 변경하시겠습니까?')) return;
                               changeReservationStatus(selectedEvent.id, 'NO_SHOW');
-                            } else if (s.key === 'COMPLETED') {
-                              if (!confirm('이 예약을 "완료" 상태로 변경하시겠습니까?')) return;
-                              changeReservationStatus(selectedEvent.id, 'COMPLETED');
-                            } else if (s.key === 'IN_PROGRESS') {
-                              // 시술중 → 폼 표시
+                            } else if (s.key === 'COMPLETED' || s.key === 'IN_PROGRESS') {
+                              // 시술중/완료 → 폼 표시
                               setTreatmentData({});
                               setTreatmentMemo('');
-                              changeReservationStatus(selectedEvent.id, 'IN_PROGRESS');
+                              if (s.key === 'IN_PROGRESS') {
+                                changeReservationStatus(selectedEvent.id, 'IN_PROGRESS');
+                              }
+                              setShowTreatmentForm(true);
                             } else {
                               changeReservationStatus(selectedEvent.id, s.key);
                             }
@@ -1572,8 +1577,9 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                             background: isActive ? s.activeBg : s.bg,
                             color: isActive ? '#fff' : s.color,
                             opacity: isActive ? 1 : 0.8,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3,
                           }}>
-                          {isActive && '✓ '}{s.label}
+                          {isActive && '✓ '}{btnIcon[s.key]}{s.label}
                         </button>
                       );
                     })}
