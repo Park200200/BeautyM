@@ -447,7 +447,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     });
   }, [rawEvents, handleDayCellDidMount, injectHeaderSummary, isHoliday]);
 
-  // 겹치는 이벤트 감지 → 20px 오프셋 + 2초 순환 애니메이션
+  // 겹치는 이벤트 감지 → 20px 오프셋 + 2초 순환 (비활성도 유지)
   const overlapIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
     if (overlapIntervalRef.current) clearInterval(overlapIntervalRef.current);
@@ -477,7 +477,6 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         for (let j = i + 1; j < infos.length; j++) {
           if (used.has(j)) continue;
           if (infos[i].col !== infos[j].col) continue;
-          // 시간 겹침 체크
           if (infos[i].top < infos[j].bottom && infos[j].top < infos[i].bottom) {
             group.push(infos[j]);
             used.add(j);
@@ -486,43 +485,36 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         if (group.length > 1) groups.push(group);
       }
 
-      // 각 그룹에 스타일 적용
+      // 각 그룹에 스타일 적용: 활성=선명, 비활성=흐리게 유지
       groups.forEach(group => {
         group.forEach((info, idx) => {
-          // 전체 너비로 표시
-          info.el.style.left = '0';
+          info.el.style.left = `${idx * 20}px`;
           info.el.style.right = '0';
-          info.el.style.width = '100%';
-          info.el.style.zIndex = String(10 + idx);
-          // 두 번째부터 20px 오프셋
-          if (idx > 0) {
-            info.el.style.left = '20px';
-            info.el.style.right = '0';
-          }
-          // 첫 번째만 보이게, 나머지 숨김
-          info.el.style.opacity = idx === 0 ? '1' : '0';
-          info.el.style.transition = 'opacity 0.5s ease-in-out';
-          info.el.setAttribute('data-overlap-group', `g${groups.indexOf(group)}`);
-          info.el.setAttribute('data-overlap-idx', String(idx));
+          info.el.style.width = `calc(100% - ${idx * 20}px)`;
+          info.el.style.zIndex = String(10 + (group.length - idx));
+          info.el.style.opacity = idx === 0 ? '1' : '0.35';
+          info.el.style.transition = 'opacity 0.6s ease, z-index 0.3s, transform 0.4s ease';
+          info.el.style.transform = idx === 0 ? 'scale(1)' : 'scale(0.98)';
         });
       });
 
       if (groups.length === 0) return;
 
-      // 2초 간격으로 순환
+      // 2초 간격으로 활성 이벤트 순환 (비활성은 흐리게 유지)
       const counters = groups.map(() => 0);
       overlapIntervalRef.current = setInterval(() => {
         groups.forEach((group, gi) => {
           counters[gi] = (counters[gi] + 1) % group.length;
           group.forEach((info, idx) => {
-            info.el.style.opacity = idx === counters[gi] ? '1' : '0';
-            info.el.style.zIndex = idx === counters[gi] ? '20' : '10';
+            const isActive = idx === counters[gi];
+            info.el.style.opacity = isActive ? '1' : '0.35';
+            info.el.style.zIndex = isActive ? '20' : '10';
+            info.el.style.transform = isActive ? 'scale(1)' : 'scale(0.98)';
           });
         });
       }, 2000);
     };
 
-    // 렌더링 후 실행
     const timer = setTimeout(setupOverlap, 500);
     return () => {
       clearTimeout(timer);
