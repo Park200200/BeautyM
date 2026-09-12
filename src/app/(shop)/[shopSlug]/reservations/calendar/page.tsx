@@ -1185,7 +1185,43 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             slotLabelFormat={{ hour: 'numeric', minute: '2-digit', hour12: true }}
             events={events}
             height="auto"
-            nowIndicator editable={false}
+            nowIndicator editable
+            eventDrop={async (info) => {
+              const ev = info.event;
+              const status = ev.extendedProps?.status;
+              // 과거/완료/취소/노쇼는 이동 불가
+              if (status === 'COMPLETED' || status === 'CANCELLED' || status === 'NO_SHOW') {
+                info.revert(); return;
+              }
+              if (ev.start && ev.start < new Date() && status !== 'IN_PROGRESS') {
+                info.revert(); return;
+              }
+              try {
+                const res = await fetch(`/api/shops/${shopSlug}/reservations/${ev.id}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ startTime: ev.start!.toISOString(), endTime: ev.end!.toISOString() }),
+                });
+                if (!res.ok) { info.revert(); return; }
+                fetchReservations();
+              } catch { info.revert(); }
+            }}
+            eventResize={async (info) => {
+              const ev = info.event;
+              const status = ev.extendedProps?.status;
+              if (status === 'COMPLETED' || status === 'CANCELLED' || status === 'NO_SHOW') {
+                info.revert(); return;
+              }
+              try {
+                const res = await fetch(`/api/shops/${shopSlug}/reservations/${ev.id}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ startTime: ev.start!.toISOString(), endTime: ev.end!.toISOString() }),
+                });
+                if (!res.ok) { info.revert(); return; }
+                fetchReservations();
+              } catch { info.revert(); }
+            }}
             allDaySlot={false}
             slotMinTime="08:00:00" slotMaxTime="22:00:00" scrollTime="09:00:00"
             expandRows stickyHeaderDates firstDay={0} eventDisplay="block"
