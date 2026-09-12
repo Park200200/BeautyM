@@ -492,21 +492,41 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         const mainEvent = main.el.querySelector('.fc-timegrid-event') as HTMLElement;
         if (!mainEvent) return;
 
-        // 그룹 전체 시간 범위
         const groupMinTop = Math.min(...group.map(g => g.top));
         const groupMaxBottom = Math.max(...group.map(g => g.bottom));
         const groupHeight = groupMaxBottom - groupMinTop;
 
-        // 모든 이벤트의 콘텐츠 + 상대 위치 + 높이 수집
-        type OverlapItem = { content: string; relTop: number; height: number; el?: HTMLElement; };
+        // FC calendarRef에서 이벤트 객체 매핑
+        const api = calendarRef.current?.getApi();
+        const allFcEvents = api?.getEvents() || [];
+
+        type OverlapItem = { content: string; relTop: number; height: number; el?: HTMLElement; eventData?: typeof allFcEvents[0]; };
         const items: OverlapItem[] = [];
         group.forEach((info, idx) => {
           const eventMain = info.el.querySelector('.fc-event-main');
+          // harness에서 FC 이벤트 ID 찾기
+          const eventEl = info.el.querySelector('.fc-timegrid-event');
+          const fcEventLink = eventEl?.querySelector('a.fc-event');
+          const fcId = fcEventLink?.getAttribute('data-event-id')
+            || info.el.closest('[data-event-id]')?.getAttribute('data-event-id')
+            || '';
+          // FC 이벤트 매칭: inset top + col date 기준
+          const colDate = info.col;
+          const matchedEvent = allFcEvents.find(ev => {
+            if (!ev.start) return false;
+            const evDate = `${ev.start.getFullYear()}-${String(ev.start.getMonth() + 1).padStart(2, '0')}-${String(ev.start.getDate()).padStart(2, '0')}`;
+            if (evDate !== colDate) return false;
+            // 이미 사용된 이벤트 건너뛰기
+            if (items.some(it => it.eventData?.id === ev.id)) return false;
+            return true;
+          });
+
           if (eventMain) {
             items.push({
               content: eventMain.innerHTML,
               relTop: info.top - groupMinTop,
               height: info.bottom - info.top,
+              eventData: matchedEvent,
             });
           }
           if (idx === 0) {
@@ -518,7 +538,6 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             mainEvent.style.minHeight = '100%';
             mainEvent.style.position = 'relative';
             mainEvent.style.overflow = 'hidden';
-            // 원래 fc-event-main 숨김
             const origMain = mainEvent.querySelector('.fc-event-main') as HTMLElement;
             if (origMain) origMain.style.display = 'none';
           } else {
@@ -530,22 +549,36 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
         let current = 0;
 
-        // 콘텐츠 컨테이너
+        // 아이템 클릭 → 상세 팝업
+        const openDetail = (item: OverlapItem) => {
+          const ev = item.eventData;
+          if (!ev) return;
+          const p = ev.extendedProps;
+          const fmt = (d: Date | null) => d ? `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}` : '';
+          setSelectedEvent({
+            id: ev.id,
+            menu: p.menu, customer: p.customer, phone: p.phone,
+            staff: p.staff, status: p.status, session: p.session,
+            start: fmt(ev.start), end: fmt(ev.end),
+            customerId: p.customerId, menuName: p.menuName,
+            profileImage: p.profileImage, birthday: p.birthday, gender: p.gender,
+          });
+          setHistoryTab('menu');
+        };
+
         const contentWrap = document.createElement('div');
         contentWrap.className = 'bm-overlap-content';
         contentWrap.style.cssText = `position:absolute;top:0;left:0;right:0;bottom:0;`;
 
-        // 각 예약을 시작시간 위치에 배치
         items.forEach((item, idx) => {
           const div = document.createElement('div');
           div.style.cssText = `
             position:absolute;top:${item.relTop}px;left:0;right:0;
             height:${item.height}px;box-sizing:border-box;
-            padding:2px 6px;overflow:hidden;
+            padding:2px 6px;overflow:hidden;cursor:pointer;
             transition:all 0.3s ease;
           `;
           div.innerHTML = item.content;
-          // 초기 상태
           if (idx === 0) {
             div.style.background = '#fff';
             div.style.zIndex = '5';
@@ -559,13 +592,18 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             div.style.opacity = '0.3';
             div.style.fontWeight = '400';
           }
+          // 클릭 시 상세 팝업
+          div.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            openDetail(item);
+          });
           contentWrap.appendChild(div);
           item.el = div;
         });
 
         mainEvent.appendChild(contentWrap);
 
-        // 상태 업데이트
         const updateActive = () => {
           items.forEach((item, idx) => {
             if (!item.el) return;
@@ -579,7 +617,6 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
           });
         };
 
-        // "중복(1/N)건" 뱃지
         const topBadge = document.createElement('div');
         topBadge.className = 'bm-overlap-badge';
         topBadge.style.cssText = `position:absolute;top:2px;right:2px;background:#EF4444;color:#fff;font-size:9px;font-weight:800;padding:2px 8px;border-radius:8px;z-index:12;cursor:pointer;user-select:none;transition:transform 0.15s;`;
@@ -596,6 +633,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         mainEvent.appendChild(topBadge);
       });
     }, 300);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
