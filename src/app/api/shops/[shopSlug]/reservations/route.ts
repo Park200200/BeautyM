@@ -10,6 +10,38 @@ export async function GET(req: Request, { params }: { params: Promise<{ shopSlug
   const { searchParams } = new URL(req.url);
   const customerId = searchParams.get('customerId');
 
+  // 지난 날짜의 활성 상태 예약 자동 정리
+  const now = new Date();
+  const pastActiveReservations = await prisma.reservation.findMany({
+    where: {
+      shopId: shop.id,
+      endTime: { lt: now },
+      status: { in: ['CONFIRMED', 'IN_PROGRESS', 'PENDING', 'REQUESTED'] },
+    },
+    include: { customerRecord: true },
+  });
+
+  if (pastActiveReservations.length > 0) {
+    await prisma.$transaction(async (tx) => {
+      for (const r of pastActiveReservations) {
+        // CONFIRMED/IN_PROGRESS → 완료, PENDING/REQUESTED → 취소
+        const newStatus = ['CONFIRMED', 'IN_PROGRESS'].includes(r.status) ? 'COMPLETED' : 'CANCELLED';
+        await tx.reservation.update({ where: { id: r.id }, data: { status: newStatus } });
+
+        // 시술카드 자동 생성 (없는 경우만)
+        if (!r.customerRecord) {
+          const content = newStatus === 'COMPLETED' ? '시술 완료 (자동)' : '예약 취소 (미확정 자동)';
+          await tx.customerRecord.create({
+            data: { shopId: shop.id, customerId: r.customerId, staffId: r.staffId, reservationId: r.id, content },
+          });
+          if (newStatus === 'COMPLETED') {
+            await tx.shopMember.update({ where: { id: r.customerId }, data: { visitCount: { increment: 1 } } });
+          }
+        }
+      }
+    });
+  }
+
   const reservations = await prisma.reservation.findMany({
     where: { 
       shopId: shop.id,
