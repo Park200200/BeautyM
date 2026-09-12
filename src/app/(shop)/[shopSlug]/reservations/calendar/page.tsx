@@ -718,6 +718,9 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             mainEvent.style.overflow = 'hidden';
             const origMain = mainEvent.querySelector('.fc-event-main') as HTMLElement;
             if (origMain) origMain.style.display = 'none';
+            // 중복 그룹은 드래그 비활성화
+            const draggableEl = info.el.querySelector('.fc-event-draggable') as HTMLElement;
+            if (draggableEl) draggableEl.classList.remove('fc-event-draggable');
           } else {
             info.el.setAttribute('data-bm-overlap', '1');
             info.el.setAttribute('data-bm-orig-display', info.el.style.display || '');
