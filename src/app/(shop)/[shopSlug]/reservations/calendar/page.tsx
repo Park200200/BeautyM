@@ -697,7 +697,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             .fc .fc-day-sun .fc-daygrid-day-number { color:#EF4444!important; }
             .fc .fc-day-sat .fc-daygrid-day-number { color:#3B82F6!important; }
             .fc .fc-event { border-radius:6px!important; border:none!important; border-left:3px solid!important; cursor:pointer!important; overflow:hidden!important; }
-            .fc .fc-timegrid-event .fc-event-main { padding:4px 8px!important; }
+            .fc .fc-timegrid-event .fc-event-main { padding:4px 8px!important; overflow:hidden!important; }
+            .fc .fc-timegrid-event { overflow:hidden!important; }
             .fc .fc-timegrid-slot-label-cushion { font-size:11px!important; color:${c.textLight}!important; }
             .fc .fc-timegrid-slot { height:56px!important; }
             .fc .fc-timegrid-now-indicator-line { display:none!important; }
@@ -864,9 +865,9 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
               return {
                 html: `
                   <div style="display:flex;flex-direction:column;gap:1px;padding:2px 0;overflow:hidden;${isSelected ? 'opacity:1;' : ''}">
-                    <div style="font-size:11px;opacity:.7;font-weight:600">${start} - ${end}</div>
+                    <div style="font-size:11px;opacity:.7;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${start} - ${end}</div>
                     <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.menu} <span style="font-weight:500;opacity:.7">(${p.session})</span></div>
-                    <div style="font-size:11px;opacity:.85">${p.customer}${phone ? ' ' + phone : ''}</div>
+                    <div style="font-size:11px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.customer}${phone ? ' ' + phone : ''}</div>
                   </div>
                 `
               };
