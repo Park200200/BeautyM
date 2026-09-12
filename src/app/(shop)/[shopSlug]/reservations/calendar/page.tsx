@@ -197,9 +197,9 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
     // 기존 커스텀 배지 모두 제거 (중복 방지)
     arg.el.querySelectorAll('.bm-holiday-badge, .bm-today-badge').forEach(e => e.remove());
-    // 숨겨진 날짜 숫자 복원
-    const hiddenNum = arg.el.querySelector('.fc-daygrid-day-number') as HTMLElement;
-    if (hiddenNum) hiddenNum.style.display = '';
+    // 숨겨진 dayTop 복원
+    const restoredDayTop = arg.el.querySelector('.fc-daygrid-day-top') as HTMLElement;
+    if (restoredDayTop) restoredDayTop.style.display = '';
 
     // 오늘 판단 (문자열 비교 — 타임존 안전)
     const todayStr = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })();
@@ -207,12 +207,11 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     const holiday = isHoliday(dateStr);
 
     if (holiday || isToday) {
-      // pill을 셀(td)에 직접 absolute로 부착
+      // dayTop(FC 기본 날짜 영역) 전체를 숨기고 pill로 대체
       const dayTop = arg.el.querySelector('.fc-daygrid-day-top') as HTMLElement;
-      const dayNum = dayTop?.querySelector('.fc-daygrid-day-number');
-      const dayText = dayNum?.textContent?.replace(/\D/g, '') || '';
-      if (dayNum) (dayNum as HTMLElement).style.display = 'none';
+      if (dayTop) dayTop.style.display = 'none';
 
+      const dayText = dateStr.split('-')[2].replace(/^0/, '');
       const pill = document.createElement('div');
       pill.className = holiday ? 'bm-holiday-badge' : 'bm-today-badge';
       const fs = mob ? '9px' : '11px';
@@ -220,7 +219,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
       if (holiday) {
         arg.el.style.background = 'repeating-linear-gradient(135deg, transparent, transparent 6px, rgba(200,200,200,0.13) 6px, rgba(200,200,200,0.13) 7px)';
-        pill.style.background = 'rgba(239,68,68,0.06)';
+        pill.style.background = '#FFF5F5';
         let html = '';
         if (isToday) {
           html += `<span style="font-size:${fs};font-weight:700;color:#3B82F6;padding:0 5px;">Today</span>`;
@@ -231,7 +230,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         html += `<span style="font-size:${fs};font-weight:600;color:#EF4444;padding:0 5px;">${dayText}일</span>`;
         pill.innerHTML = html;
       } else {
-        pill.style.background = 'rgba(59,130,246,0.06)';
+        pill.style.background = '#F0F7FF';
         pill.innerHTML = `<span style="font-size:${fs};font-weight:700;color:#3B82F6;padding:0 5px;">Today</span><span style="color:#D1D5DB;font-size:10px;">|</span><span style="font-size:${fs};font-weight:600;color:#3B82F6;padding:0 5px;">${dayText}일</span>`;
       }
       arg.el.appendChild(pill);
