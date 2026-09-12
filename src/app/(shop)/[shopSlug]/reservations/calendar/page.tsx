@@ -495,7 +495,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       if (groups.length === 0) return;
 
       // 카드 스택 스타일 적용
-      const OFFSET = 15; // 각 카드 오프셋(px)
+      const OFFSET = 8; // 각 카드 오프셋(px)
       groups.forEach(group => {
         // 시간순 정렬
         group.sort((a, b) => a.top - b.top);
