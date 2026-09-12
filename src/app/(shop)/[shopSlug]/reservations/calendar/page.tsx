@@ -8,7 +8,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
 import { useIsMobile } from '@/hooks/useMediaQuery';
-import { Clock, User, RefreshCw, Sparkles, ClipboardList, ChevronDown, CalendarDays, Check, X, UserX, Play } from 'lucide-react';
+import { Clock, User, RefreshCw, Sparkles, ClipboardList, ChevronDown, CalendarDays, Check, X, UserX, Play, Undo2 } from 'lucide-react';
 
 interface ReservationEvent {
   id: string;
@@ -1459,8 +1459,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                               changeReservationStatus(selectedEvent.id, 'CONFIRMED');
                             }
                           }}
-                          style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${c.primary}`, background: '#fff', color: c.primary, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                          ↩ 되돌리기
+                          style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${c.primary}`, background: '#fff', color: c.primary, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                          <Undo2 style={{ width: 13, height: 13 }} /> 되돌리기
                         </button>
                       </div>
                     );
