@@ -215,7 +215,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       const pill = document.createElement('div');
       pill.className = holiday ? 'bm-holiday-badge' : 'bm-today-badge';
       const fs = mob ? '9px' : '11px';
-      pill.style.cssText = `position:absolute;top:2px;left:2px;display:inline-flex;align-items:center;gap:0;border-radius:20px;padding:2px 6px;white-space:nowrap;z-index:6;`;
+      pill.style.cssText = `position:absolute;top:2px;right:2px;display:inline-flex;align-items:center;gap:0;border-radius:20px;padding:2px 6px;white-space:nowrap;z-index:6;`;
 
       if (holiday) {
         arg.el.style.background = 'repeating-linear-gradient(135deg, transparent, transparent 6px, rgba(200,200,200,0.13) 6px, rgba(200,200,200,0.13) 7px)';
