@@ -62,6 +62,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ shopSlug
       staff: { include: { user: true } },
       menu: { include: { menuTreatments: { include: { treatment: { include: { category: true } } } } } },
       payment: true,
+      records: { select: { managementData: true, content: true }, take: 1 },
     },
     orderBy: { startTime: 'asc' },
   });

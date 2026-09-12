@@ -136,12 +136,14 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             const session = `${r.currentSession || 1}/${r.totalSessions || 1}`;
             let mgmtFields: string[] = [];
             try { if (r.menu?.managementFields) mgmtFields = typeof r.menu.managementFields === 'string' ? JSON.parse(r.menu.managementFields) : r.menu.managementFields; } catch {}
+            let mgmtData: Record<string, string> = {};
+            try { const rec = (r as any).records?.[0]; if (rec?.managementData) mgmtData = typeof rec.managementData === 'string' ? JSON.parse(rec.managementData) : rec.managementData; } catch {}
             return {
               id: r.id,
               title: menuName,
               start: r.startTime, end: r.endTime,
               backgroundColor: sc.bg, borderColor: sc.bar, textColor: sc.text,
-              extendedProps: { menu: menuName, customer: custName, phone: custPhone, staff: staffName, status: r.status, session, customerId: r.customerId || '', menuName, profileImage: r.customer?.user?.profileImage || '', birthday: r.customer?.user?.birthday || '', gender: r.customer?.user?.gender || '', menuId: r.menuId || '', managementFields: mgmtFields },
+              extendedProps: { menu: menuName, customer: custName, phone: custPhone, staff: staffName, status: r.status, session, customerId: r.customerId || '', menuName, profileImage: r.customer?.user?.profileImage || '', birthday: r.customer?.user?.birthday || '', gender: r.customer?.user?.gender || '', menuId: r.menuId || '', managementFields: mgmtFields, managementData: mgmtData },
             };
           }));
         }
@@ -706,6 +708,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             profileImage: p.profileImage, birthday: p.birthday, gender: p.gender,
             eventDate: ev.start?.toISOString() || '',
             managementFields: p.managementFields || [],
+            managementData: p.managementData || {},
           });
           setHistoryTab('menu');
         };
@@ -1170,6 +1173,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 profileImage: p.profileImage, birthday: p.birthday, gender: p.gender,
                 eventDate: info.event.start?.toISOString() || '',
                 managementFields: p.managementFields || [],
+                managementData: p.managementData || {},
               });
               setHistoryTab('menu');
             }}
@@ -1525,6 +1529,40 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                           style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${c.primary}`, background: '#fff', color: c.primary, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                           <Undo2 style={{ width: 13, height: 13 }} /> 되돌리기
                         </button>
+                      </div>
+                    );
+                  }
+
+                  // 완료 상태: 시술 내용 표시 (읽기 전용)
+                  if (selectedEvent.status === 'COMPLETED' && !showTreatmentForm) {
+                    const mgmt = selectedEvent.managementData || {};
+                    const fields = Object.entries(mgmt).filter(([k]) => k !== '_memo');
+                    const memo = mgmt._memo || '';
+                    const hasData = fields.length > 0 || memo;
+                    return (
+                      <div style={{ marginTop: 10 }}>
+                        {hasData ? (
+                          <div style={{ background: '#F0FDF4', borderRadius: 10, padding: '12px 14px', border: '1.5px solid #86EFAC' }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#166534', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+                              <ClipboardList style={{ width: 13, height: 13 }} /> 시술 내용
+                            </div>
+                            {fields.map(([key, val]) => (
+                              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: '#15803D', minWidth: 70 }}>{key}</span>
+                                <span style={{ fontSize: 12, color: '#166534' }}>{String(val)}</span>
+                              </div>
+                            ))}
+                            {memo && (
+                              <div style={{ fontSize: 12, color: '#166534', background: '#DCFCE7', borderRadius: 6, padding: '6px 8px', marginTop: fields.length > 0 ? 6 : 0 }}>
+                                📝 {memo}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div style={{ background: '#F3F4F6', borderRadius: 10, padding: '10px 14px', textAlign: 'center', color: '#6B7280', fontSize: 12 }}>
+                            시술 내용이 기록되지 않았습니다
+                          </div>
+                        )}
                       </div>
                     );
                   }
