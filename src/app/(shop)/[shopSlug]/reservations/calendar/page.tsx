@@ -10,6 +10,7 @@ import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { Clock, User, RefreshCw, Sparkles, ClipboardList, ChevronDown, CalendarDays, Check, X, UserX, Play, Undo2, Camera, ImagePlus } from 'lucide-react';
+import DatePicker from '@/components/DatePicker';
 
 interface ReservationEvent {
   id: string;
@@ -55,6 +56,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
   const [showReschedule, setShowReschedule] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('');
+  const [rescheduleTimePeriod, setRescheduleTimePeriod] = useState<'AM'|'PM'>('AM');
+  const [showRescheduleDatePicker, setShowRescheduleDatePicker] = useState(false);
   const [historyTab, setHistoryTab] = useState<'menu' | 'all'>('menu');
   const [activeDate, setActiveDate] = useState<string>(''); // 클릭한 날짜 (YYYY-MM-DD)
   const [popupDate, setPopupDate] = useState<string | null>(null); // 월간 클릭 팝업
@@ -1508,11 +1511,11 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                     // 미래: 변경 + 취소
                     // 변경 폼 표시
                     if (showReschedule) {
-                      // 시간 옵션 생성 (영업시간 기준 30분 단위)
-                      const timeOptions: string[] = [];
+                      // 시간 슬롯 (영업시간 기준 30분)
+                      const timeSlots: string[] = [];
                       for (let h = bizOpen; h < bizClose; h++) {
-                        timeOptions.push(`${String(h).padStart(2, '0')}:00`);
-                        timeOptions.push(`${String(h).padStart(2, '0')}:30`);
+                        timeSlots.push(`${String(h).padStart(2, '0')}:00`);
+                        timeSlots.push(`${String(h).padStart(2, '0')}:30`);
                       }
                       return (
                         <div style={{ marginTop: 10 }}>
@@ -1520,31 +1523,103 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                             <div style={{ fontSize: 12, fontWeight: 700, color: c.primary, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 5 }}>
                               <CalendarDays style={{ width: 13, height: 13 }} /> 예약 변경
                             </div>
-                            {/* 날짜 선택 */}
-                            <div style={{ marginBottom: 8 }}>
-                              <label style={{ fontSize: 11, fontWeight: 600, color: c.textLight, display: 'block', marginBottom: 4 }}>날짜</label>
-                              <input
-                                type="date"
-                                value={rescheduleDate}
-                                onChange={e => setRescheduleDate(e.target.value)}
-                                min={new Date().toISOString().split('T')[0]}
-                                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: `1px solid ${c.borderLight}`, fontSize: 13, outline: 'none', boxSizing: 'border-box', color: c.text }}
-                              />
+                            {/* 날짜 + 시간 (2열 그리드) */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                              {/* 날짜 */}
+                              <div style={{ position: 'relative' }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: c.textLight, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 3 }}>
+                                  <Clock style={{ width: 11, height: 11 }} /> 날짜
+                                </div>
+                                <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                                  <button type="button" onClick={() => {
+                                    if (!rescheduleDate) return;
+                                    const d = new Date(rescheduleDate); d.setDate(d.getDate() - 1);
+                                    setRescheduleDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+                                  }} style={{ width: 26, height: 32, borderRadius: 6, border: `1px solid ${c.borderLight}`, background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: c.textLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                                  <div
+                                    onClick={() => setShowRescheduleDatePicker(!showRescheduleDatePicker)}
+                                    style={{ flex: 1, padding: '7px 4px', borderRadius: 8, border: `1px solid ${c.borderLight}`, background: '#fff', cursor: 'pointer', textAlign: 'center', fontSize: 12, fontWeight: 600, color: rescheduleDate ? c.text : c.textLight }}
+                                  >
+                                    {rescheduleDate || '날짜 선택'}
+                                  </div>
+                                  <button type="button" onClick={() => {
+                                    const d = rescheduleDate ? new Date(rescheduleDate) : new Date(); d.setDate(d.getDate() + 1);
+                                    setRescheduleDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+                                  }} style={{ width: 26, height: 32, borderRadius: 6, border: `1px solid ${c.borderLight}`, background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: c.textLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                                </div>
+                                {showRescheduleDatePicker && (
+                                  <div style={{ position: 'absolute', top: '100%', left: -10, zIndex: 50, marginTop: 4 }}>
+                                    <DatePicker
+                                      inline
+                                      value={rescheduleDate || ''}
+                                      onChange={(d) => { setRescheduleDate(typeof d === 'string' ? d : d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : ''); setShowRescheduleDatePicker(false); }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                              {/* 시간 */}
+                              <div>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: c.textLight, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 3 }}>
+                                  <Clock style={{ width: 11, height: 11 }} /> 시간
+                                </div>
+                                <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                                  <button type="button" onClick={() => {
+                                    if (!rescheduleTime) return;
+                                    const [hh, mm] = rescheduleTime.split(':').map(Number);
+                                    let total = hh * 60 + mm - 10; if (total < 0) total = 0;
+                                    const nh = Math.floor(total / 60), nm = total % 60;
+                                    setRescheduleTime(`${String(nh).padStart(2,'0')}:${String(nm).padStart(2,'0')}`);
+                                  }} style={{ width: 26, height: 32, borderRadius: 6, border: `1px solid ${c.borderLight}`, background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: c.textLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                                  <div
+                                    style={{ flex: 1, padding: '7px 4px', borderRadius: 8, border: `1px solid ${c.borderLight}`, background: '#fff', textAlign: 'center', fontSize: 12, fontWeight: 600, color: rescheduleTime ? c.text : c.textLight }}
+                                  >
+                                    {rescheduleTime ? (() => {
+                                      const h = parseInt(rescheduleTime.split(':')[0]);
+                                      const m = rescheduleTime.split(':')[1];
+                                      return `${h >= 12 ? '오후' : '오전'} ${h > 12 ? h - 12 : h === 0 ? 12 : h}:${m}`;
+                                    })() : '시간 선택'}
+                                  </div>
+                                  <button type="button" onClick={() => {
+                                    const [hh, mm] = rescheduleTime ? rescheduleTime.split(':').map(Number) : [bizOpen, 0];
+                                    let total = hh * 60 + mm + 10; if (total > 23 * 60 + 50) total = 23 * 60 + 50;
+                                    const nh = Math.floor(total / 60), nm = total % 60;
+                                    setRescheduleTime(`${String(nh).padStart(2,'0')}:${String(nm).padStart(2,'0')}`);
+                                  }} style={{ width: 26, height: 32, borderRadius: 6, border: `1px solid ${c.borderLight}`, background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: c.textLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                                </div>
+                              </div>
                             </div>
-                            {/* 시간 선택 */}
-                            <div style={{ marginBottom: 10 }}>
-                              <label style={{ fontSize: 11, fontWeight: 600, color: c.textLight, display: 'block', marginBottom: 4 }}>시작 시간</label>
-                              <select
-                                value={rescheduleTime}
-                                onChange={e => setRescheduleTime(e.target.value)}
-                                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: `1px solid ${c.borderLight}`, fontSize: 13, outline: 'none', boxSizing: 'border-box', color: c.text, background: '#fff' }}
-                              >
-                                <option value="">시간 선택</option>
-                                {timeOptions.map(t => <option key={t} value={t}>{t}</option>)}
-                              </select>
+                            {/* AM/PM 시간 그리드 */}
+                            <div style={{ marginTop: 8, borderRadius: 10, border: `1px solid ${c.borderLight}`, padding: 10, background: '#fff' }}>
+                              <div style={{ display: 'flex', gap: 4, marginBottom: 8, padding: 3, borderRadius: 8, background: c.primaryLight + '40' }}>
+                                {(['AM', 'PM'] as const).map(p => (
+                                  <button key={p} type="button" onClick={() => setRescheduleTimePeriod(p)}
+                                    style={{ flex: 1, padding: '4px 0', borderRadius: 6, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', background: rescheduleTimePeriod === p ? c.primary : 'transparent', color: rescheduleTimePeriod === p ? '#fff' : c.textLight }}>
+                                    {p === 'AM' ? '오전' : '오후'}
+                                  </button>
+                                ))}
+                              </div>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 3 }}>
+                                {timeSlots
+                                  .filter(t => { const h = parseInt(t.split(':')[0]); return rescheduleTimePeriod === 'AM' ? h < 12 : h >= 12; })
+                                  .map(t => {
+                                    const h = parseInt(t.split(':')[0]);
+                                    const m = t.split(':')[1];
+                                    const label = `${h > 12 ? h - 12 : h === 0 ? 12 : h}:${m}`;
+                                    const isSelected = rescheduleTime === t;
+                                    return (
+                                      <button key={t} type="button"
+                                        onClick={() => setRescheduleTime(t)}
+                                        style={{ padding: '6px 0', borderRadius: 6, fontSize: 11, fontWeight: isSelected ? 700 : 400, border: 'none', cursor: 'pointer', background: isSelected ? c.primary : 'transparent', color: isSelected ? '#fff' : c.text }}
+                                        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = c.primaryLight; }}
+                                        onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}>
+                                        {label}
+                                      </button>
+                                    );
+                                  })}
+                              </div>
                             </div>
                             {/* 버튼 */}
-                            <div style={{ display: 'flex', gap: 6 }}>
+                            <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
                               <button
                                 onClick={() => setShowReschedule(false)}
                                 style={{ flex: 1, padding: '8px', borderRadius: 8, border: `1px solid ${c.borderLight}`, background: '#fff', color: c.textLight, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
@@ -1582,13 +1657,15 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                       <div style={{ display: 'flex', gap: 5, marginTop: 10 }}>
                         <button
                           onClick={() => {
-                            // 현재 예약 날짜/시간을 기본값으로
                             if (selectedEvent.eventDate) {
                               const d = new Date(selectedEvent.eventDate);
                               const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
                               setRescheduleDate(`${kst.getUTCFullYear()}-${String(kst.getUTCMonth() + 1).padStart(2, '0')}-${String(kst.getUTCDate()).padStart(2, '0')}`);
                             }
-                            setRescheduleTime(selectedEvent.start || '');
+                            const t = selectedEvent.start || '';
+                            setRescheduleTime(t);
+                            if (t) { const h = parseInt(t.split(':')[0]); setRescheduleTimePeriod(h >= 12 ? 'PM' : 'AM'); }
+                            setShowRescheduleDatePicker(false);
                             setShowReschedule(true);
                           }}
                           style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${c.primary}`, background: c.primary, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
