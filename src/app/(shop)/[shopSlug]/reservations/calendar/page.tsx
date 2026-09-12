@@ -316,6 +316,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
   const injectHeaderSummary = useCallback((el: HTMLElement, dateStr: string) => {
     const existing = el.querySelector('.bm-header-summary');
     if (existing) existing.remove();
+    const existingBadge = el.querySelector('.bm-count-badge');
+    if (existingBadge) existingBadge.remove();
 
     // 휴무일이면 휴무 뱃지만 표시
     if (isHoliday(dateStr)) {
@@ -355,14 +357,22 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     wrapper.className = 'bm-header-summary';
     wrapper.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 8px 6px;';
 
+    // 건수를 요일 타이틀 옆에 인라인 표시
+    const cushion = el.querySelector('.fc-col-header-cell-cushion');
+    if (cushion && !el.querySelector('.bm-count-badge')) {
+      const countBadge = document.createElement('span');
+      countBadge.className = 'bm-count-badge';
+      countBadge.style.cssText = `font-size:10px;font-weight:700;color:${s.count >= 5 ? c.textOnPrimary : c.primary};background:${s.count >= 5 ? c.primary : c.primaryLight};border-radius:8px;padding:0 5px;margin-left:4px;`;
+      countBadge.textContent = `${s.count}건`;
+      cushion.appendChild(countBadge);
+    }
+
     wrapper.innerHTML = `
       <div style="
         display:inline-flex;align-items:center;gap:4px;
-        background:${s.count >= 5 ? c.primary : c.primaryLight};
-        color:${s.count >= 5 ? c.textOnPrimary : c.primary};
-        border-radius:10px;padding:1px 8px;
-        font-size:10px;font-weight:700;
-      ">${s.count}건 <span style="font-weight:400;opacity:.7">${s.firstTime}~${s.lastTime}</span></div>
+        color:${c.textLight};
+        font-size:9px;font-weight:400;
+      ">${s.firstTime}~${s.lastTime}</div>
       <div style="width:80%;height:4px;border-radius:2px;background:${c.borderLight};overflow:hidden;display:flex;gap:1px">
         ${segmentsHtml}
       </div>
@@ -665,25 +675,22 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             initialView={mob ? 'timeGridDay' : 'dayGridMonth'}
             locale="ko"
             headerToolbar={mob
-              ? { left: 'prev,next,today', center: 'title', right: 'dayGridMonth,timeGrid3Day,timeGridDay' }
-              : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }
+              ? { left: 'prev,next,today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGrid3Day,timeGridDay' }
+              : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGrid3Day,timeGridDay' }
             }
             views={{
               timeGrid3Day: {
                 type: 'timeGrid',
                 duration: { days: 3 },
-                buttonText: '3일',
+                buttonText: '삼일',
               },
             }}
             buttonText={mob
-              ? { today: '\uC624\uB298', month: '\uC6D4', week: '\uC8FC', day: '\uC77C' }
-              : { today: '\uC624\uB298', month: '\uC6D4\uAC04', week: '\uC8FC\uAC04', day: '\uC77C\uAC04' }
+              ? { today: '오늘', month: '당월', week: '칠일', day: '당일' }
+              : { today: '오늘', month: '당월', week: '칠일', day: '당일' }
             }
-            titleFormat={mob ? { year: 'numeric', month: 'short' } : { year: 'numeric', month: 'long', day: 'numeric' }}
-            dayHeaderFormat={mob
-              ? { month: 'numeric', day: 'numeric', weekday: 'narrow', omitCommas: true }
-              : { weekday: 'short', month: 'numeric', day: 'numeric', omitCommas: true }
-            }
+            titleFormat={{ month: 'long', day: 'numeric' }}
+            dayHeaderFormat={{ weekday: 'short', day: 'numeric', omitCommas: true }}
             slotLabelFormat={{ hour: 'numeric', minute: '2-digit', hour12: true }}
             events={events}
             height="auto"
