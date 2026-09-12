@@ -551,7 +551,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       document.querySelectorAll('.bm-overlap-badge,.bm-overlap-content').forEach(el => el.remove());
 
       // 이전 setupOverlap에서 변형된 harness만 복원 (data-bm-overlap 마킹된 것)
-      document.querySelectorAll('.fc-timegrid-event-harness[data-bm-overlap]').forEach(h => {
+      const modified = document.querySelectorAll('.fc-timegrid-event-harness[data-bm-overlap]');
+      modified.forEach(h => {
         const el = h as HTMLElement;
         el.style.display = el.getAttribute('data-bm-orig-display') || '';
         el.style.inset = el.getAttribute('data-bm-orig-inset') || '';
@@ -575,6 +576,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         if (main) main.style.display = '';
       });
 
+      // 복원 후 DOM 리플로우를 기다린 다음 겹침 감지
+      const runDetection = () => {
       const harnesses = document.querySelectorAll('.fc-timegrid-event-harness') as NodeListOf<HTMLElement>;
       if (!harnesses.length) return;
 
@@ -777,6 +780,14 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         });
         mainEvent.appendChild(topBadge);
       });
+      }; // end runDetection
+
+      // 복원이 필요했으면 rAF 후 감지, 아니면 즉시 감지
+      if (modified.length > 0) {
+        requestAnimationFrame(() => requestAnimationFrame(runDetection));
+      } else {
+        runDetection();
+      }
     }, 300);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
