@@ -1000,6 +1000,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
               --fc-event-border-color: transparent;
               font-family: 'Pretendard','Noto Sans KR',sans-serif;
             }
+            /* 겹침 이벤트 전체 폭 유지 (setupOverlap이 그룹핑 처리) */
+            .fc-timegrid-event-harness { inset-inline-end: 0 !important; }
             /* 월간 뷰: 오늘 셀 기본 스타일 완전 제거 (커스텀 pill 사용) */
             .fc-dayGridMonth-view .fc-day-today { background:transparent!important; }
             .fc-dayGridMonth-view .fc-day-today .fc-daygrid-day-number,
