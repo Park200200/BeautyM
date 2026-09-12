@@ -236,7 +236,21 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       arg.el.appendChild(pill);
     }
 
-    if (!s) return;
+    if (!s) {
+      // 근무일인데 예약 없는 날 — 시각적 표시
+      if (!holiday) {
+        arg.el.style.background = 'rgba(148,163,184,0.06)';
+        const emptyBadge = document.createElement('div');
+        emptyBadge.className = 'bm-day-summary';
+        emptyBadge.style.cssText = `position:absolute;bottom:50%;left:50%;transform:translate(-50%,50%);display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;opacity:0.5;`;
+        emptyBadge.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="${mob ? 16 : 24}" height="${mob ? 16 : 24}" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span style="font-size:${mob ? '8px' : '10px'};color:#94A3B8;font-weight:600;">예약 없음</span>
+        `;
+        arg.el.appendChild(emptyBadge);
+      }
+      return;
+    }
 
     const totalMin = (CLOSE_HOUR - OPEN_HOUR) * 60;
     const busyMin = totalMin - (s.freeH * 60 + s.freeM);
@@ -257,6 +271,14 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
     // 셀 배경색 적용
     arg.el.style.background = cellBg;
+
+    // 꽉 찬 날 (90% 이상) — 만석 배지
+    if (util >= 90) {
+      const fullBadge = document.createElement('div');
+      fullBadge.style.cssText = `position:absolute;top:2px;left:2px;background:#EF4444;color:#fff;font-size:${mob ? '7px' : '9px'};font-weight:800;padding:1px 6px;border-radius:10px;z-index:5;letter-spacing:1px;`;
+      fullBadge.textContent = util >= 100 ? '만석' : '마감임박';
+      arg.el.appendChild(fullBadge);
+    }
 
     const wrapper = document.createElement('div');
     wrapper.className = 'bm-day-summary';
