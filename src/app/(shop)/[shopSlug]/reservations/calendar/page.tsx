@@ -755,18 +755,22 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             e.stopPropagation();
             e.preventDefault();
             if (idx === current) {
-              // 오버레이 해제 → 개별 카드 보이게
+              // 오버레이 해제 → 개별 카드 나란히 보이게
               document.querySelectorAll('.bm-overlap-badge,.bm-overlap-content').forEach(el => el.remove());
               document.querySelectorAll('.fc-timegrid-event-harness[data-bm-overlap]').forEach(h => {
                 const el = h as HTMLElement;
                 el.style.opacity = el.getAttribute('data-bm-orig-opacity') || '1';
                 el.style.zIndex = el.getAttribute('data-bm-orig-z') || '';
+                el.classList.add('bm-unlocked');
                 el.removeAttribute('data-bm-overlap');
                 el.removeAttribute('data-bm-orig-opacity');
                 el.removeAttribute('data-bm-orig-z');
               });
               // 5초 후 자동 재그룹핑
-              setTimeout(() => setupOverlap(true), 5000);
+              setTimeout(() => {
+                document.querySelectorAll('.bm-unlocked').forEach(el => el.classList.remove('bm-unlocked'));
+                setupOverlap(true);
+              }, 5000);
             } else {
               current = idx;
               updateActive();
@@ -981,8 +985,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
               --fc-event-border-color: transparent;
               font-family: 'Pretendard','Noto Sans KR',sans-serif;
             }
-            /* 겹침 이벤트 전체 폭 유지 (setupOverlap이 그룹핑 처리) */
-            .fc-timegrid-event-harness { inset-inline-end: 0 !important; }
+            /* 겹침 이벤트 전체 폭 유지 (드래그 모드에서는 해제) */
+            .fc-timegrid-event-harness:not(.bm-unlocked) { inset-inline-end: 0 !important; }
             /* 월간 뷰: 오늘 셀 기본 스타일 완전 제거 (커스텀 pill 사용) */
             .fc-dayGridMonth-view .fc-day-today { background:transparent!important; }
             .fc-dayGridMonth-view .fc-day-today .fc-daygrid-day-number,
@@ -1208,13 +1212,15 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 const el = h as HTMLElement;
                 el.style.opacity = el.getAttribute('data-bm-orig-opacity') || '1';
                 el.style.zIndex = el.getAttribute('data-bm-orig-z') || '';
+                el.classList.add('bm-unlocked');
                 el.removeAttribute('data-bm-overlap');
                 el.removeAttribute('data-bm-orig-opacity');
                 el.removeAttribute('data-bm-orig-z');
               });
             }}
             eventDragStop={() => {
-              // 드래그 종료 후 overlap 재구성
+              // 드래그 종료 후 unlocked 해제 + overlap 재구성
+              document.querySelectorAll('.bm-unlocked').forEach(el => el.classList.remove('bm-unlocked'));
               setTimeout(() => setupOverlap(true), 300);
               setTimeout(() => setupOverlap(false), 800);
             }}
