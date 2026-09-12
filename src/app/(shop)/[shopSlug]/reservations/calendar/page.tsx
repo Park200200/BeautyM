@@ -44,7 +44,9 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [rawEvents, setRawEvents] = useState<ReservationEvent[]>([]);
   const [mounted, setMounted] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<{ id: string; menu: string; customer: string; phone: string; staff: string; status: string; session: string; start: string; end: string; customerId: string; menuName: string; profileImage: string; birthday: string; gender: string } | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<{ id: string; menu: string; customer: string; phone: string; staff: string; status: string; session: string; start: string; end: string; customerId: string; menuName: string; profileImage: string; birthday: string; gender: string; eventDate?: string; managementFields?: string[] } | null>(null);
+  const [treatmentData, setTreatmentData] = useState<Record<string, string>>({});
+  const [treatmentMemo, setTreatmentMemo] = useState('');
   const [historyTab, setHistoryTab] = useState<'menu' | 'all'>('menu');
   const [activeDate, setActiveDate] = useState<string>(''); // 클릭한 날짜 (YYYY-MM-DD)
   const [popupDate, setPopupDate] = useState<string | null>(null); // 월간 클릭 팝업
@@ -130,12 +132,14 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             const menuName = r.menu?.name || '';
             const staffName = r.staff?.user?.name || '';
             const session = `${r.currentSession || 1}/${r.totalSessions || 1}`;
+            let mgmtFields: string[] = [];
+            try { if (r.menu?.managementFields) mgmtFields = typeof r.menu.managementFields === 'string' ? JSON.parse(r.menu.managementFields) : r.menu.managementFields; } catch {}
             return {
               id: r.id,
               title: menuName,
               start: r.startTime, end: r.endTime,
               backgroundColor: sc.bg, borderColor: sc.bar, textColor: sc.text,
-              extendedProps: { menu: menuName, customer: custName, phone: custPhone, staff: staffName, status: r.status, session, customerId: r.customerId || '', menuName, profileImage: r.customer?.user?.profileImage || '', birthday: r.customer?.user?.birthday || '', gender: r.customer?.user?.gender || '' },
+              extendedProps: { menu: menuName, customer: custName, phone: custPhone, staff: staffName, status: r.status, session, customerId: r.customerId || '', menuName, profileImage: r.customer?.user?.profileImage || '', birthday: r.customer?.user?.birthday || '', gender: r.customer?.user?.gender || '', menuId: r.menuId || '', managementFields: mgmtFields },
             };
           }));
         }
@@ -652,7 +656,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
           if (!ev) return;
           const p = ev.extendedProps;
           const fmt = (d: Date | null) => d ? `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}` : '';
-          setSelectedEvent({
+           setSelectedEvent({
             id: ev.id,
             menu: p.menu, customer: p.customer, phone: p.phone,
             staff: p.staff, status: p.status, session: p.session,
@@ -660,6 +664,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             customerId: p.customerId, menuName: p.menuName,
             profileImage: p.profileImage, birthday: p.birthday, gender: p.gender,
             eventDate: ev.start?.toISOString() || '',
+            managementFields: p.managementFields || [],
           });
           setHistoryTab('menu');
         };
@@ -1102,6 +1107,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 customerId: p.customerId, menuName: p.menuName,
                 profileImage: p.profileImage, birthday: p.birthday, gender: p.gender,
                 eventDate: info.event.start?.toISOString() || '',
+                managementFields: p.managementFields || [],
               });
               setHistoryTab('menu');
             }}
@@ -1459,6 +1465,80 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                     );
                   }
 
+                  // 시술중 상태: 시술 내용 입력 폼
+                  if (selectedEvent.status === 'IN_PROGRESS' && !isPast) {
+                    const fields = selectedEvent.managementFields || [];
+                    return (
+                      <div style={{ marginTop: 10 }}>
+                        <div style={{ background: '#FEF3C7', borderRadius: 10, padding: '12px 14px', border: '1.5px solid #F59E0B' }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: '#92400E', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+                            📝 시술 내용 기록
+                          </div>
+                          {fields.length > 0 && fields.map((field: string) => (
+                            <div key={field} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                              <label style={{ fontSize: 12, fontWeight: 600, color: '#78350F', minWidth: 70 }}>{field}</label>
+                              <input
+                                value={treatmentData[field] || ''}
+                                onChange={e => setTreatmentData(prev => ({ ...prev, [field]: e.target.value }))}
+                                placeholder={`${field} 입력`}
+                                style={{ flex: 1, padding: '5px 8px', borderRadius: 6, border: '1px solid #D1D5DB', fontSize: 12, outline: 'none' }}
+                              />
+                            </div>
+                          ))}
+                          <textarea
+                            value={treatmentMemo}
+                            onChange={e => setTreatmentMemo(e.target.value)}
+                            placeholder="추가 메모 (예: 좌측 볼 집중 관리)"
+                            rows={2}
+                            style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #D1D5DB', fontSize: 12, resize: 'vertical', outline: 'none', marginTop: fields.length > 0 ? 4 : 0, boxSizing: 'border-box' }}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: 5, marginTop: 8 }}>
+                          <button
+                            onClick={async () => {
+                              if (!confirm('시술을 완료 처리하시겠습니까?')) return;
+                              const mgmtData = { ...treatmentData, _memo: treatmentMemo };
+                              try {
+                                const res = await fetch(`/api/shops/${shopSlug}/reservations/${selectedEvent.id}`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ status: 'COMPLETED', managementData: mgmtData }),
+                                });
+                                if (res.ok) {
+                                  setSelectedEvent(prev => prev ? { ...prev, status: 'COMPLETED' } : null);
+                                  const calApi = calendarRef.current?.getApi();
+                                  if (calApi) {
+                                    const fcEvent = calApi.getEventById(selectedEvent.id);
+                                    if (fcEvent) {
+                                      const sc = STATUS_COLORS.COMPLETED;
+                                      fcEvent.setProp('backgroundColor', sc.bg);
+                                      fcEvent.setProp('borderColor', sc.bar);
+                                      fcEvent.setProp('textColor', sc.text);
+                                      fcEvent.setExtendedProp('status', 'COMPLETED');
+                                    }
+                                  }
+                                  setTreatmentData({});
+                                  setTreatmentMemo('');
+                                }
+                              } catch (e) { console.error(e); }
+                            }}
+                            style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: 'none', background: '#22C55E', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                            ✓ 완료
+                          </button>
+                          <button
+                            onClick={() => {
+                              const reason = prompt('취소 사유를 입력해주세요:');
+                              if (reason === null) return;
+                              changeReservationStatus(selectedEvent.id, 'CANCELLED', reason || undefined);
+                            }}
+                            style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: 'none', background: '#FEE2E2', color: '#991B1B', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                            취소
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                   <div style={{ display: 'flex', gap: 5, marginTop: 10, flexWrap: 'wrap' }}>
                     {buttons.map(s => {
@@ -1469,7 +1549,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                             if (isActive) return;
                             if (s.key === 'CANCELLED') {
                               const reason = prompt('취소 사유를 입력해주세요:');
-                              if (reason === null) return; // 취소 누름
+                              if (reason === null) return;
                               changeReservationStatus(selectedEvent.id, 'CANCELLED', reason || undefined);
                             } else if (s.key === 'NO_SHOW') {
                               if (!confirm('이 예약을 "노쇼" 상태로 변경하시겠습니까?')) return;
@@ -1477,6 +1557,11 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                             } else if (s.key === 'COMPLETED') {
                               if (!confirm('이 예약을 "완료" 상태로 변경하시겠습니까?')) return;
                               changeReservationStatus(selectedEvent.id, 'COMPLETED');
+                            } else if (s.key === 'IN_PROGRESS') {
+                              // 시술중 → 폼 표시
+                              setTreatmentData({});
+                              setTreatmentMemo('');
+                              changeReservationStatus(selectedEvent.id, 'IN_PROGRESS');
                             } else {
                               changeReservationStatus(selectedEvent.id, s.key);
                             }
