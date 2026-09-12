@@ -152,10 +152,9 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {
-        // rawEvents만 업데이트 (요약 계산용). events(FC 렌더링)는 건드리지 않아 겹침 DOM 유지
-        setRawEvents(prev => prev.map(r => r.id === reservationId ? { ...r, status: newStatus } : r));
+        // 팝업 상태만 즉시 반영
         setSelectedEvent(prev => prev ? { ...prev, status: newStatus } : null);
-        // FC 이벤트 색상만 직접 DOM으로 업데이트
+        // FC 이벤트 속성 직접 변경 (React 재렌더/setupOverlap 재실행 없음)
         const sc = STATUS_COLORS[newStatus] || STATUS_COLORS.CONFIRMED;
         const calApi = calendarRef.current?.getApi();
         if (calApi) {
