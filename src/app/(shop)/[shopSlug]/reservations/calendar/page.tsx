@@ -625,13 +625,13 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             transition:all 0.3s ease;
           `;
           div.innerHTML = item.content;
+          const textH = 52; // 텍스트 3줄 높이(시간+메뉴+고객)
           if (idx === 0) {
-            div.style.background = '#fff';
+            div.style.background = `linear-gradient(to bottom, #fff ${textH}px, rgba(255,255,255,0.6) ${textH + 10}px, rgba(255,255,255,0) ${textH + 40}px)`;
             div.style.zIndex = '5';
             div.style.opacity = '1';
             div.style.fontWeight = '700';
             div.style.borderRadius = '4px';
-            div.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
           } else {
             div.style.background = 'transparent';
             div.style.zIndex = '1';
@@ -656,16 +656,18 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
         mainEvent.appendChild(contentWrap);
 
+        const textH = 52;
         const updateActive = () => {
           items.forEach((item, idx) => {
             if (!item.el) return;
             const isActive = idx === current;
-            item.el.style.background = isActive ? '#fff' : 'transparent';
+            item.el.style.background = isActive
+              ? `linear-gradient(to bottom, #fff ${textH}px, rgba(255,255,255,0.6) ${textH + 10}px, rgba(255,255,255,0) ${textH + 40}px)`
+              : 'transparent';
             item.el.style.zIndex = isActive ? '5' : '1';
             item.el.style.opacity = isActive ? '1' : '0.3';
             item.el.style.fontWeight = isActive ? '700' : '400';
             item.el.style.borderRadius = isActive ? '4px' : '0';
-            item.el.style.boxShadow = isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none';
           });
         };
 
