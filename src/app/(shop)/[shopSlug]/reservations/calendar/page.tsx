@@ -1,7 +1,8 @@
 'use client';
-import { useState, useEffect, useCallback, useRef, use } from 'react';
+import React, { useState, useEffect, useCallback, useRef, use, useMemo, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
-import FullCalendar from '@fullcalendar/react';
+import dynamic from 'next/dynamic';
+const FullCalendar = dynamic(() => import('@fullcalendar/react'), { ssr: false });
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
@@ -121,8 +122,12 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     IN_PROGRESS: { bar: '#F59E0B', bg: '#FEF3C7', text: '#92400E' },
   };
 
-  const fetchReservations = useCallback(() => {
-    fetch(`/api/shops/${shopSlug}/reservations`)
+  const fetchReservations = useCallback((rangeStart?: string, rangeEnd?: string) => {
+    const params = new URLSearchParams();
+    if (rangeStart) params.set('start', rangeStart);
+    if (rangeEnd) params.set('end', rangeEnd);
+    const qs = params.toString();
+    fetch(`/api/shops/${shopSlug}/reservations${qs ? `?${qs}` : ''}`)
       .then(res => res.json())
       .then(data => {
         if (data.reservations) {
@@ -138,7 +143,6 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             const session = `${r.currentSession || 1}/${r.totalSessions || 1}`;
             let mgmtFields: any[] = [];
             let mgmtGroups: { treatmentName: string; steps: any[] }[] = [];
-            // 1) Treatment의 processSteps에서 시술과정 가져오기 (시술별 그룹)
             try {
               const mts = (r as any).menu?.menuTreatments || [];
               for (const mt of mts) {
@@ -151,11 +155,9 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 }
               }
             } catch {}
-            // 2) Menu의 managementFields (보조 - processSteps가 없을 때)
             if (mgmtFields.length === 0) {
               try { if (r.menu?.managementFields) { const parsed = typeof r.menu.managementFields === 'string' ? JSON.parse(r.menu.managementFields) : r.menu.managementFields; if (Array.isArray(parsed)) { mgmtFields = parsed; mgmtGroups = [{ treatmentName: '', steps: parsed }]; } } } catch {}
             }
-            // enablePhotos 플래그 확인 (Menu 또는 Treatment에서)
             let enablePhotos = !!(r.menu as any)?.enablePhotos;
             try { const mts = (r as any).menu?.menuTreatments || []; for (const mt of mts) { if (mt.treatment?.enablePhotos) enablePhotos = true; } } catch {}
             let mgmtData: Record<string, string> = {};
@@ -173,7 +175,13 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shopSlug]);
 
-  useEffect(() => { fetchReservations(); }, [fetchReservations]);
+  // 초기 로딩: 현재 달 ±1개월 범위로 제한
+  useEffect(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+    const end = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString();
+    fetchReservations(start, end);
+  }, [fetchReservations]);
 
   // 예약 상태 변경
   const changeReservationStatus = useCallback(async (reservationId: string, newStatus: string, cancelReason?: string) => {
@@ -222,12 +230,11 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
   }, [shopSlug, fetchReservations]);
 
   // 일별 요약 맵
-  const summaryMap = useCallback((): Record<string, DaySummary> => {
+  const summaryMapData = React.useMemo((): Record<string, DaySummary> => {
     const dayMap: Record<string, ReservationEvent[]> = {};
     rawEvents
       .filter((r) => r.status !== 'CANCELLED')
       .forEach((r) => {
-        // KST(UTC+9) 보정된 날짜 키 사용
         const d = new Date(new Date(r.startTime).getTime() + 9 * 60 * 60 * 1000);
         const day = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
         if (!dayMap[day]) dayMap[day] = [];
@@ -275,6 +282,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     });
     return result;
   }, [rawEvents, bizClose, bizOpen]);
+  const summaryMap = useCallback(() => summaryMapData, [summaryMapData]);
 
   // 월간 뷰 날짜 셀에 요약 주입
   const handleDayCellDidMount = useCallback((arg: { date: Date; el: HTMLElement; view: { type: string } }) => {

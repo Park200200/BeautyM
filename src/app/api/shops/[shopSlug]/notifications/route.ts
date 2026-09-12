@@ -30,23 +30,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ shopSlug
     ? { shopId: shop.id }
     : { shopId: shop.id, recipientId: myMember.id };
 
-  const notifications = await prisma.notificationLog.findMany({
-    where: whereFilter,
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-    include: { member: { include: { user: true } } },
-  });
+  // 병렬 실행
+  const [notifications, unreadCount, myUnreadCount] = await Promise.all([
+    prisma.notificationLog.findMany({
+      where: whereFilter,
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      include: { member: { include: { user: true } } },
+    }),
+    prisma.notificationLog.count({
+      where: { ...whereFilter, readAt: null },
+    }),
+    isOwner && myMember
+      ? prisma.notificationLog.count({ where: { shopId: shop.id, recipientId: myMember.id, readAt: null } })
+      : Promise.resolve(0),
+  ]);
 
-  const unreadCount = await prisma.notificationLog.count({
-    where: { ...whereFilter, readAt: null },
-  });
-
-  // OWNER: 개인 안읽음 카운트 (헤더 배지용)
-  const myUnreadCount = isOwner && myMember
-    ? await prisma.notificationLog.count({ where: { shopId: shop.id, recipientId: myMember.id, readAt: null } })
-    : unreadCount;
-
-  return NextResponse.json({ notifications, unreadCount, myUnreadCount, myMemberId: myMember?.id || null, isOwner });
+  return NextResponse.json({ notifications, unreadCount, myUnreadCount: isOwner && myMember ? myUnreadCount : unreadCount, myMemberId: myMember?.id || null, isOwner });
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ shopSlug: string }> }) {

@@ -2,26 +2,18 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { notifyReservationCreated } from '@/lib/notifications';
 
-export async function GET(req: Request, { params }: { params: Promise<{ shopSlug: string }> }) {
-  const { shopSlug } = await params;
-  const shop = await prisma.shop.findUnique({ where: { slug: shopSlug } });
-  if (!shop) return NextResponse.json({ error: 'Shop not found' }, { status: 404 });
-
-  const { searchParams } = new URL(req.url);
-  const customerId = searchParams.get('customerId');
-
-  // 지난 날짜의 활성 상태 예약 자동 정리 (트랜잭션 없이 일괄 처리)
+// 자동 정리 (비동기, 에러 무시)
+async function autoCleanup(shopId: string) {
   const now = new Date();
   try {
-    // 0) 당일 확정 예약 중 시작시간이 지난 것 → 시술중
+    // 0) 당일 확정 → 시술중
     await prisma.reservation.updateMany({
-      where: { shopId: shop.id, startTime: { lte: now }, endTime: { gt: now }, status: 'CONFIRMED' },
+      where: { shopId, startTime: { lte: now }, endTime: { gt: now }, status: 'CONFIRMED' },
       data: { status: 'IN_PROGRESS' },
     });
-
-    // 1) 과거(종료시간 지남) 확정/시술중 → 완료
+    // 1) 과거 확정/시술중 → 완료
     const completedIds = await prisma.reservation.findMany({
-      where: { shopId: shop.id, endTime: { lt: now }, status: { in: ['CONFIRMED', 'IN_PROGRESS'] } },
+      where: { shopId, endTime: { lt: now }, status: { in: ['CONFIRMED', 'IN_PROGRESS'] } },
       select: { id: true, customerId: true, staffId: true },
     });
     if (completedIds.length > 0) {
@@ -29,45 +21,76 @@ export async function GET(req: Request, { params }: { params: Promise<{ shopSlug
         where: { id: { in: completedIds.map(r => r.id) } },
         data: { status: 'COMPLETED' },
       });
-      // 시술카드 생성 (이미 있는 것 제외)
       const existingRecords = await prisma.customerRecord.findMany({
         where: { reservationId: { in: completedIds.map(r => r.id) } },
         select: { reservationId: true },
       });
       const existingSet = new Set(existingRecords.map(r => r.reservationId));
-      for (const r of completedIds.filter(r => !existingSet.has(r.id))) {
-        await prisma.customerRecord.create({
-          data: { shopId: shop.id, customerId: r.customerId, staffId: r.staffId, reservationId: r.id, content: '시술 완료 (자동)' },
-        });
-        await prisma.shopMember.update({ where: { id: r.customerId }, data: { visitCount: { increment: 1 } } });
+      const newRecords = completedIds.filter(r => !existingSet.has(r.id));
+      if (newRecords.length > 0) {
+        await prisma.$transaction([
+          prisma.customerRecord.createMany({
+            data: newRecords.map(r => ({ shopId, customerId: r.customerId, staffId: r.staffId, reservationId: r.id, content: '시술 완료 (자동)' })),
+          }),
+          ...newRecords.map(r => prisma.shopMember.update({ where: { id: r.customerId }, data: { visitCount: { increment: 1 } } })),
+        ]);
       }
     }
-
     // 2) 대기/요청 → 취소
     await prisma.reservation.updateMany({
-      where: { shopId: shop.id, endTime: { lt: now }, status: { in: ['PENDING', 'REQUESTED'] } },
+      where: { shopId, endTime: { lt: now }, status: { in: ['PENDING', 'REQUESTED'] } },
       data: { status: 'CANCELLED' },
     });
   } catch (e) {
     console.error('자동 정리 오류 (무시):', e);
   }
+}
+
+export async function GET(req: Request, { params }: { params: Promise<{ shopSlug: string }> }) {
+  const { shopSlug } = await params;
+  const shop = await prisma.shop.findUnique({ where: { slug: shopSlug }, select: { id: true } });
+  if (!shop) return NextResponse.json({ error: 'Shop not found' }, { status: 404 });
+
+  const { searchParams } = new URL(req.url);
+  const customerId = searchParams.get('customerId');
+  const start = searchParams.get('start');
+  const end = searchParams.get('end');
+
+  // 자동 정리는 비동기로 실행 (응답을 막지 않음)
+  autoCleanup(shop.id).catch(() => {});
+
+  // 날짜 범위 필터 (캘린더 뷰 범위만)
+  const dateFilter: any = {};
+  if (start) dateFilter.gte = new Date(start);
+  if (end) dateFilter.lte = new Date(end);
 
   const reservations = await prisma.reservation.findMany({
-    where: { 
+    where: {
       shopId: shop.id,
-      ...(customerId ? { customerId } : {})
+      ...(customerId ? { customerId } : {}),
+      ...(start || end ? { startTime: dateFilter } : {}),
     },
-    include: {
-      customer: { include: { user: true } },
-      staff: { include: { user: true } },
-      menu: { include: { menuTreatments: { include: { treatment: { include: { category: true } } } } } },
-      payment: true,
+    select: {
+      id: true, customerId: true, menuId: true, staffId: true,
+      startTime: true, endTime: true, status: true, source: true, memo: true,
+      customer: { select: { id: true, user: { select: { name: true, phone: true, profileImage: true, birthday: true, gender: true } } } },
+      staff: { select: { user: { select: { name: true } } } },
+      menu: {
+        select: {
+          id: true, name: true, managementFields: true, enablePhotos: true,
+          menuTreatments: {
+            select: {
+              treatment: { select: { name: true, processSteps: true, enablePhotos: true } }
+            }
+          }
+        }
+      },
       customerRecord: { select: { managementData: true, content: true } },
     },
     orderBy: { startTime: 'asc' },
   });
 
-  // 고객+메뉴별 총 횟수, 현재 순번 계산
+  // 순번 계산 (취소 제외)
   const sessionMap: Record<string, { total: number; list: string[] }> = {};
   for (const r of reservations) {
     if (r.status === 'CANCELLED') continue;
@@ -90,7 +113,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ shopSlug
 
 export async function POST(req: Request, { params }: { params: Promise<{ shopSlug: string }> }) {
   const { shopSlug } = await params;
-  const shop = await prisma.shop.findUnique({ where: { slug: shopSlug } });
+  const shop = await prisma.shop.findUnique({ where: { slug: shopSlug }, select: { id: true } });
   if (!shop) return NextResponse.json({ error: 'Shop not found' }, { status: 404 });
 
   const body = await req.json();
@@ -100,34 +123,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ shopSlu
     return NextResponse.json({ error: '필수 항목을 입력해주세요.' }, { status: 400 });
   }
 
-  // 메뉴 정보로 종료 시간 계산
-  const menu = await prisma.menu.findUnique({ where: { id: menuId } });
+  const menu = await prisma.menu.findUnique({ where: { id: menuId }, select: { duration: true } });
   if (!menu) return NextResponse.json({ error: '메뉴를 찾을 수 없습니다.' }, { status: 404 });
 
-  const start = new Date(`${date}T${startTime}:00`);
-  const end = new Date(start.getTime() + menu.duration * 60000);
+  const startDt = new Date(`${date}T${startTime}:00`);
+  const end = new Date(startDt.getTime() + menu.duration * 60000);
 
   const reservation = await prisma.reservation.create({
     data: {
-      shopId: shop.id,
-      customerId,
-      menuId,
+      shopId: shop.id, customerId, menuId,
       staffId: staffId || null,
-      startTime: start,
-      endTime: end,
-      status: status || 'CONFIRMED',
-      source: 'ADMIN',
+      startTime: startDt, endTime: end,
+      status: status || 'CONFIRMED', source: 'ADMIN',
       memo: memo || null,
     },
     include: {
       customer: { include: { user: true } },
       staff: { include: { user: true } },
-      menu: { include: { menuTreatments: { include: { treatment: { include: { category: true } } } } } },
+      menu: { include: { menuTreatments: { include: { treatment: true } } } },
     },
   });
 
-  // 예약 확인 알림 생성
   await notifyReservationCreated(shop.id, reservation);
-
   return NextResponse.json({ reservation });
 }
