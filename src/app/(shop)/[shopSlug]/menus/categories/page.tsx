@@ -14,7 +14,7 @@ type Category = { id: string; name: string; sortOrder: number };
 type Treatment = {
   id: string; name: string; duration: number; features?: string; equipment?: string;
   photos?: string[] | string | null; categoryId: string; sortOrder: number;
-  category?: { name: string };
+  category?: { name: string }; processSteps?: string;
 };
 
 export default function TreatmentDetailPage() {
@@ -39,7 +39,7 @@ export default function TreatmentDetailPage() {
   // Treatment modal
   const [showModal, setShowModal] = useState(false);
   const [editingTreatment, setEditingTreatment] = useState<string | null>(null);
-  const [tForm, setTForm] = useState({ name: '', duration: '60', features: '' });
+  const [tForm, setTForm] = useState({ name: '', duration: '60', features: '', processSteps: '' });
   const [equipmentTags, setEquipmentTags] = useState<string[]>([]);
   const [productTags, setProductTags] = useState<string[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
@@ -100,13 +100,22 @@ export default function TreatmentDetailPage() {
 
   // Treatment modal
   const openNewTreatment = () => {
-    setTForm({ name: '', duration: '60', features: '' });
+    setTForm({ name: '', duration: '60', features: '', processSteps: '' });
     setEquipmentTags([]); setProductTags([]);
     setPhotoUrls([]); setEditingTreatment(null); setShowModal(true);
   };
 
   const openEditTreatment = (t: Treatment) => {
-    setTForm({ name: t.name, duration: String(t.duration), features: t.features || '' });
+    let processText = '';
+    try {
+      if (t.processSteps) {
+        const parsed = typeof t.processSteps === 'string' ? JSON.parse(t.processSteps) : t.processSteps;
+        if (Array.isArray(parsed)) {
+          processText = parsed.map((f: any) => `${f.name},${f.value || ''}-${f.unit || ''}`).join('\n');
+        }
+      }
+    } catch {}
+    setTForm({ name: t.name, duration: String(t.duration), features: t.features || '', processSteps: processText });
     // Parse equipment JSON
     let eqTags: string[] = [], prTags: string[] = [];
     if (t.equipment) {
@@ -139,7 +148,17 @@ export default function TreatmentDetailPage() {
     const catId = editingTreatment ? treatments.find(t => t.id === editingTreatment)?.categoryId : selectedGroupId;
     if (!catId) return;
     const equipmentData = (equipmentTags.length > 0 || productTags.length > 0) ? JSON.stringify({ equipment: equipmentTags, products: productTags }) : null;
-    const body = { categoryId: catId, name: tForm.name, duration: parseInt(tForm.duration) || 60, features: tForm.features || null, equipment: equipmentData, photos: photoUrls.length > 0 ? photoUrls : null };
+    // processSteps 변환
+    let processStepsJson: string | null = null;
+    if (tForm.processSteps.trim()) {
+      const steps = tForm.processSteps.trim().split('\n').filter(Boolean).map(line => {
+        const [name, rest] = line.split(',');
+        const [value, unit] = (rest || '').split('-');
+        return { name: (name || '').trim(), value: (value || '').trim(), unit: (unit || '').trim() };
+      });
+      processStepsJson = JSON.stringify(steps);
+    }
+    const body = { categoryId: catId, name: tForm.name, duration: parseInt(tForm.duration) || 60, features: tForm.features || null, equipment: equipmentData, photos: photoUrls.length > 0 ? photoUrls : null, processSteps: processStepsJson };
     const url = editingTreatment ? `/api/shops/${shopSlug}/treatments/${editingTreatment}` : `/api/shops/${shopSlug}/treatments`;
     const method = editingTreatment ? 'PATCH' : 'POST';
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -353,6 +372,35 @@ export default function TreatmentDetailPage() {
               <div><label className="text-xs font-medium block mb-1" style={{ color: c.textLight }}>
                 <Sparkles className="w-3.5 h-3.5 inline mr-1" />{'\uD2B9\uC9D5'}</label>
                 <Textarea value={tForm.features} onChange={e => setTForm({...tForm, features: e.target.value})} rows={2} placeholder={'\uC2DC\uC220\uC758 \uD2B9\uC9D5\uC744 \uC785\uB825\uD558\uC138\uC694'} className="rounded-xl" /></div>
+
+              {/* 시술과정 등록 */}
+              <div><label className="text-xs font-medium block mb-1" style={{ color: c.textLight }}>
+                <Sparkles className="w-3.5 h-3.5 inline mr-1" />시술과정</label>
+                <Textarea
+                  value={tForm.processSteps}
+                  onChange={e => setTForm({...tForm, processSteps: e.target.value})}
+                  rows={4}
+                  placeholder={'시술명,숫자-단위 (한 줄에 하나씩)\n예:\n페이스 마사지,20-분\n레이저샷,20-샷\n오일 진정 마사지,50-회'}
+                  className="rounded-xl font-mono text-xs"
+                />
+                {tForm.processSteps.trim() && (
+                  <div className="mt-2 p-2.5 rounded-lg" style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+                    <div className="text-[10px] font-bold mb-1.5" style={{ color: '#166534' }}>미리보기</div>
+                    {tForm.processSteps.trim().split('\n').filter(Boolean).map((line, i) => {
+                      const [name, rest] = line.split(',');
+                      const [val, unit] = (rest || '').split('-');
+                      return (
+                        <div key={i} className="flex items-center gap-2 text-xs" style={{ color: '#15803D' }}>
+                          <span className="font-medium" style={{ minWidth: 100 }}>{(name || '').trim()}</span>
+                          <span>=</span>
+                          <span className="font-bold">{(val || '').trim()}</span>
+                          <span>{(unit || '').trim()}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
               <div><label className="text-xs font-medium block mb-1" style={{ color: c.textLight }}>
                 <Wrench className="w-3.5 h-3.5 inline mr-1" />{'\uC0AC\uC6A9\uC7A5\uBE44'}</label>

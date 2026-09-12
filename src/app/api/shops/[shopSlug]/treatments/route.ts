@@ -56,7 +56,7 @@ export async function POST(
   try {
     const { shopSlug } = await params;
     const body = await request.json();
-    const { categoryId, name, duration, features, equipment, photos, sortOrder } = body;
+    const { categoryId, name, duration, features, equipment, photos, sortOrder, processSteps } = body;
 
     const shop = await prisma.shop.findUnique({
       where: { slug: shopSlug },
@@ -88,6 +88,7 @@ export async function POST(
         equipment: equipment ?? null,
         photos: photos ? (typeof photos === 'string' ? photos : JSON.stringify(photos)) : null,
         sortOrder: sortOrder !== undefined ? Number(sortOrder) : 0,
+        processSteps: processSteps ?? null,
       },
       include: {
         category: true,

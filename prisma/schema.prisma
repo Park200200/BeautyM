@@ -233,9 +233,10 @@ model Treatment {
   categoryId String   // 상위그룹
   name       String   // 시술명
   duration   Int      @default(60)  // 기본시간(분)
-  features   String?  // 특징
-  equipment  String?  // 사용장비 및 케어상품
-  photos     String?  // JSON: 사진 URL 배열
+  features     String?  // 특징
+  equipment    String?  // 사용장비 및 케어상품
+  photos       String?  // JSON: 사진 URL 배열
+  processSteps String?  // JSON: 시술과정 [{name,value,unit}]
   sortOrder  Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
