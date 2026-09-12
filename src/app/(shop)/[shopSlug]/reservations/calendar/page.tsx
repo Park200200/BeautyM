@@ -152,14 +152,21 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {
-        // 로컬 rawEvents 상태만 업데이트 (전체 리로드 방지 → 겹침 감지 유지)
+        // rawEvents만 업데이트 (요약 계산용). events(FC 렌더링)는 건드리지 않아 겹침 DOM 유지
         setRawEvents(prev => prev.map(r => r.id === reservationId ? { ...r, status: newStatus } : r));
-        setEvents(prev => prev.map(ev => {
-          if (ev.id !== reservationId) return ev;
-          const sc = STATUS_COLORS[newStatus] || STATUS_COLORS.CONFIRMED;
-          return { ...ev, backgroundColor: sc.bg, borderColor: sc.bar, textColor: sc.text, extendedProps: { ...ev.extendedProps, status: newStatus } };
-        }));
         setSelectedEvent(prev => prev ? { ...prev, status: newStatus } : null);
+        // FC 이벤트 색상만 직접 DOM으로 업데이트
+        const sc = STATUS_COLORS[newStatus] || STATUS_COLORS.CONFIRMED;
+        const calApi = calendarRef.current?.getApi();
+        if (calApi) {
+          const fcEvent = calApi.getEventById(reservationId);
+          if (fcEvent) {
+            fcEvent.setProp('backgroundColor', sc.bg);
+            fcEvent.setProp('borderColor', sc.bar);
+            fcEvent.setProp('textColor', sc.text);
+            fcEvent.setExtendedProp('status', newStatus);
+          }
+        }
       }
     } catch (e) {
       console.error('상태 변경 실패:', e);
