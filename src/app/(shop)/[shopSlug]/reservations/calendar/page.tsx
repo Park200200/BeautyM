@@ -718,9 +718,6 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             mainEvent.style.overflow = 'hidden';
             const origMain = mainEvent.querySelector('.fc-event-main') as HTMLElement;
             if (origMain) origMain.style.display = 'none';
-            // 중복 그룹은 드래그 비활성화
-            const draggableEl = info.el.querySelector('.fc-event-draggable') as HTMLElement;
-            if (draggableEl) draggableEl.classList.remove('fc-event-draggable');
           } else {
             info.el.setAttribute('data-bm-overlap', '1');
             info.el.setAttribute('data-bm-orig-display', info.el.style.display || '');
@@ -1221,7 +1218,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 }
               } catch { info.revert(); }
             }}
-            eventDragStart={() => {
+            eventDragStart={(info) => {
               // 드래그 시작 시 overlap DOM 정리 (display:none 복원)
               document.querySelectorAll('.bm-overlap-badge,.bm-overlap-content').forEach(el => el.remove());
               document.querySelectorAll('.fc-timegrid-event-harness[data-bm-overlap]').forEach(h => {
@@ -1243,8 +1240,12 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                 if (main) main.style.display = '';
               });
             }}
+            eventDragStop={() => {
+              // 드래그 종료 후 overlap 재구성
+              setTimeout(() => setupOverlap(true), 300);
+              setTimeout(() => setupOverlap(false), 800);
+            }}
             slotEventOverlap
-            eventMaxStack={1}
             allDaySlot={false}
             slotMinTime="08:00:00" slotMaxTime="22:00:00" scrollTime="09:00:00"
             expandRows stickyHeaderDates firstDay={0} eventDisplay="block"
