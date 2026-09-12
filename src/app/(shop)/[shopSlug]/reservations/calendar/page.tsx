@@ -499,7 +499,15 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         group.forEach((info, idx) => {
           const eventMain = info.el.querySelector('.fc-event-main');
           if (eventMain) contents.push(eventMain.innerHTML);
-          if (idx > 0) info.el.style.display = 'none';
+          if (idx === 0) {
+            // 첫 번째: 전체 너비로 확장
+            const insetParts = (info.el.style.inset || '').split(' ');
+            info.el.style.inset = `${insetParts[0] || '0px'} 0px auto 0px`;
+            info.el.style.width = '100%';
+            info.el.style.zIndex = '15';
+          } else {
+            info.el.style.display = 'none';
+          }
         });
 
         if (contents.length <= 1) return;
