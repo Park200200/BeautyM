@@ -1457,9 +1457,9 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                     { key: 'CANCELLED', label: '취소', bg: '#FEE2E2', activeBg: '#EF4444', color: '#991B1B' },
                     { key: 'NO_SHOW', label: '노쇼', bg: '#FEE2E2', activeBg: '#DC2626', color: '#991B1B' },
                   ];
-                  // 과거: 완료/취소/노쇼, 당일: 시술중/완료/취소/노쇼, 미래: 변경/취소
+                  // 과거: 완료/취소/노쇼, 당일: 완료/취소/노쇼 (시술중은 자동), 미래: 변경/취소
                   const pastBtns = allButtons.filter(b => ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(b.key));
-                  const todayBtns = allButtons.filter(b => ['IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(b.key));
+                  const todayBtns = allButtons.filter(b => ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(b.key));
 
                   if (isFuture && !(selectedEvent.status === 'CANCELLED' || selectedEvent.status === 'NO_SHOW')) {
                     // 미래: 변경 + 취소
@@ -1622,13 +1622,10 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                             } else if (s.key === 'NO_SHOW') {
                               if (!confirm('이 예약을 "노쇼" 상태로 변경하시겠습니까?')) return;
                               changeReservationStatus(selectedEvent.id, 'NO_SHOW');
-                            } else if (s.key === 'COMPLETED' || s.key === 'IN_PROGRESS') {
-                              // 시술중/완료 → 폼 표시
+                            } else if (s.key === 'COMPLETED') {
+                              // 완료 → 폼 표시
                               setTreatmentData({});
                               setTreatmentMemo('');
-                              if (s.key === 'IN_PROGRESS') {
-                                changeReservationStatus(selectedEvent.id, 'IN_PROGRESS');
-                              }
                               setShowTreatmentForm(true);
                             } else {
                               changeReservationStatus(selectedEvent.id, s.key);

@@ -13,7 +13,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ shopSlug
   // 지난 날짜의 활성 상태 예약 자동 정리 (트랜잭션 없이 일괄 처리)
   const now = new Date();
   try {
-    // 1) 확정/시술중 → 완료
+    // 0) 당일 확정 예약 중 시작시간이 지난 것 → 시술중
+    await prisma.reservation.updateMany({
+      where: { shopId: shop.id, startTime: { lte: now }, endTime: { gt: now }, status: 'CONFIRMED' },
+      data: { status: 'IN_PROGRESS' },
+    });
+
+    // 1) 과거(종료시간 지남) 확정/시술중 → 완료
     const completedIds = await prisma.reservation.findMany({
       where: { shopId: shop.id, endTime: { lt: now }, status: { in: ['CONFIRMED', 'IN_PROGRESS'] } },
       select: { id: true, customerId: true, staffId: true },
