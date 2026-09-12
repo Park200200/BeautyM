@@ -447,6 +447,89 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     });
   }, [rawEvents, handleDayCellDidMount, injectHeaderSummary, isHoliday]);
 
+  // 겹치는 이벤트 감지 → 20px 오프셋 + 2초 순환 애니메이션
+  const overlapIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (overlapIntervalRef.current) clearInterval(overlapIntervalRef.current);
+
+    const setupOverlap = () => {
+      const harnesses = document.querySelectorAll('.fc-timegrid-event-harness');
+      if (!harnesses.length) return;
+
+      // harness 위치 정보 수집
+      type HarnessInfo = { el: HTMLElement; col: string; top: number; bottom: number; };
+      const infos: HarnessInfo[] = [];
+      harnesses.forEach(h => {
+        const el = h as HTMLElement;
+        const col = el.closest('.fc-timegrid-col')?.getAttribute('data-date') || '';
+        const rect = el.getBoundingClientRect();
+        const parentRect = el.offsetParent?.getBoundingClientRect() || rect;
+        infos.push({ el, col, top: rect.top - parentRect.top, bottom: rect.bottom - parentRect.top });
+      });
+
+      // 같은 컬럼에서 시간 겹치는 그룹 찾기
+      const groups: HarnessInfo[][] = [];
+      const used = new Set<number>();
+      for (let i = 0; i < infos.length; i++) {
+        if (used.has(i)) continue;
+        const group = [infos[i]];
+        used.add(i);
+        for (let j = i + 1; j < infos.length; j++) {
+          if (used.has(j)) continue;
+          if (infos[i].col !== infos[j].col) continue;
+          // 시간 겹침 체크
+          if (infos[i].top < infos[j].bottom && infos[j].top < infos[i].bottom) {
+            group.push(infos[j]);
+            used.add(j);
+          }
+        }
+        if (group.length > 1) groups.push(group);
+      }
+
+      // 각 그룹에 스타일 적용
+      groups.forEach(group => {
+        group.forEach((info, idx) => {
+          // 전체 너비로 표시
+          info.el.style.left = '0';
+          info.el.style.right = '0';
+          info.el.style.width = '100%';
+          info.el.style.zIndex = String(10 + idx);
+          // 두 번째부터 20px 오프셋
+          if (idx > 0) {
+            info.el.style.left = '20px';
+            info.el.style.right = '0';
+          }
+          // 첫 번째만 보이게, 나머지 숨김
+          info.el.style.opacity = idx === 0 ? '1' : '0';
+          info.el.style.transition = 'opacity 0.5s ease-in-out';
+          info.el.setAttribute('data-overlap-group', `g${groups.indexOf(group)}`);
+          info.el.setAttribute('data-overlap-idx', String(idx));
+        });
+      });
+
+      if (groups.length === 0) return;
+
+      // 2초 간격으로 순환
+      const counters = groups.map(() => 0);
+      overlapIntervalRef.current = setInterval(() => {
+        groups.forEach((group, gi) => {
+          counters[gi] = (counters[gi] + 1) % group.length;
+          group.forEach((info, idx) => {
+            info.el.style.opacity = idx === counters[gi] ? '1' : '0';
+            info.el.style.zIndex = idx === counters[gi] ? '20' : '10';
+          });
+        });
+      }, 2000);
+    };
+
+    // 렌더링 후 실행
+    const timer = setTimeout(setupOverlap, 500);
+    return () => {
+      clearTimeout(timer);
+      if (overlapIntervalRef.current) clearInterval(overlapIntervalRef.current);
+    };
+  }, [rawEvents]);
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const adjustColWidths = useCallback(() => {}, []);
 
@@ -730,6 +813,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             allDaySlot={false}
             slotMinTime="08:00:00" slotMaxTime="22:00:00" scrollTime="09:00:00"
             expandRows stickyHeaderDates firstDay={0} eventDisplay="block"
+            slotEventOverlap
             dayCellDidMount={handleDayCellDidMount}
             dayHeaderDidMount={handleDayHeaderDidMount}
             fixedWeekCount={false}
