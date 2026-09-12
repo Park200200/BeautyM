@@ -491,32 +491,36 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         const main = group[0];
         const mainEvent = main.el.querySelector('.fc-timegrid-event') as HTMLElement;
         if (!mainEvent) return;
-        const mainContent = mainEvent.querySelector('.fc-event-main') as HTMLElement;
-        if (!mainContent) return;
 
-        // 그룹 전체 시간 범위 (가장 빠른 시작 ~ 가장 늦은 종료)
+        // 그룹 전체 시간 범위
         const groupMinTop = Math.min(...group.map(g => g.top));
         const groupMaxBottom = Math.max(...group.map(g => g.bottom));
         const groupHeight = groupMaxBottom - groupMinTop;
 
-        // 모든 이벤트의 콘텐츠 + 상대 위치 수집
-        const items: { content: string; relTop: number; }[] = [];
+        // 모든 이벤트의 콘텐츠 + 상대 위치 + 높이 수집
+        type OverlapItem = { content: string; relTop: number; height: number; el?: HTMLElement; };
+        const items: OverlapItem[] = [];
         group.forEach((info, idx) => {
           const eventMain = info.el.querySelector('.fc-event-main');
           if (eventMain) {
             items.push({
               content: eventMain.innerHTML,
               relTop: info.top - groupMinTop,
+              height: info.bottom - info.top,
             });
           }
           if (idx === 0) {
-            // 첫 번째: 전체 시간 범위로 확장 + 전체 너비
             info.el.style.inset = `${groupMinTop}px 0px auto 0px`;
             info.el.style.width = '100%';
             info.el.style.height = `${groupHeight}px`;
             info.el.style.zIndex = '15';
             mainEvent.style.height = '100%';
             mainEvent.style.minHeight = '100%';
+            mainEvent.style.position = 'relative';
+            mainEvent.style.overflow = 'hidden';
+            // 원래 fc-event-main 숨김
+            const origMain = mainEvent.querySelector('.fc-event-main') as HTMLElement;
+            if (origMain) origMain.style.display = 'none';
           } else {
             info.el.style.display = 'none';
           }
@@ -526,9 +530,54 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
         let current = 0;
 
-        // 첫 번째 콘텐츠: 시작 위치에 표시
-        mainContent.style.paddingTop = `${items[0].relTop}px`;
-        mainContent.style.fontWeight = '700';
+        // 콘텐츠 컨테이너
+        const contentWrap = document.createElement('div');
+        contentWrap.className = 'bm-overlap-content';
+        contentWrap.style.cssText = `position:absolute;top:0;left:0;right:0;bottom:0;`;
+
+        // 각 예약을 시작시간 위치에 배치
+        items.forEach((item, idx) => {
+          const div = document.createElement('div');
+          div.style.cssText = `
+            position:absolute;top:${item.relTop}px;left:0;right:0;
+            height:${item.height}px;box-sizing:border-box;
+            padding:2px 6px;overflow:hidden;
+            transition:all 0.3s ease;
+          `;
+          div.innerHTML = item.content;
+          // 초기 상태
+          if (idx === 0) {
+            div.style.background = '#fff';
+            div.style.zIndex = '5';
+            div.style.opacity = '1';
+            div.style.fontWeight = '700';
+            div.style.borderRadius = '4px';
+            div.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+          } else {
+            div.style.background = 'transparent';
+            div.style.zIndex = '1';
+            div.style.opacity = '0.3';
+            div.style.fontWeight = '400';
+          }
+          contentWrap.appendChild(div);
+          item.el = div;
+        });
+
+        mainEvent.appendChild(contentWrap);
+
+        // 상태 업데이트
+        const updateActive = () => {
+          items.forEach((item, idx) => {
+            if (!item.el) return;
+            const isActive = idx === current;
+            item.el.style.background = isActive ? '#fff' : 'transparent';
+            item.el.style.zIndex = isActive ? '5' : '1';
+            item.el.style.opacity = isActive ? '1' : '0.3';
+            item.el.style.fontWeight = isActive ? '700' : '400';
+            item.el.style.borderRadius = isActive ? '4px' : '0';
+            item.el.style.boxShadow = isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none';
+          });
+        };
 
         // "중복(1/N)건" 뱃지
         const topBadge = document.createElement('div');
@@ -539,15 +588,11 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
           e.stopPropagation();
           e.preventDefault();
           current = (current + 1) % items.length;
-          const item = items[current];
-          mainContent.innerHTML = item.content;
-          mainContent.style.paddingTop = `${item.relTop}px`;
-          mainContent.style.fontWeight = '700';
+          updateActive();
           topBadge.textContent = `중복(${current + 1}/${items.length})건`;
           topBadge.style.transform = 'scale(0.9)';
           setTimeout(() => { topBadge.style.transform = 'scale(1)'; }, 150);
         });
-        mainEvent.style.position = 'relative';
         mainEvent.appendChild(topBadge);
       });
     }, 300);
