@@ -447,18 +447,17 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     });
   }, [rawEvents, handleDayCellDidMount, injectHeaderSummary, isHoliday]);
 
-  // 겹치는 이벤트 → 단일 카드 + 중복 건수 + 콘텐츠 순환
+  // 겹치는 이벤트 → 원숫자 + 시간 위치에 맞게 순환 표시
   const overlapIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
     if (overlapIntervalRef.current) clearInterval(overlapIntervalRef.current);
 
     const setupOverlap = () => {
-      document.querySelectorAll('.bm-overlap-badge').forEach(el => el.remove());
+      document.querySelectorAll('.bm-overlap-badge,.bm-overlap-content').forEach(el => el.remove());
 
       const harnesses = document.querySelectorAll('.fc-timegrid-event-harness') as NodeListOf<HTMLElement>;
       if (!harnesses.length) return;
 
-      // harness 위치 정보 수집
       type HInfo = { el: HTMLElement; col: string; top: number; bottom: number; origInset: string; };
       const infos: HInfo[] = [];
       harnesses.forEach(h => {
@@ -470,7 +469,6 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         infos.push({ el: h, col, top: actualTop, bottom: actualBottom, origInset: h.style.inset || '' });
       });
 
-      // 겹치는 그룹 찾기
       const groups: HInfo[][] = [];
       const used = new Set<number>();
       for (let i = 0; i < infos.length; i++) {
@@ -488,8 +486,17 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
       if (groups.length === 0) return;
 
-      // 각 그룹: 첫 번째만 표시 + 전체 너비, 나머지 숨김
-      const cycleData: { mainEl: HTMLElement; contents: string[]; current: number; }[] = [];
+      const CIRCLE_NUMS = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩'];
+
+      type CycleGroup = {
+        mainHarness: HTMLElement;
+        mainEvent: HTMLElement;
+        items: { content: string; relTop: number; height: number; }[];
+        current: number;
+        numBadge: HTMLElement;
+        contentDiv: HTMLElement;
+      };
+      const cycleGroups: CycleGroup[] = [];
 
       groups.forEach(group => {
         group.sort((a, b) => a.top - b.top);
@@ -497,102 +504,102 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
         const mainEvent = main.el.querySelector('.fc-timegrid-event') as HTMLElement;
         if (!mainEvent) return;
 
-        // 그룹 전체 시간 범위 계산 (가장 빠른 시작 ~ 가장 늦은 종료)
         const groupMinTop = Math.min(...group.map(g => g.top));
         const groupMaxBottom = Math.max(...group.map(g => g.bottom));
         const groupHeight = groupMaxBottom - groupMinTop;
 
-        // 모든 이벤트의 콘텐츠 수집
-        const contents: string[] = [];
+        // 각 이벤트의 콘텐츠 + 상대 위치
+        const items: { content: string; relTop: number; height: number; }[] = [];
         group.forEach((info, idx) => {
           const eventMain = info.el.querySelector('.fc-event-main');
-          if (eventMain) contents.push(eventMain.innerHTML);
-
+          if (eventMain) {
+            items.push({
+              content: eventMain.innerHTML,
+              relTop: info.top - groupMinTop,
+              height: info.bottom - info.top,
+            });
+          }
           if (idx === 0) {
-            // 첫 번째: 전체 너비 + 그룹 전체 범위로 확장
-            const parentEl = info.el.offsetParent as HTMLElement;
-            const parentH = parentEl ? parentEl.getBoundingClientRect().height : 1;
-            const topPct = (groupMinTop / parentH) * 100;
             info.el.style.inset = `0px 0px auto 0px`;
             info.el.style.top = `${groupMinTop}px`;
             info.el.style.width = '100%';
             info.el.style.height = `${groupHeight}px`;
             info.el.style.zIndex = '15';
-            // 내부 이벤트도 높이 확장
-            if (mainEvent) {
-              mainEvent.style.height = '100%';
-              mainEvent.style.minHeight = '100%';
-            }
+            mainEvent.style.height = '100%';
+            mainEvent.style.minHeight = '100%';
+            mainEvent.style.position = 'relative';
+            mainEvent.style.overflow = 'hidden';
+            // 기존 fc-event-main 숨김
+            const origMain = mainEvent.querySelector('.fc-event-main') as HTMLElement;
+            if (origMain) origMain.style.display = 'none';
           } else {
-            // 나머지: 숨김
             info.el.style.display = 'none';
           }
         });
 
-        if (contents.length <= 1) return;
+        if (items.length <= 1) return;
 
-        // 중복 건수 뱃지
-        if (!mainEvent.querySelector('.bm-overlap-badge')) {
-          const badge = document.createElement('div');
-          badge.className = 'bm-overlap-badge';
-          badge.style.cssText = `
-            position:absolute;top:2px;right:2px;
-            background:#EF4444;color:#fff;
-            font-size:8px;font-weight:800;
-            padding:1px 6px;border-radius:8px;
-            z-index:10;display:flex;align-items:center;gap:3px;
-          `;
-          badge.innerHTML = `<span style="font-size:10px">⚠</span> ${contents.length}건 중복`;
-          mainEvent.style.position = 'relative';
-          mainEvent.appendChild(badge);
+        // 원숫자 뱃지 (좌상단)
+        const numBadge = document.createElement('div');
+        numBadge.className = 'bm-overlap-badge';
+        numBadge.style.cssText = `
+          position:absolute;top:2px;left:4px;
+          background:#EF4444;color:#fff;
+          font-size:12px;font-weight:900;
+          width:20px;height:20px;border-radius:50%;
+          display:flex;align-items:center;justify-content:center;
+          z-index:12;transition:top 0.5s ease;
+        `;
+        numBadge.textContent = CIRCLE_NUMS[0] || '①';
+        mainEvent.appendChild(numBadge);
 
-          // 순서 표시기
-          const indicator = document.createElement('div');
-          indicator.className = 'bm-overlap-indicator';
-          indicator.style.cssText = `
-            position:absolute;bottom:3px;right:3px;
-            display:flex;gap:3px;z-index:10;
-          `;
-          contents.forEach((_, i) => {
-            const dot = document.createElement('div');
-            dot.style.cssText = `width:5px;height:5px;border-radius:50%;background:${i === 0 ? '#EF4444' : 'rgba(255,255,255,0.5)'};transition:background 0.3s;`;
-            dot.setAttribute('data-dot-idx', String(i));
-            indicator.appendChild(dot);
-          });
-          mainEvent.appendChild(indicator);
-        }
+        // 콘텐츠 영역 (시간 위치에 맞게 배치)
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'bm-overlap-content';
+        contentDiv.style.cssText = `
+          position:absolute;top:0;left:0;right:0;bottom:0;
+          pointer-events:none;z-index:11;
+        `;
 
-        cycleData.push({
-          mainEl: mainEvent,
-          contents,
+        // 첫 번째 아이템 표시
+        const item = items[0];
+        contentDiv.innerHTML = `
+          <div style="position:absolute;top:${item.relTop + 24}px;left:4px;right:4px;
+            animation:bm-fade-in 0.4s ease;">
+            ${item.content}
+          </div>
+        `;
+        mainEvent.appendChild(contentDiv);
+
+        cycleGroups.push({
+          mainHarness: main.el,
+          mainEvent,
+          items,
           current: 0,
+          numBadge,
+          contentDiv,
         });
       });
 
-      if (cycleData.length === 0) return;
+      if (cycleGroups.length === 0) return;
 
-      // 2초 간격 콘텐츠 순환
+      // 2초 간격 순환
       overlapIntervalRef.current = setInterval(() => {
-        cycleData.forEach(data => {
-          data.current = (data.current + 1) % data.contents.length;
-          const eventMain = data.mainEl.querySelector('.fc-event-main') as HTMLElement;
-          if (!eventMain) return;
+        cycleGroups.forEach(cg => {
+          cg.current = (cg.current + 1) % cg.items.length;
+          const item = cg.items[cg.current];
 
-          // 콘텐츠 교체 (뱃지/인디케이터 유지)
-          const badge = data.mainEl.querySelector('.bm-overlap-badge');
-          const indicator = data.mainEl.querySelector('.bm-overlap-indicator');
+          // 원숫자 이동
+          cg.numBadge.textContent = CIRCLE_NUMS[cg.current] || `${cg.current + 1}`;
+          cg.numBadge.style.top = `${item.relTop + 2}px`;
 
-          eventMain.innerHTML = data.contents[data.current];
-          eventMain.style.animation = 'bm-fade-in 0.4s ease';
-
-          // 뱃지/인디케이터 복원
-          if (badge) data.mainEl.appendChild(badge);
-          if (indicator) {
-            indicator.querySelectorAll('[data-dot-idx]').forEach((dot, i) => {
-              (dot as HTMLElement).style.background = i === data.current ? '#EF4444' : 'rgba(255,255,255,0.5)';
-            });
-            data.mainEl.appendChild(indicator);
-          }
+          // 콘텐츠를 시작시간 위치에 표시
+          cg.contentDiv.innerHTML = `
+            <div style="position:absolute;top:${item.relTop + 24}px;left:4px;right:4px;
+              animation:bm-fade-in 0.4s ease;">
+              ${item.content}
+            </div>
+          `;
         });
       }, 2000);
     };
