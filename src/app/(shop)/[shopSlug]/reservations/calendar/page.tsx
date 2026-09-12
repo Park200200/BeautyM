@@ -750,8 +750,11 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
   useEffect(() => {
     setupOverlap();
+    // DOM 렌더링 후 한 번 더 실행
+    const extra = setTimeout(() => setupOverlap(), 800);
     return () => {
       if (overlapTimerRef.current) clearTimeout(overlapTimerRef.current);
+      clearTimeout(extra);
     };
   }, [rawEvents, setupOverlap]);
 
@@ -1090,7 +1093,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             dayCellDidMount={handleDayCellDidMount}
             dayHeaderDidMount={handleDayHeaderDidMount}
             fixedWeekCount={false}
-            datesSet={() => { adjustColWidths(); setupOverlap(); }}
+            datesSet={() => { adjustColWidths(); setupOverlap(); setTimeout(() => setupOverlap(), 800); }}
             dateClick={handleDateClick}
             navLinks
             navLinkDayClick={(date) => {
@@ -1140,7 +1143,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
               return {
                 html: `
-                  <div style="display:flex;flex-direction:column;gap:1px;padding:2px 0;overflow:hidden;position:relative;${isSelected ? 'opacity:1;' : ''}">
+                  <div style="display:flex;flex-direction:column;gap:1px;padding:2px 0;overflow:hidden;${isSelected ? 'opacity:1;' : ''}">
                     <div style="font-size:11px;opacity:.7;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${start} - ${end}${statusLabel ? ` <span style="font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;background:${sc.bar};color:#fff;margin-left:3px">${statusLabel}</span>` : ''}</div>
                     <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.menu} <span style="font-weight:500;opacity:.7">(${p.session})</span></div>
                     <div style="font-size:11px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.customer}${phone ? ' ' + phone : ''}</div>
