@@ -1387,12 +1387,12 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                     { key: 'CANCELLED', label: '취소', bg: '#FEE2E2', activeBg: '#EF4444', color: '#991B1B' },
                     { key: 'NO_SHOW', label: '노쇼', bg: '#FEE2E2', activeBg: '#DC2626', color: '#991B1B' },
                   ];
-                  // 과거: 완료/취소/노쇼, 미래: 확정/취소, 당일: 전체
+                  // 과거: 완료/취소/노쇼, 당일: 시술중/완료/취소/노쇼, 미래: 확정/취소
                   const buttons = isPast
                     ? allButtons.filter(b => ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(b.key))
                     : isFuture
                       ? allButtons.filter(b => ['CONFIRMED', 'CANCELLED'].includes(b.key))
-                      : allButtons;
+                      : allButtons.filter(b => ['IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(b.key));
 
                   if (selectedEvent.status === 'CANCELLED' || selectedEvent.status === 'NO_SHOW') {
                     return (
