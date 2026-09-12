@@ -385,7 +385,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     if (cushion && !el.querySelector('.bm-count-badge')) {
       const countBadge = document.createElement('span');
       countBadge.className = 'bm-count-badge';
-      countBadge.style.cssText = `font-size:10px;font-weight:700;color:${s.count >= 5 ? c.textOnPrimary : c.primary};background:${s.count >= 5 ? c.primary : c.primaryLight};border-radius:8px;padding:0 5px;margin-left:4px;`;
+      countBadge.style.cssText = `font-size:10px;font-weight:700;color:${c.textOnPrimary};background:${c.primary};border-radius:8px;padding:0 5px;margin-left:4px;`;
       countBadge.textContent = `${s.count}건`;
       cushion.appendChild(countBadge);
     }
