@@ -447,12 +447,10 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
     });
   }, [rawEvents, handleDayCellDidMount, injectHeaderSummary, isHoliday]);
 
-  // 겹치는 이벤트 → 모든 예약 동시 표시 + 활성 강조 순환
-  const overlapIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // 겹치는 이벤트 → 뱃지 클릭으로 수동 전환
   const overlapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const setupOverlap = useCallback(() => {
-    if (overlapIntervalRef.current) clearInterval(overlapIntervalRef.current);
     if (overlapTimerRef.current) clearTimeout(overlapTimerRef.current);
 
     overlapTimerRef.current = setTimeout(() => {
@@ -489,8 +487,6 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
       if (groups.length === 0) return;
 
       type ItemInfo = { content: string; relTop: number; height: number; itemEl?: HTMLElement; numEl?: HTMLElement; };
-      type CycleGroup = { items: ItemInfo[]; current: number; };
-      const cycleGroups: CycleGroup[] = [];
 
       groups.forEach(group => {
         group.sort((a, b) => a.top - b.top);
@@ -517,7 +513,7 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
             info.el.style.width = '100%';
             info.el.style.height = `${groupHeight}px`;
             info.el.style.zIndex = '15';
-            mainEvent.style.cssText += `;height:100%;min-height:100%;position:relative;overflow:hidden;background:rgba(0,0,0,0.04);border-radius:6px;`;
+            mainEvent.style.cssText += `;height:100%;min-height:100%;position:relative;overflow:hidden;background:#f0f0f0;border-radius:6px;`;
             const origMain = mainEvent.querySelector('.fc-event-main') as HTMLElement;
             if (origMain) origMain.style.display = 'none';
           } else {
@@ -527,11 +523,43 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
         if (items.length <= 1) return;
 
-        // "중복 N건" 우상단 뱃지
+        let current = 0;
+
+        // 활성/비활성 상태 업데이트 함수
+        const updateState = () => {
+          topBadge.textContent = `중복(${current + 1}/${items.length})건`;
+          items.forEach((item, idx) => {
+            const isActive = idx === current;
+            if (item.numEl) {
+              item.numEl.style.background = isActive ? '#EF4444' : 'rgba(0,0,0,0.15)';
+              item.numEl.style.color = isActive ? '#fff' : 'rgba(0,0,0,0.4)';
+            }
+            if (item.itemEl) {
+              item.itemEl.style.opacity = isActive ? '1' : '0.35';
+              item.itemEl.style.transform = `scale(${isActive ? '1' : '0.95'})`;
+              item.itemEl.style.background = isActive ? '#fff' : 'transparent';
+              item.itemEl.style.borderRadius = isActive ? '6px' : '0';
+              item.itemEl.style.padding = isActive ? '4px 6px' : '0';
+              item.itemEl.style.boxShadow = isActive ? '0 1px 4px rgba(0,0,0,0.1)' : 'none';
+              const inner = item.itemEl.querySelector('div') as HTMLElement;
+              if (inner) inner.style.fontWeight = isActive ? '700' : '400';
+            }
+          });
+        };
+
+        // "중복(1/N)건" 뱃지 - 클릭으로 전환
         const topBadge = document.createElement('div');
         topBadge.className = 'bm-overlap-badge';
-        topBadge.style.cssText = `position:absolute;top:4px;right:4px;background:#EF4444;color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:8px;z-index:12;`;
-        topBadge.textContent = `중복 ${items.length}건`;
+        topBadge.style.cssText = `position:absolute;top:4px;right:4px;background:#EF4444;color:#fff;font-size:10px;font-weight:800;padding:3px 10px;border-radius:10px;z-index:12;cursor:pointer;user-select:none;transition:transform 0.15s;`;
+        topBadge.textContent = `중복(1/${items.length})건`;
+        topBadge.addEventListener('click', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          current = (current + 1) % items.length;
+          updateState();
+          topBadge.style.transform = 'scale(0.9)';
+          setTimeout(() => { topBadge.style.transform = 'scale(1)'; }, 150);
+        });
         mainEvent.appendChild(topBadge);
 
         // 모든 예약을 시간 위치에 동시 배치
@@ -543,50 +571,26 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
           const isActive = idx === 0;
 
           const numEl = document.createElement('div');
-          numEl.style.cssText = `position:absolute;top:${item.relTop + 4}px;left:6px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;z-index:2;transition:all 0.4s ease;background:${isActive ? '#EF4444' : 'rgba(0,0,0,0.15)'};color:${isActive ? '#fff' : 'rgba(0,0,0,0.4)'};`;
+          numEl.style.cssText = `position:absolute;top:${item.relTop + 4}px;left:6px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;z-index:2;transition:all 0.3s ease;background:${isActive ? '#EF4444' : 'rgba(0,0,0,0.15)'};color:${isActive ? '#fff' : 'rgba(0,0,0,0.4)'};`;
           numEl.textContent = String(idx + 1);
           contentDiv.appendChild(numEl);
           item.numEl = numEl;
 
           const itemEl = document.createElement('div');
-          itemEl.style.cssText = `position:absolute;top:${item.relTop + 24}px;left:6px;right:6px;transition:all 0.4s ease;opacity:${isActive ? '1' : '0.4'};transform:scale(${isActive ? '1' : '0.95'});transform-origin:left top;`;
+          itemEl.style.cssText = `position:absolute;top:${item.relTop + 24}px;left:6px;right:6px;transition:all 0.3s ease;opacity:${isActive ? '1' : '0.35'};transform:scale(${isActive ? '1' : '0.95'});transform-origin:left top;background:${isActive ? '#fff' : 'transparent'};border-radius:${isActive ? '6px' : '0'};padding:${isActive ? '4px 6px' : '0'};box-shadow:${isActive ? '0 1px 4px rgba(0,0,0,0.1)' : 'none'};`;
           itemEl.innerHTML = `<div style="font-weight:${isActive ? '700' : '400'}">${item.content}</div>`;
           contentDiv.appendChild(itemEl);
           item.itemEl = itemEl;
         });
 
         mainEvent.appendChild(contentDiv);
-        cycleGroups.push({ items, current: 0 });
       });
-
-      if (cycleGroups.length === 0) return;
-
-      overlapIntervalRef.current = setInterval(() => {
-        cycleGroups.forEach(cg => {
-          cg.current = (cg.current + 1) % cg.items.length;
-          cg.items.forEach((item, idx) => {
-            const isActive = idx === cg.current;
-            if (item.numEl) {
-              item.numEl.style.background = isActive ? '#EF4444' : 'rgba(0,0,0,0.15)';
-              item.numEl.style.color = isActive ? '#fff' : 'rgba(0,0,0,0.4)';
-            }
-            if (item.itemEl) {
-              item.itemEl.style.opacity = isActive ? '1' : '0.4';
-              item.itemEl.style.transform = `scale(${isActive ? '1' : '0.95'})`;
-              const inner = item.itemEl.querySelector('div') as HTMLElement;
-              if (inner) inner.style.fontWeight = isActive ? '700' : '400';
-            }
-          });
-        });
-      }, 2000);
     }, 300);
   }, []);
 
-  // rawEvents 변경 시 + cleanup
   useEffect(() => {
     setupOverlap();
     return () => {
-      if (overlapIntervalRef.current) clearInterval(overlapIntervalRef.current);
       if (overlapTimerRef.current) clearTimeout(overlapTimerRef.current);
     };
   }, [rawEvents, setupOverlap]);
