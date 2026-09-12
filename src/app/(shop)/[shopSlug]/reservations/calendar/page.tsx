@@ -486,107 +486,46 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
       if (groups.length === 0) return;
 
-      type ItemInfo = { content: string; relTop: number; height: number; itemEl?: HTMLElement; numEl?: HTMLElement; };
-
       groups.forEach(group => {
         group.sort((a, b) => a.top - b.top);
         const main = group[0];
         const mainEvent = main.el.querySelector('.fc-timegrid-event') as HTMLElement;
         if (!mainEvent) return;
+        const mainContent = mainEvent.querySelector('.fc-event-main') as HTMLElement;
+        if (!mainContent) return;
 
-        const groupMinTop = Math.min(...group.map(g => g.top));
-        const groupMaxBottom = Math.max(...group.map(g => g.bottom));
-        const groupHeight = groupMaxBottom - groupMinTop;
-
-        const items: ItemInfo[] = [];
+        // 모든 이벤트의 콘텐츠 수집
+        const contents: string[] = [];
         group.forEach((info, idx) => {
           const eventMain = info.el.querySelector('.fc-event-main');
-          if (eventMain) {
-            items.push({
-              content: eventMain.innerHTML,
-              relTop: info.top - groupMinTop,
-              height: info.bottom - info.top,
-            });
-          }
-          if (idx === 0) {
-            info.el.style.inset = `${groupMinTop}px 0px auto 0px`;
-            info.el.style.width = '100%';
-            info.el.style.height = `${groupHeight}px`;
-            info.el.style.zIndex = '15';
-            mainEvent.style.cssText += `;height:100%;min-height:100%;position:relative;overflow:hidden;background:#f0f0f0;border-radius:6px;`;
-            const origMain = mainEvent.querySelector('.fc-event-main') as HTMLElement;
-            if (origMain) origMain.style.display = 'none';
-          } else {
-            info.el.style.display = 'none';
-          }
+          if (eventMain) contents.push(eventMain.innerHTML);
+          if (idx > 0) info.el.style.display = 'none';
         });
 
-        if (items.length <= 1) return;
+        if (contents.length <= 1) return;
 
         let current = 0;
 
-        // 활성/비활성 상태 업데이트 함수
-        const updateState = () => {
-          topBadge.textContent = `중복(${current + 1}/${items.length})건`;
-          items.forEach((item, idx) => {
-            const isActive = idx === current;
-            if (item.numEl) {
-              item.numEl.style.display = 'none';
-            }
-            if (item.itemEl) {
-              if (isActive) {
-                item.itemEl.style.display = '';
-                item.itemEl.style.top = `${item.relTop}px`;
-                item.itemEl.style.opacity = '1';
-                item.itemEl.style.background = '#fff';
-                item.itemEl.style.borderRadius = '6px';
-                item.itemEl.style.padding = '4px 6px';
-                item.itemEl.style.boxShadow = '0 1px 4px rgba(0,0,0,0.08)';
-                const inner = item.itemEl.querySelector('div') as HTMLElement;
-                if (inner) inner.style.fontWeight = '700';
-              } else {
-                item.itemEl.style.display = 'none';
-              }
-            }
-          });
-        };
+        // 첫 번째 콘텐츠 표시 (원래 것 유지)
+        mainContent.style.fontWeight = '700';
 
-        // "중복(1/N)건" 뱃지 - 클릭으로 전환
+        // "중복(1/N)건" 뱃지
         const topBadge = document.createElement('div');
         topBadge.className = 'bm-overlap-badge';
-        topBadge.style.cssText = `position:absolute;top:4px;right:4px;background:#EF4444;color:#fff;font-size:10px;font-weight:800;padding:3px 10px;border-radius:10px;z-index:12;cursor:pointer;user-select:none;transition:transform 0.15s;`;
-        topBadge.textContent = `중복(1/${items.length})건`;
+        topBadge.style.cssText = `position:absolute;top:2px;right:2px;background:#EF4444;color:#fff;font-size:9px;font-weight:800;padding:2px 8px;border-radius:8px;z-index:12;cursor:pointer;user-select:none;transition:transform 0.15s;`;
+        topBadge.textContent = `중복(1/${contents.length})건`;
         topBadge.addEventListener('click', (e) => {
           e.stopPropagation();
           e.preventDefault();
-          current = (current + 1) % items.length;
-          updateState();
+          current = (current + 1) % contents.length;
+          mainContent.innerHTML = contents[current];
+          mainContent.style.fontWeight = '700';
+          topBadge.textContent = `중복(${current + 1}/${contents.length})건`;
           topBadge.style.transform = 'scale(0.9)';
           setTimeout(() => { topBadge.style.transform = 'scale(1)'; }, 150);
         });
+        mainEvent.style.position = 'relative';
         mainEvent.appendChild(topBadge);
-
-        // 모든 예약을 시간 위치에 동시 배치
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'bm-overlap-content';
-        contentDiv.style.cssText = `position:absolute;top:0;left:0;right:0;bottom:0;z-index:11;overflow:hidden;`;
-
-        items.forEach((item, idx) => {
-          const isActive = idx === 0;
-
-          const numEl = document.createElement('div');
-          numEl.style.cssText = `display:none;`;
-          contentDiv.appendChild(numEl);
-          item.numEl = numEl;
-
-          const itemEl = document.createElement('div');
-          itemEl.style.cssText = `position:absolute;top:${item.relTop}px;left:6px;right:6px;display:${isActive ? '' : 'none'};opacity:${isActive ? '1' : '0'};background:${isActive ? '#fff' : 'transparent'};border-radius:${isActive ? '6px' : '0'};padding:${isActive ? '4px 6px' : '0'};box-shadow:${isActive ? '0 1px 4px rgba(0,0,0,0.08)' : 'none'};`;
-          itemEl.innerHTML = `<div style="font-weight:${isActive ? '700' : '400'}">${item.content}</div>`;
-          contentDiv.appendChild(itemEl);
-          item.itemEl = itemEl;
-        });
-
-        mainEvent.appendChild(contentDiv);
       });
     }, 300);
   }, []);
