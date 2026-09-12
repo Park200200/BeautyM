@@ -1375,7 +1375,11 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
 
                 {/* 상태 변경 버튼 */}
                 {(() => {
-                  const isPast = selectedEvent.eventDate ? new Date(selectedEvent.eventDate) < new Date() : false;
+                  const evDate = selectedEvent.eventDate ? new Date(selectedEvent.eventDate) : null;
+                  const today = new Date();
+                  const isToday = evDate ? evDate.toDateString() === today.toDateString() : false;
+                  const isPast = evDate ? evDate < today && !isToday : false;
+                  const isFuture = evDate ? evDate > today && !isToday : false;
                   const allButtons = [
                     { key: 'CONFIRMED', label: '확정', bg: `${c.primary}15`, activeBg: c.primary, color: c.primary },
                     { key: 'IN_PROGRESS', label: '시술중', bg: '#FEF3C7', activeBg: '#F59E0B', color: '#92400E' },
@@ -1383,8 +1387,12 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                     { key: 'CANCELLED', label: '취소', bg: '#FEE2E2', activeBg: '#EF4444', color: '#991B1B' },
                     { key: 'NO_SHOW', label: '노쇼', bg: '#FEE2E2', activeBg: '#DC2626', color: '#991B1B' },
                   ];
-                  // 과거: 완료/취소/노쇼만, 미래: 전체
-                  const buttons = isPast ? allButtons.filter(b => ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(b.key)) : allButtons;
+                  // 과거: 완료/취소/노쇼, 미래: 확정/취소, 당일: 전체
+                  const buttons = isPast
+                    ? allButtons.filter(b => ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(b.key))
+                    : isFuture
+                      ? allButtons.filter(b => ['CONFIRMED', 'CANCELLED'].includes(b.key))
+                      : allButtons;
 
                   if (selectedEvent.status === 'CANCELLED' || selectedEvent.status === 'NO_SHOW') {
                     return (
