@@ -62,7 +62,7 @@ export async function PATCH(
   try {
     const { shopSlug, reservationId } = await params;
     const body = await request.json();
-    const { status, managementData, cancelReason } = body;
+    const { status, managementData, cancelReason, startTime, endTime, staffId } = body;
 
     const shop = await prisma.shop.findUnique({
       where: { slug: shopSlug },
@@ -81,6 +81,20 @@ export async function PATCH(
 
     if (!existingReservation || existingReservation.shopId !== shop.id) {
       return NextResponse.json({ error: 'Reservation not found' }, { status: 404 });
+    }
+
+    // 예약 변경(날짜/시간/담당자) - status 없이 호출 시
+    if (!status && (startTime || staffId)) {
+      const updateData: any = {};
+      if (startTime) updateData.startTime = new Date(startTime);
+      if (endTime) updateData.endTime = new Date(endTime);
+      if (staffId) updateData.staffId = staffId;
+      const updated = await prisma.reservation.update({
+        where: { id: reservationId },
+        data: updateData,
+        include: { customer: true, staff: { include: { user: true } }, menu: true },
+      });
+      return NextResponse.json(updated);
     }
 
     const updatedReservation = await prisma.$transaction(async (tx) => {

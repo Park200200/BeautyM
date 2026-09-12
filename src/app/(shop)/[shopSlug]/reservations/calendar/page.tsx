@@ -1387,12 +1387,58 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
                     { key: 'CANCELLED', label: '취소', bg: '#FEE2E2', activeBg: '#EF4444', color: '#991B1B' },
                     { key: 'NO_SHOW', label: '노쇼', bg: '#FEE2E2', activeBg: '#DC2626', color: '#991B1B' },
                   ];
-                  // 과거: 완료/취소/노쇼, 당일: 시술중/완료/취소/노쇼, 미래: 확정/취소
-                  const buttons = isPast
-                    ? allButtons.filter(b => ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(b.key))
-                    : isFuture
-                      ? allButtons.filter(b => ['CONFIRMED', 'CANCELLED'].includes(b.key))
-                      : allButtons.filter(b => ['IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(b.key));
+                  // 과거: 완료/취소/노쇼, 당일: 시술중/완료/취소/노쇼, 미래: 변경/취소
+                  const pastBtns = allButtons.filter(b => ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(b.key));
+                  const todayBtns = allButtons.filter(b => ['IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(b.key));
+
+                  if (isFuture && !(selectedEvent.status === 'CANCELLED' || selectedEvent.status === 'NO_SHOW')) {
+                    // 미래: 변경 + 취소
+                    return (
+                      <div style={{ display: 'flex', gap: 5, marginTop: 10 }}>
+                        <button
+                          onClick={async () => {
+                            const newDate = prompt('변경할 날짜를 입력하세요 (예: 2026-09-20):');
+                            if (!newDate) return;
+                            const newTime = prompt('변경할 시작 시간을 입력하세요 (예: 14:00):');
+                            if (!newTime) return;
+                            const [h, m] = newTime.split(':').map(Number);
+                            const start = new Date(`${newDate}T${newTime}:00+09:00`);
+                            // 기존 duration 계산
+                            const oldStart = new Date(selectedEvent.eventDate);
+                            const duration = selectedEvent.end && selectedEvent.start
+                              ? (() => { const [sh,sm] = selectedEvent.start.split(':').map(Number); const [eh,em] = selectedEvent.end.split(':').map(Number); return (eh*60+em) - (sh*60+sm); })()
+                              : 60;
+                            const end = new Date(start.getTime() + duration * 60000);
+                            try {
+                              const res = await fetch(`/api/shops/${shopSlug}/reservations/${selectedEvent.id}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ startTime: start.toISOString(), endTime: end.toISOString() }),
+                              });
+                              if (res.ok) {
+                                alert('예약이 변경되었습니다.');
+                                setSelectedEvent(null);
+                                fetchReservations();
+                              }
+                            } catch (e) { console.error(e); }
+                          }}
+                          style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${c.primary}`, background: c.primary, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                          📅 변경
+                        </button>
+                        <button
+                          onClick={() => {
+                            const reason = prompt('취소 사유를 입력해주세요:');
+                            if (reason === null) return;
+                            changeReservationStatus(selectedEvent.id, 'CANCELLED', reason || undefined);
+                          }}
+                          style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: 'none', background: '#FEE2E2', color: '#991B1B', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                          취소
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  const buttons = isPast ? pastBtns : todayBtns;
 
                   if (selectedEvent.status === 'CANCELLED' || selectedEvent.status === 'NO_SHOW') {
                     return (
