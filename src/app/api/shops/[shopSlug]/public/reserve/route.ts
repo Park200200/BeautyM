@@ -26,7 +26,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sho
 
   if (!user) {
     user = await prisma.user.create({
-      data: { name: name.trim(), phone: cleanPhone, role: 'USER' },
+      data: { name: name.trim(), phone: cleanPhone, globalRole: 'USER' },
     });
   }
 

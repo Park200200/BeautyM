@@ -101,8 +101,8 @@ export default function ReservePage() {
       } else {
         setError(data.error || '예약 요청에 실패했습니다');
       }
-    } catch {
-      setError('네트워크 오류가 발생했습니다');
+    } catch (err: any) {
+      setError(err?.message || '네트워크 오류가 발생했습니다');
     }
     setSubmitting(false);
   };
