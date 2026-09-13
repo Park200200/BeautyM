@@ -1165,8 +1165,8 @@ export default function CalendarPage({ params }: { params: Promise<{ shopSlug: s
               },
             }}
             buttonText={mob
-              ? { today: '오늘', month: '당월', week: '칠일', day: '당일' }
-              : { today: '오늘', month: '당월', week: '칠일', day: '당일' }
+              ? { today: '오늘', month: '월간', week: '주간', day: '당일' }
+              : { today: '오늘', month: '월간', week: '주간', day: '당일' }
             }
             titleFormat={{ month: 'long', day: 'numeric' }}
             slotLabelFormat={{ hour: 'numeric', minute: '2-digit', hour12: true }}
