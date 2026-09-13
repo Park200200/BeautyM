@@ -15,7 +15,7 @@ import { useShopStore } from '@/stores/shop-store';
 import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
 import { useIsMobile } from '@/hooks/useMediaQuery';
-import { Menu, Bell, CalendarDays, Users, Scissors, Receipt, UserCog, Package, CreditCard, Image, LayoutDashboard, Settings, BellRing, Store, List, Plus, Building2, BrainCircuit, ChevronLeft, ChevronRight, Mail, Smartphone, MessageCircle, Send, Clock } from 'lucide-react';
+import { Menu, Bell, CalendarDays, Users, Scissors, Receipt, UserCog, Package, CreditCard, Image, LayoutDashboard, Settings, BellRing, Store, List, Plus, Building2, BrainCircuit, ChevronLeft, ChevronRight, Mail, Smartphone, MessageCircle, Send, Clock, Eye, EyeOff, Star, Sparkles, BookOpen, Wallet, UserPlus, PackagePlus, ImagePlus, Award, Gem, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 
 const PAGE_MAP: Record<string, { label: string; icon: typeof CalendarDays }> = {
@@ -121,8 +121,8 @@ export default function Header() {
   // 시술관리 섹션 탭
   const isMenuSection = lastSeg === 'menus' || lastSeg === 'categories' || secondLast === 'menus';
   const menuTabs: SubTab[] = shopSlug ? [
-    { label: '뷰티 상품', icon: List, path: `/${shopSlug}/menus`, key: 'menus' },
-    { label: '시술 상세', icon: List, path: `/${shopSlug}/menus/categories`, key: 'categories' },
+    { label: '뷰티 상품', icon: Sparkles, path: `/${shopSlug}/menus`, key: 'menus' },
+    { label: '시술 상세', icon: Scissors, path: `/${shopSlug}/menus/categories`, key: 'categories' },
     { label: '상품등록', icon: Plus, path: `/${shopSlug}/menus?new=1`, key: 'new' },
   ] : [];
   const activeMenuTab = lastSeg === 'categories' ? 'categories' : 'menus';
@@ -130,40 +130,40 @@ export default function Header() {
   // 고객관리 섹션 탭
   const isCustomerSection = lastSeg === 'customers' || secondLast === 'customers';
   const customerTabs: SubTab[] = shopSlug ? [
-    { label: '고객 리스트', icon: List, path: `/${shopSlug}/customers`, key: 'customers' },
-    { label: '고객등록', icon: Plus, path: `/${shopSlug}/customers?new=1`, key: 'new' },
+    { label: '고객 리스트', icon: Users, path: `/${shopSlug}/customers`, key: 'customers' },
+    { label: '고객등록', icon: UserPlus, path: `/${shopSlug}/customers?new=1`, key: 'new' },
   ] : [];
   const activeCustomerTab = 'customers';
 
   // 매출/정산 섹션 탭
   const isSalesSection = lastSeg === 'sales' || secondLast === 'sales';
   const salesTabs: SubTab[] = shopSlug ? [
-    { label: '매출 현황', icon: List, path: `/${shopSlug}/sales`, key: 'sales' },
-    { label: '결제등록', icon: Plus, path: `/${shopSlug}/sales?pay=1`, key: 'pay' },
+    { label: '매출 현황', icon: BarChart3, path: `/${shopSlug}/sales`, key: 'sales' },
+    { label: '결제등록', icon: Wallet, path: `/${shopSlug}/sales?pay=1`, key: 'pay' },
   ] : [];
   const activeSalesTab = 'sales';
 
   // 직원관리 섹션 탭
   const isStaffSection = lastSeg === 'staff' || secondLast === 'staff';
   const staffTabs: SubTab[] = shopSlug ? [
-    { label: '직원 리스트', icon: List, path: `/${shopSlug}/staff`, key: 'staff' },
-    { label: '직원등록', icon: Plus, path: `/${shopSlug}/staff?new=1`, key: 'new' },
+    { label: '직원 리스트', icon: UserCog, path: `/${shopSlug}/staff`, key: 'staff' },
+    { label: '직원등록', icon: UserPlus, path: `/${shopSlug}/staff?new=1`, key: 'new' },
   ] : [];
   const activeStaffTab = 'staff';
 
   // 재고관리 섹션 탭
   const isInventorySection = lastSeg === 'inventory' || secondLast === 'inventory';
   const inventoryTabs: SubTab[] = shopSlug ? [
-    { label: '재고 현황', icon: List, path: `/${shopSlug}/inventory`, key: 'inventory' },
-    { label: '제품등록', icon: Plus, path: `/${shopSlug}/inventory?new=1`, key: 'new' },
+    { label: '재고 현황', icon: Package, path: `/${shopSlug}/inventory`, key: 'inventory' },
+    { label: '제품등록', icon: PackagePlus, path: `/${shopSlug}/inventory?new=1`, key: 'new' },
   ] : [];
   const activeInventoryTab = 'inventory';
 
   // 알림 섹션 탭
   const isNotiSection = lastSeg === 'notifications' || secondLast === 'notifications';
   const notiTabs: SubTab[] = shopSlug ? [
-    { label: '전체', icon: List, path: `/${shopSlug}/notifications`, key: 'all' },
-    { label: '안 읽음', icon: List, path: `/${shopSlug}/notifications?filter=unread`, key: 'unread' },
+    { label: '전체', icon: Bell, path: `/${shopSlug}/notifications`, key: 'all' },
+    { label: '안 읽음', icon: BellRing, path: `/${shopSlug}/notifications?filter=unread`, key: 'unread' },
   ] : [];
   const activeNotiTab = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('filter') === 'unread' ? 'unread' : 'all';
 
@@ -181,16 +181,16 @@ export default function Header() {
   // 포트폴리오 섹션 탭
   const isPortfolioSection = lastSeg === 'portfolio' || secondLast === 'portfolio';
   const portfolioTabs: SubTab[] = shopSlug ? [
-    { label: '포트폴리오', icon: List, path: `/${shopSlug}/portfolio`, key: 'portfolio' },
-    { label: '사례등록', icon: Plus, path: `/${shopSlug}/portfolio?new=1`, key: 'new' },
+    { label: '포트폴리오', icon: Image, path: `/${shopSlug}/portfolio`, key: 'portfolio' },
+    { label: '사례등록', icon: ImagePlus, path: `/${shopSlug}/portfolio?new=1`, key: 'new' },
   ] : [];
   const activePortfolioTab = 'portfolio';
 
   // 멤버십 섹션 탭
   const isMembershipSection = lastSeg === 'membership' || secondLast === 'membership';
   const membershipTabs: SubTab[] = shopSlug ? [
-    { label: '멤버십 현황', icon: List, path: `/${shopSlug}/membership`, key: 'membership' },
-    { label: '포인트 설정', icon: List, path: `/${shopSlug}/membership?settings=1`, key: 'settings' },
+    { label: '멤버십 현황', icon: Gem, path: `/${shopSlug}/membership`, key: 'membership' },
+    { label: '포인트 설정', icon: Award, path: `/${shopSlug}/membership?settings=1`, key: 'settings' },
   ] : [];
   const activeMembershipTab = 'membership';
 
