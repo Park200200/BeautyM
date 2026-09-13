@@ -335,7 +335,7 @@ export default function LandingPage() {
                       borderColor: plan.popular ? 'white' : c.primary,
                     }}
                   >
-                    시작하기
+                    {plan.price === '무료' ? '시작하기' : '신청하기'}
                   </Link>
                 </div>
               ))}
