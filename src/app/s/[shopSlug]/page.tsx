@@ -345,7 +345,10 @@ export default function BookingPage() {
                       return (
                         <div key={r.id} style={{ padding: '14px 16px', background: '#FAFAFA', borderRadius: 14, border: '1px solid #f3f4f6' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: st.bg, color: st.color }}>{st.label}</span>
+                            {r.status !== 'PENDING' && r.status !== 'REQUESTED' && (
+                              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: st.bg, color: st.color }}>{st.label}</span>
+                            )}
+                            {(r.status === 'PENDING' || r.status === 'REQUESTED') && <span />}
                             <span style={{ fontSize: 11, color: '#9CA3AF' }}>{dateStr} {timeStr}</span>
                           </div>
                           {(r.status === 'PENDING' || r.status === 'REQUESTED') && (
@@ -354,10 +357,30 @@ export default function BookingPage() {
                               스케줄 배정중입니다. 확정 후 안내드리겠습니다.
                             </div>
                           )}
-                          <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1a2e', marginBottom: 4 }}>{r.menu?.name || '-'}</div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1a2e', marginBottom: 8 }}>{r.menu?.name || '-'}</div>
+                          {/* 담당자 정보 */}
+                          {r.staff?.user && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'white', borderRadius: 10, border: '1px solid #f3f4f6', marginBottom: 8 }}>
+                              {r.staff.user.profileImage ? (
+                                <img src={r.staff.user.profileImage} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: '2px solid #D1FAE5' }} />
+                              ) : (
+                                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <Users style={{ width: 16, height: 16, color: '#40BFA3' }} />
+                                </div>
+                              )}
+                              <div>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e' }}>{r.staff.user.name} 담당</div>
+                                {r.staff.user.phone && (
+                                  <div style={{ fontSize: 11, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
+                                    <Phone style={{ width: 10, height: 10 }} />
+                                    {r.staff.user.phone.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3')}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                           <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#6B7280' }}>
                             {r.menu?.duration && <span><Clock style={{ width: 10, height: 10 }} /> {r.menu.duration}분</span>}
-                            {r.staff?.user?.name && <span><Users style={{ width: 10, height: 10 }} /> {r.staff.user.name}</span>}
                             {r.menu?.price != null && <span style={{ color: '#40BFA3', fontWeight: 600 }}>₩{r.menu.price.toLocaleString()}</span>}
                           </div>
                         </div>
