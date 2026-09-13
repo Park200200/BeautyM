@@ -8,7 +8,7 @@ import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, User, Phone as PhoneIcon, Scissors, Clock, Coins, UserCog, StickyNote, MapPin, X, Plus, Search } from 'lucide-react';
+import { CalendarDays, User, Phone as PhoneIcon, Scissors, Clock, Coins, UserCog, StickyNote, MapPin, X, Plus, Search, ClipboardCheck, FileText } from 'lucide-react';
 import { getStatusLabel, getStatusColor, formatDateTime, formatDuration } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -21,9 +21,10 @@ type Reservation = {
   memo?: string | null;
   currentSession?: number;
   totalSessions?: number;
-  customer?: { user?: { name: string; phone?: string | null } } | null;
-  staff?: { user?: { name: string } } | null;
-  menu?: { name: string; duration: number; price?: number } | null;
+  customer?: { createdAt?: string; user?: { name: string; phone?: string | null; profileImage?: string | null } } | null;
+  staff?: { user?: { name: string; profileImage?: string | null } } | null;
+  menu?: { name: string; duration: number; price?: number; managementFields?: string | null } | null;
+  customerRecord?: { managementData?: string | null; content?: string | null } | null;
 };
 
 const STATUS_FILTERS = [
@@ -435,6 +436,38 @@ export default function ReservationsPage() {
               {selectedRes.menu?.price != null && <span style={{ display: 'flex', alignItems: 'center', gap: 3, background: '#fff', padding: '2px 8px', borderRadius: 6, border: '1px solid #e5e7eb' }}><Coins style={{ width: 11, height: 11 }} /> {selectedRes.menu.price.toLocaleString()}원</span>}
             </div>
           </div>
+
+          {/* 시술 적용 데이터 - 완료 상태일 때만 표시 */}
+          {selectedRes.status === 'COMPLETED' && selectedRes.customerRecord && (() => {
+            let mgmt: Record<string, string> = {};
+            try { mgmt = typeof selectedRes.customerRecord.managementData === 'string' ? JSON.parse(selectedRes.customerRecord.managementData) : (selectedRes.customerRecord.managementData || {}); } catch {}
+            const hasData = Object.keys(mgmt).length > 0;
+            const hasContent = !!selectedRes.customerRecord.content;
+            if (!hasData && !hasContent) return null;
+            return (
+              <div style={{ padding: '14px 16px', background: 'linear-gradient(135deg, #EFF6FF, #F0FDF4)', borderRadius: 12, border: '1px solid #BFDBFE', marginBottom: 12 }}>
+                <div style={{ fontSize: 11, color: '#1D4ED8', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>
+                  <ClipboardCheck style={{ width: 13, height: 13 }} /> 시술 적용 데이터
+                </div>
+                {hasData && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: hasContent ? 10 : 0 }}>
+                    {Object.entries(mgmt).map(([key, val]) => (
+                      <div key={key} style={{ padding: '8px 10px', background: 'white', borderRadius: 8, border: '1px solid #E5E7EB' }}>
+                        <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 600, marginBottom: 2 }}>{key}</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#1F2937' }}>{String(val) || '-'}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {hasContent && (
+                  <div style={{ padding: '8px 10px', background: 'white', borderRadius: 8, border: '1px solid #E5E7EB' }}>
+                    <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 600, marginBottom: 2, display: 'flex', alignItems: 'center', gap: 3 }}><FileText style={{ width: 10, height: 10 }} /> 시술 기록</div>
+                    <div style={{ fontSize: 12, color: '#1F2937', lineHeight: 1.5 }}>{selectedRes.customerRecord.content}</div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* 메모 */}
           {selectedRes.memo && (
