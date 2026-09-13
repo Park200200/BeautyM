@@ -55,7 +55,12 @@ export default function NewReservationPage({ params }: { params: Promise<{ shopS
       fetch(`/api/shops/${shopSlug}/categories`).then(r => r.json()).catch(() => ({ categories: [] })),
     ]).then(([custData, staffData, menuData, catData]) => {
       setCustomers(custData.customers || []);
-      setStaff(staffData.staff || []);
+      const staffList = staffData.staff || [];
+      setStaff(staffList);
+      // 직원 1명이면 자동 선택
+      if (staffList.length === 1) {
+        setForm(prev => ({ ...prev, staffId: staffList[0].id }));
+      }
       setMenus(menuData.menus || []);
       setCategories(catData.categories || []);
     });
@@ -453,6 +458,7 @@ export default function NewReservationPage({ params }: { params: Promise<{ shopS
         <div style={sectionStyle}>
           {sectionTitle(<UserCog style={{ width: 15, height: 15, color: '#10B981' }} />, '담당 관리사')}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {staff.length > 1 && (
             <button
               onClick={() => setForm({ ...form, staffId: '' })}
               style={{
@@ -463,6 +469,7 @@ export default function NewReservationPage({ params }: { params: Promise<{ shopS
                 cursor: 'pointer',
               }}
             >자동 배정</button>
+            )}
             {staff.map(s => {
               const active = form.staffId === s.id;
               return (
