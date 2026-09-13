@@ -319,7 +319,7 @@ export default function CustomerDetailPage() {
   if (loading) return (
     <div className="flex items-center justify-center min-h-[400px]">
       <div className="text-center">
-        <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mx-auto mb-3" style={{ borderColor: c.primary, borderTopColor: 'transparent' }} />
+        <div className="w-8 h-8 border-2 rounded-full animate-spin mx-auto mb-3" style={{ borderRightColor: c.primary, borderBottomColor: c.primary, borderLeftColor: c.primary, borderTopColor: 'transparent' }} />
         <p className="text-sm" style={{ color: c.textLight }}>Loading...</p>
       </div>
     </div>
@@ -743,7 +743,7 @@ export default function CustomerDetailPage() {
                     <input type="file" accept="image/*" multiple className="hidden" onChange={e => handlePhotoUpload(e, 'AFTER')} />
                   </label>
                   {uploadingPhoto && <div className="w-20 h-20 rounded-xl flex items-center justify-center" style={{ backgroundColor: c.primaryLight + '30' }}>
-                    <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: c.primary, borderTopColor: 'transparent' }} />
+                    <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderRightColor: c.primary, borderBottomColor: c.primary, borderLeftColor: c.primary, borderTopColor: 'transparent' }} />
                   </div>}
                 </div>
               </div>

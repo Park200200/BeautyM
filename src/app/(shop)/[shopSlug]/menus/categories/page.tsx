@@ -201,7 +201,7 @@ export default function TreatmentDetailPage() {
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[300px]">
-      <div className="w-8 h-8 rounded-full animate-spin" style={{ borderWidth: 2, borderStyle: 'solid', borderColor: c.primary, borderTopColor: 'transparent' }} />
+      <div className="w-8 h-8 rounded-full animate-spin" style={{ borderWidth: 2, borderStyle: 'solid', borderRightColor: c.primary, borderBottomColor: c.primary, borderLeftColor: c.primary, borderTopColor: 'transparent' }} />
     </div>
   );
 
@@ -436,7 +436,7 @@ export default function TreatmentDetailPage() {
                     onMouseEnter={e => e.currentTarget.style.borderColor = c.primary}
                     onMouseLeave={e => e.currentTarget.style.borderColor = c.borderLight}>
                     {uploading ? (
-                      <div className="w-5 h-5 rounded-full animate-spin" style={{ borderWidth: 2, borderStyle: 'solid', borderColor: c.primary, borderTopColor: 'transparent' }} />
+                      <div className="w-5 h-5 rounded-full animate-spin" style={{ borderWidth: 2, borderStyle: 'solid', borderRightColor: c.primary, borderBottomColor: c.primary, borderLeftColor: c.primary, borderTopColor: 'transparent' }} />
                     ) : (
                       <><ImagePlus className="w-5 h-5" /><span className="text-[10px]">{'\uCD94\uAC00'}</span></>
                     )}

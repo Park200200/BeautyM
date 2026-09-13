@@ -168,7 +168,7 @@ export default function MenusPage() {
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[300px]">
-      <div className="w-8 h-8 rounded-full animate-spin" style={{ borderWidth: 2, borderStyle: 'solid', borderColor: c.primary, borderTopColor: 'transparent' }} />
+      <div className="w-8 h-8 rounded-full animate-spin" style={{ borderWidth: 2, borderStyle: 'solid', borderRightColor: c.primary, borderBottomColor: c.primary, borderLeftColor: c.primary, borderTopColor: 'transparent' }} />
     </div>
   );
 
