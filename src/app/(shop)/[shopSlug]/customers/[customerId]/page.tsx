@@ -1477,7 +1477,7 @@ export default function CustomerDetailPage() {
                 🔔 알림 수신
               </label>
               <div style={{ display: 'flex', gap: 8 }}>
-                {[{ value: 'KAKAO', label: '카카오톡' }, { value: 'SMS', label: 'SMS' }, { value: 'PUSH', label: '앱 푸시' }].map(opt => {
+                {[{ value: 'KAKAO', label: '카카오톡', icon: '💬' }, { value: 'SMS', label: 'SMS', icon: '✉️' }, { value: 'EMAIL', label: '이메일', icon: '📧' }, { value: 'PUSH', label: '앱 푸시', icon: '🔔' }].map(opt => {
                   const selected = editProfileForm.notifyChannels.includes(opt.value);
                   return (
                     <button
@@ -1491,17 +1491,22 @@ export default function CustomerDetailPage() {
                       }}
                       style={{
                         flex: 1,
-                        padding: '8px 0',
+                        padding: '8px 2px',
                         borderRadius: 10,
                         border: `1.5px solid ${selected ? c.primary : c.borderLight}`,
                         background: selected ? c.primaryLight : '#fff',
                         color: selected ? c.primary : c.textLight,
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: selected ? 700 : 500,
                         cursor: 'pointer',
                         transition: 'all 0.2s',
+                        display: 'flex',
+                        flexDirection: 'column' as const,
+                        alignItems: 'center',
+                        gap: 2,
                       }}
                     >
+                      <span style={{ fontSize: 16 }}>{opt.icon}</span>
                       {opt.label}
                     </button>
                   );
