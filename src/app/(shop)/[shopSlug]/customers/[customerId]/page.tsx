@@ -216,7 +216,7 @@ export default function CustomerDetailPage() {
       memo: customer.memo || '',
       birthday: bd,
       profileImage: customer.user?.profileImage || '',
-      gender: customer.user?.gender || '',
+      gender: customer.user?.gender || 'FEMALE',
       notifyChannels: customer.notifyChannels ? JSON.parse(customer.notifyChannels) : [],
     });
     setShowEditProfile(true);
@@ -1445,7 +1445,7 @@ export default function CustomerDetailPage() {
                 👤 성별
               </label>
               <div style={{ display: 'flex', gap: 8 }}>
-                {[{ value: 'MALE', label: '남' }, { value: 'FEMALE', label: '여' }].map(opt => (
+                {[{ value: 'MALE', label: '남', icon: '♂' }, { value: 'FEMALE', label: '여', icon: '♀' }].map(opt => (
                   <button
                     key={opt.value}
                     type="button"
@@ -1454,16 +1454,20 @@ export default function CustomerDetailPage() {
                       flex: 1,
                       padding: '8px 0',
                       borderRadius: 10,
-                      border: `1.5px solid ${editProfileForm.gender === opt.value ? c.primary : c.borderLight}`,
-                      background: editProfileForm.gender === opt.value ? c.primaryLight : '#fff',
-                      color: editProfileForm.gender === opt.value ? c.primary : c.textLight,
+                      border: `1.5px solid ${editProfileForm.gender === opt.value ? (opt.value === 'MALE' ? '#3B82F6' : '#EC4899') : c.borderLight}`,
+                      background: editProfileForm.gender === opt.value ? (opt.value === 'MALE' ? '#EFF6FF' : '#FDF2F8') : '#fff',
+                      color: editProfileForm.gender === opt.value ? (opt.value === 'MALE' ? '#3B82F6' : '#EC4899') : c.textLight,
                       fontSize: 13,
                       fontWeight: editProfileForm.gender === opt.value ? 700 : 500,
                       cursor: 'pointer',
                       transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 4,
                     }}
                   >
-                    {opt.label}
+                    <span style={{ fontSize: 16 }}>{opt.icon}</span>{opt.label}
                   </button>
                 ))}
               </div>
