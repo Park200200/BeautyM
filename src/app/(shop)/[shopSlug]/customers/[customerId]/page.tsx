@@ -235,7 +235,7 @@ export default function CustomerDetailPage() {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: editProfileForm.name,
-          phone: editProfileForm.phone,
+          phone: editProfileForm.phone?.replace(/-/g, '') || '',
           email: editProfileForm.email,
           memo: editProfileForm.memo,
           birthday,
@@ -245,7 +245,8 @@ export default function CustomerDetailPage() {
         }),
       });
       if (res.ok) { fetchData(); setShowEditProfile(false); }
-    } catch (e) { console.error(e); }
+      else { const err = await res.text(); console.error('Save failed:', res.status, err); alert(`저장 실패: ${res.status}`); }
+    } catch (e) { console.error(e); alert('저장 중 오류가 발생했습니다.'); }
   };
 
   const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
