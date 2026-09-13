@@ -365,26 +365,25 @@ export default function ReservationsPage() {
             </div>
           </div>
 
-          {/* 정보 카드 그리드 */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-            {/* 예약 일시 */}
-            <div style={{ padding: '12px 14px', background: '#F9FAFB', borderRadius: 12, border: '1px solid #f3f4f6' }}>
-              <div style={{ fontSize: 10, color: c.textLight, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, marginBottom: 4 }}><CalendarDays style={{ width: 11, height: 11 }} /> 예약 일시</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: c.text }}>{formatDateTime(selectedRes.startTime)}</div>
-              {selectedRes.endTime && <div style={{ fontSize: 11, color: c.textLight }}>~ {new Date(selectedRes.endTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 종료</div>}
-            </div>
+          {/* 예약 일시 */}
+          <div style={{ padding: '12px 14px', background: '#F9FAFB', borderRadius: 12, border: '1px solid #f3f4f6', marginBottom: 8 }}>
+            <div style={{ fontSize: 10, color: c.textLight, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, marginBottom: 4 }}><CalendarDays style={{ width: 11, height: 11 }} /> 예약 일시</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: c.text }}>{formatDateTime(selectedRes.startTime)}</div>
+            {selectedRes.endTime && <div style={{ fontSize: 11, color: c.textLight }}>~ {new Date(selectedRes.endTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 종료</div>}
+          </div>
 
-            {/* 담당 관리사 */}
-            <div style={{ padding: '12px 14px', background: '#F9FAFB', borderRadius: 12, border: '1px solid #f3f4f6' }}>
-              <div style={{ fontSize: 10, color: c.textLight, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, marginBottom: 4 }}><UserCog style={{ width: 11, height: 11 }} /> 담당 관리사</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {selectedRes.staff?.user?.profileImage ? (
-                  <img src={selectedRes.staff.user.profileImage} alt="" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: c.primaryLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><UserCog style={{ width: 12, height: 12, color: c.primary }} /></div>
-                )}
-                <span style={{ fontSize: 13, fontWeight: 700, color: c.text }}>{selectedRes.staff?.user?.name || '미배정'}</span>
-              </div>
+          {/* 담당 관리사 - 고객 카드와 동일 레이아웃 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: '#F9FAFB', borderRadius: 14, marginBottom: 12, border: '1px solid #f3f4f6' }}>
+            <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#e5e7eb', border: `2px solid ${c.primary}30` }}>
+              {selectedRes.staff?.user?.profileImage ? (
+                <img src={selectedRes.staff.user.profileImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.primaryLight }}><UserCog style={{ width: 20, height: 20, color: c.primary }} /></div>
+              )}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 10, color: c.textLight, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}><UserCog style={{ width: 10, height: 10 }} /> 담당 관리사</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: c.text, marginTop: 1 }}>{selectedRes.staff?.user?.name || '미배정'}</div>
             </div>
           </div>
 
