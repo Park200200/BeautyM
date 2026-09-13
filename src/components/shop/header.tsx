@@ -371,15 +371,16 @@ export default function Header() {
           )}
         </div>
 
-        {/* 서브 탭 */}
+        {/* 서브 탭 - 모바일에서만 표시 (데스크톱은 사이드바 사용) */}
+        <div className="flex items-center min-w-0 flex-1 lg:hidden">
         {isReservationSection && <ScrollableTabs tabs={reservationTabs} activeKey={activeTab} colors={c} />}
-
         {isMenuSection && <ScrollableTabs tabs={menuTabs} activeKey={activeMenuTab} colors={c} />}
         {isCustomerSection && <ScrollableTabs tabs={customerTabs} activeKey={activeCustomerTab} colors={c} />}
         {isSalesSection && <ScrollableTabs tabs={salesTabs} activeKey={activeSalesTab} colors={c} />}
         {isStaffSection && <ScrollableTabs tabs={staffTabs} activeKey={activeStaffTab} colors={c} />}
         {isInventorySection && <ScrollableTabs tabs={inventoryTabs} activeKey={activeInventoryTab} colors={c} />}
         {isNotiSection && <ScrollableTabs tabs={notiTabs} activeKey={activeNotiTab} colors={c} />}
+        </div>
 
         {isBranchesSection && branchCount > 0 && (
           <span style={{ marginLeft: 6, fontSize: 12, color: c.textLight, fontWeight: 400 }}>
@@ -393,8 +394,10 @@ export default function Header() {
           </span>
         )}
 
+        <div className="flex items-center min-w-0 flex-1 lg:hidden">
         {isPortfolioSection && <ScrollableTabs tabs={portfolioTabs} activeKey={activePortfolioTab} colors={c} />}
         {isMembershipSection && <ScrollableTabs tabs={membershipTabs} activeKey={activeMembershipTab} colors={c} />}
+        </div>
       </div>
 
       {/* 오른쪽: 알림 + 사용자 */}
