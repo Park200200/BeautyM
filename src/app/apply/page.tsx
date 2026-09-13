@@ -5,10 +5,10 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Building2, User, Phone, Mail, MapPin, FileText, MessageSquare, CheckCircle2, ArrowLeft, Sparkles, Crown, Zap, Shield } from 'lucide-react';
 
-const PLANS: Record<string, { name: string; price: string; color: string; icon: any; features: string[] }> = {
-  Standard: { name: 'Standard', price: '29,000원/월', color: '#40BFA3', icon: Zap, features: ['Free 기능 전부', '고객 수 무제한', '매출/정산', '멤버십/포트폴리오', '대시보드', '알림톡/SMS'] },
-  Pro: { name: 'Pro', price: '69,000원/월', color: '#2DD4A8', icon: Crown, features: ['Standard 기능 전부', '직원 관리 (10명)', '직원별 권한 설정', '재고 관리'] },
-  Enterprise: { name: 'Enterprise', price: '149,000원/월', color: '#0D9488', icon: Shield, features: ['Pro 기능 전부', '다중 매장 (5개)', 'AI 분석', '커스텀 도메인', '직원 무제한'] },
+const PLANS: Record<string, { name: string; price: string; monthly: number; color: string; icon: any; features: string[] }> = {
+  Standard: { name: 'Standard', price: '29,000원/월', monthly: 29000, color: '#40BFA3', icon: Zap, features: ['Free 기능 전부', '고객 수 무제한', '매출/정산', '멤버십/포트폴리오', '대시보드', '알림톡/SMS'] },
+  Pro: { name: 'Pro', price: '69,000원/월', monthly: 69000, color: '#2DD4A8', icon: Crown, features: ['Standard 기능 전부', '직원 관리 (10명)', '직원별 권한 설정', '재고 관리'] },
+  Enterprise: { name: 'Enterprise', price: '149,000원/월', monthly: 149000, color: '#0D9488', icon: Shield, features: ['Pro 기능 전부', '다중 매장 (5개)', 'AI 분석', '커스텀 도메인', '직원 무제한'] },
 };
 
 function ApplyForm() {
@@ -145,6 +145,32 @@ function ApplyForm() {
                 {f}
               </span>
             ))}
+          </div>
+
+          {/* 12개월 결제 안내 */}
+          <div style={{ marginTop: 16, padding: '14px 16px', background: '#F9FAFB', borderRadius: 14, border: '1px solid #f3f4f6' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>12개월 결제 시</span>
+              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: '#FEF3C7', color: '#92400E' }}>2개월 무료</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+              <div>
+                <div style={{ fontSize: 11, color: '#9CA3AF', textDecoration: 'line-through' }}>
+                  정가 ₩{(plan.monthly * 12).toLocaleString()}
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: plan.color }}>
+                  ₩{(plan.monthly * 10).toLocaleString()}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 11, color: '#DC2626', fontWeight: 700 }}>
+                  -{Math.round((2/12)*100)}% 할인
+                </div>
+                <div style={{ fontSize: 11, color: '#6B7280' }}>
+                  ₩{(plan.monthly * 2).toLocaleString()} 절약
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
