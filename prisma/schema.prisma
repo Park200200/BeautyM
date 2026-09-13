@@ -205,6 +205,7 @@ model ShopMember {
   coupons           Coupon[]
   reviews           Review[]
   notificationLogs  NotificationLog[]
+  staffMenus        StaffMenu[]
 
   @@unique([userId, shopId])
 }
@@ -284,6 +285,19 @@ model Menu {
   menuTreatments MenuTreatment[]
 
   reservations Reservation[]
+  staffMenus   StaffMenu[]
+}
+
+// 직원-메뉴 연결 (직원별 시술 가능 메뉴)
+model StaffMenu {
+  id       String @id @default(cuid())
+  staffId  String
+  menuId   String
+
+  staff ShopMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  menu  Menu       @relation(fields: [menuId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, menuId])
 }
 
 // ============================================
