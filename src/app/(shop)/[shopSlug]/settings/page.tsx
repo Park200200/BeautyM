@@ -6,6 +6,7 @@ import { useIsMobile } from '@/hooks/useMediaQuery';
 import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
 import { Settings, Store, Phone, MapPin, FileText, Clock, Camera, User, Building, Mail, CreditCard, Save, CheckCircle, Upload, X, Eye, UserCog, Check } from 'lucide-react';
+import { MODULE_REGISTRY } from '@/lib/modules';
 
 type ShopSettings = {
   name: string; phone: string; address: string; description: string;
@@ -53,12 +54,11 @@ export default function SettingsPage() {
   const [payRates, setPayRates] = useState<PayRates>({ CARD: 3, CASH: 5, TRANSFER: 4 });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  // 직원 메뉴 관리
-  const [smStaff, setSmStaff] = useState<{id:string;name:string;isActive:boolean;menuIds:string[]}[]>([]);
-  const [smMenus, setSmMenus] = useState<{id:string;name:string;categoryId:string|null;price:number;duration:number}[]>([]);
-  const [smCategories, setSmCategories] = useState<{id:string;name:string}[]>([]);
+  // 직원 메뉴 접근 권한
+  const [smStaff, setSmStaff] = useState<{id:string;name:string;role:string;isActive:boolean;allowedModules:string[]|null}[]>([]);
   const [smSelectedStaff, setSmSelectedStaff] = useState<string>('');
   const [smSaving, setSmSaving] = useState(false);
+  const [smLoaded, setSmLoaded] = useState(false);
   const [saved, setSaved] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
   const [bizUploading, setBizUploading] = useState(false);
@@ -556,99 +556,95 @@ export default function SettingsPage() {
       )}
 
       {/* 직원 메뉴 */}
-      {tab === 'staff-menus' && (
-        <div style={card}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: c.text, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <UserCog style={{ width: 16, height: 16, color: c.primary }} /> 직원별 시술 메뉴 관리
-          </h3>
-          <p style={{ fontSize: 12, color: c.textLight, marginBottom: 16 }}>
-            각 직원이 시술 가능한 메뉴를 설정합니다. 설정하지 않으면 모든 메뉴 시술 가능합니다.
-          </p>
+      {tab === 'staff-menus' && (() => {
+        const adminModules = MODULE_REGISTRY.filter(m => m.target === 'ADMIN');
 
-          {smStaff.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '32px 0' }}>
-              <button
-                onClick={async () => {
-                  const res = await fetch(`/api/shops/${shopSlug}/settings/staff-menus`);
-                  if (res.ok) {
-                    const d = await res.json();
-                    setSmStaff(d.staff || []);
-                    setSmMenus(d.menus || []);
-                    setSmCategories(d.categories || []);
-                    if (d.staff?.length > 0) setSmSelectedStaff(d.staff[0].id);
-                  }
-                }}
-                style={{ padding: '10px 24px', borderRadius: 10, border: `1.5px solid ${c.primary}`, background: c.primaryLight, color: c.primary, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-              >
-                직원 메뉴 데이터 불러오기
-              </button>
-            </div>
-          ) : (
-            <>
-              {/* 직원 선택 */}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-                {smStaff.filter(s => s.isActive).map(s => (
-                  <button
-                    key={s.id}
-                    onClick={() => setSmSelectedStaff(s.id)}
-                    style={{
-                      padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                      border: `1.5px solid ${smSelectedStaff === s.id ? c.primary : c.borderLight}`,
-                      background: smSelectedStaff === s.id ? c.primaryLight : 'transparent',
-                      color: smSelectedStaff === s.id ? c.primary : c.text,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {s.name}
-                    {s.menuIds.length > 0 && <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.7 }}>({s.menuIds.length})</span>}
-                  </button>
-                ))}
+        const loadData = async () => {
+          const res = await fetch(`/api/shops/${shopSlug}/settings/staff-menus`);
+          if (res.ok) {
+            const d = await res.json();
+            setSmStaff(d.staff || []);
+            if (d.staff?.length > 0 && !smSelectedStaff) setSmSelectedStaff(d.staff[0].id);
+            setSmLoaded(true);
+          }
+        };
+
+        if (!smLoaded) { loadData(); }
+
+        const staff = smStaff.find(s => s.id === smSelectedStaff);
+        const allowed = staff?.allowedModules ? new Set(staff.allowedModules) : null;
+        const allChecked = allowed === null || adminModules.every(m => allowed.has(m.id));
+
+        const toggleModule = (moduleId: string) => {
+          setSmStaff(prev => prev.map(s => {
+            if (s.id !== smSelectedStaff) return s;
+            const current = s.allowedModules || adminModules.map(m => m.id);
+            const newModules = current.includes(moduleId)
+              ? current.filter(id => id !== moduleId)
+              : [...current, moduleId];
+            return { ...s, allowedModules: newModules.length === adminModules.length ? null : newModules };
+          }));
+        };
+
+        const toggleAll = () => {
+          setSmStaff(prev => prev.map(s => {
+            if (s.id !== smSelectedStaff) return s;
+            return { ...s, allowedModules: allChecked ? [] : null };
+          }));
+        };
+
+        const saveModules = async () => {
+          if (!staff) return;
+          setSmSaving(true);
+          try {
+            await fetch(`/api/shops/${shopSlug}/settings/staff-menus`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ staffId: smSelectedStaff, allowedModules: staff.allowedModules }),
+            });
+          } catch { }
+          setSmSaving(false);
+        };
+
+        return (
+          <div style={card}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: c.text, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <UserCog style={{ width: 16, height: 16, color: c.primary }} /> 직원별 메뉴 접근 권한
+            </h3>
+            <p style={{ fontSize: 12, color: c.textLight, marginBottom: 16 }}>
+              각 직원이 좌측 사이드바에서 접근할 수 있는 메뉴를 설정합니다. 미설정 시 전체 메뉴 접근 가능합니다.
+            </p>
+
+            {!smLoaded ? (
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <div className="w-6 h-6 border-2 rounded-full animate-spin mx-auto" style={{ borderRightColor: c.primary, borderBottomColor: c.primary, borderLeftColor: c.primary, borderTopColor: 'transparent' }} />
               </div>
+            ) : (
+              <>
+                {/* 직원 선택 */}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                  {smStaff.filter(s => s.isActive).map(s => {
+                    const cnt = s.allowedModules ? s.allowedModules.length : adminModules.length;
+                    return (
+                      <button key={s.id} onClick={() => setSmSelectedStaff(s.id)}
+                        style={{
+                          padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                          border: `1.5px solid ${smSelectedStaff === s.id ? c.primary : c.borderLight}`,
+                          background: smSelectedStaff === s.id ? c.primaryLight : 'transparent',
+                          color: smSelectedStaff === s.id ? c.primary : c.text,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {s.name}
+                        {s.role === 'OWNER' && <span style={{ fontSize: 9, marginLeft: 4, opacity: 0.6 }}>원장</span>}
+                        <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.7 }}>({cnt})</span>
+                      </button>
+                    );
+                  })}
+                </div>
 
-              {/* 메뉴 체크리스트 */}
-              {smSelectedStaff && (() => {
-                const staff = smStaff.find(s => s.id === smSelectedStaff);
-                if (!staff) return null;
-                const menuIds = new Set(staff.menuIds);
-                const allChecked = smMenus.every(m => menuIds.has(m.id));
-                const noneChecked = menuIds.size === 0;
-
-                const toggleMenu = (menuId: string) => {
-                  setSmStaff(prev => prev.map(s => s.id !== smSelectedStaff ? s : {
-                    ...s,
-                    menuIds: s.menuIds.includes(menuId) ? s.menuIds.filter(id => id !== menuId) : [...s.menuIds, menuId]
-                  }));
-                };
-
-                const toggleAll = () => {
-                  setSmStaff(prev => prev.map(s => s.id !== smSelectedStaff ? s : {
-                    ...s,
-                    menuIds: allChecked ? [] : smMenus.map(m => m.id)
-                  }));
-                };
-
-                const saveStaffMenus = async () => {
-                  setSmSaving(true);
-                  try {
-                    await fetch(`/api/shops/${shopSlug}/settings/staff-menus`, {
-                      method: 'PUT',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ staffId: smSelectedStaff, menuIds: staff.menuIds }),
-                    });
-                  } catch { }
-                  setSmSaving(false);
-                };
-
-                // 카테고리별 그룹핑
-                const catMap = new Map(smCategories.map(ct => [ct.id, ct.name]));
-                const grouped: Record<string, typeof smMenus> = {};
-                smMenus.forEach(m => {
-                  const catName = m.categoryId ? catMap.get(m.categoryId) || '기타' : '기타';
-                  if (!grouped[catName]) grouped[catName] = [];
-                  grouped[catName].push(m);
-                });
-
-                return (
+                {/* 사이드바 메뉴 체크리스트 */}
+                {staff && (
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                       <label style={{ fontSize: 12, color: c.textLight, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
@@ -659,46 +655,41 @@ export default function SettingsPage() {
                         }}>
                           {allChecked && <Check style={{ width: 12, height: 12, color: '#fff' }} />}
                         </div>
-                        {noneChecked ? '전체 메뉴 가능 (미설정)' : `${menuIds.size}개 메뉴 선택됨`}
+                        {allChecked ? '전체 메뉴 접근 가능' : `${allowed?.size || 0}개 메뉴 선택됨`}
                       </label>
-                      <button onClick={saveStaffMenus} disabled={smSaving}
+                      <button onClick={saveModules} disabled={smSaving}
                         style={{ padding: '6px 16px', borderRadius: 8, border: 'none', background: c.primary, color: c.textOnPrimary, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: smSaving ? 0.5 : 1 }}>
                         {smSaving ? '저장중...' : '저장'}
                       </button>
                     </div>
 
-                    {Object.entries(grouped).map(([catName, catMenus]) => (
-                      <div key={catName} style={{ marginBottom: 12 }}>
-                        <p style={{ fontSize: 11, fontWeight: 700, color: c.primary, marginBottom: 6, padding: '4px 8px', background: c.primaryLight, borderRadius: 6, display: 'inline-block' }}>{catName}</p>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 6 }}>
-                          {catMenus.map(m => {
-                            const checked = menuIds.has(m.id);
-                            return (
-                              <label key={m.id} onClick={() => toggleMenu(m.id)}
-                                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, border: `1px solid ${checked ? c.primary : c.borderLight}`, background: checked ? c.primaryLight : '#fff', cursor: 'pointer', transition: 'all 0.15s' }}>
-                                <div style={{
-                                  width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${checked ? c.primary : c.borderLight}`,
-                                  background: checked ? c.primary : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                                }}>
-                                  {checked && <Check style={{ width: 10, height: 10, color: '#fff' }} />}
-                                </div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <p style={{ fontSize: 12, fontWeight: 600, color: c.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</p>
-                                  <p style={{ fontSize: 10, color: c.textLight }}>{m.duration}분 · {m.price.toLocaleString()}원</p>
-                                </div>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 6 }}>
+                      {adminModules.map(m => {
+                        const checked = allowed === null || allowed.has(m.id);
+                        return (
+                          <label key={m.id} onClick={() => toggleModule(m.id)}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${checked ? c.primary : c.borderLight}`, background: checked ? c.primaryLight : '#fff', cursor: 'pointer', transition: 'all 0.15s' }}>
+                            <div style={{
+                              width: 18, height: 18, borderRadius: 4, border: `1.5px solid ${checked ? c.primary : c.borderLight}`,
+                              background: checked ? c.primary : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                            }}>
+                              {checked && <Check style={{ width: 11, height: 11, color: '#fff' }} />}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{m.name}</p>
+                              <p style={{ fontSize: 10, color: c.textLight }}>{m.description}</p>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
-                );
-              })()}
-            </>
-          )}
-        </div>
-      )}
+                )}
+              </>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -189,6 +189,7 @@ model ShopMember {
   jobTitle    String?  // 직함: 실장, 부원장, 디자이너 등
   customData  String?  // JSON: 커스텀 항목 값 {항목명: 값}
   notifyChannels String? // JSON: ["KAKAO","SMS","PUSH"] 알림 수신 방법
+  allowedModules String? // JSON: ["reservation","customer",...] 접근 가능 사이드바 메뉴 (null=전체)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
