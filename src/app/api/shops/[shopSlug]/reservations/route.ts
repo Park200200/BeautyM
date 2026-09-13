@@ -77,7 +77,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ shopSlug
       staff: { select: { user: { select: { name: true, profileImage: true } } } },
       menu: {
         select: {
-          id: true, name: true, managementFields: true, enablePhotos: true,
+          id: true, name: true, duration: true, price: true, managementFields: true, enablePhotos: true,
           menuTreatments: {
             select: {
               treatment: { select: { name: true, processSteps: true, enablePhotos: true } }
