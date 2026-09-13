@@ -316,6 +316,7 @@ model Reservation {
   status     String   @default("REQUESTED") // REQUESTED | CONFIRMED | IN_PROGRESS | COMPLETED | CANCELLED | NO_SHOW
   source     String   @default("ADMIN") // ADMIN | WEBSITE
   memo       String?
+  pin        String?  // 예약확인 비밀번호 (4자리)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

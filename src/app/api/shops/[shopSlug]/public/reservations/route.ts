@@ -5,9 +5,13 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function GET(req: NextRequest, { params }: { params: Promise<{ shopSlug: string }> }) {
   const { shopSlug } = await params;
   const phone = req.nextUrl.searchParams.get('phone')?.replace(/-/g, '');
+  const pin = req.nextUrl.searchParams.get('pin');
 
   if (!phone || phone.length < 10) {
     return NextResponse.json({ error: '전화번호를 입력해주세요' }, { status: 400 });
+  }
+  if (!pin || pin.length !== 4) {
+    return NextResponse.json({ error: '비밀번호를 입력해주세요' }, { status: 400 });
   }
 
   const shop = await prisma.shop.findUnique({ where: { slug: shopSlug } });
@@ -23,7 +27,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ shop
   if (!member) return NextResponse.json({ reservations: [] });
 
   const reservations = await prisma.reservation.findMany({
-    where: { shopId: shop.id, customerId: member.id },
+    where: { shopId: shop.id, customerId: member.id, pin },
     select: {
       id: true, startTime: true, endTime: true, status: true, memo: true,
       menu: { select: { name: true, duration: true, price: true } },

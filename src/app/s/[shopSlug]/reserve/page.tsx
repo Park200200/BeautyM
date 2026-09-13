@@ -40,6 +40,7 @@ export default function ReservePage() {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [memo, setMemo] = useState('');
+  const [pin, setPin] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -81,6 +82,7 @@ export default function ReservePage() {
   const handleSubmit = async () => {
     if (!name.trim()) { setError('이름을 입력해주세요'); return; }
     if (!phone.trim() || phone.replace(/-/g, '').length < 10) { setError('전화번호를 확인해주세요'); return; }
+    if (!pin || pin.length !== 4) { setError('비밀번호 4자리를 입력해주세요'); return; }
     if (!selectedMenu) { setError('시술 상품을 선택해주세요'); return; }
     if (!date) { setError('날짜를 선택해주세요'); return; }
     if (!time) { setError('시간을 선택해주세요'); return; }
@@ -91,7 +93,7 @@ export default function ReservePage() {
       const res = await fetch(`/api/shops/${shopSlug}/public/reserve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, menuId: selectedMenu, date, time, memo }),
+        body: JSON.stringify({ name, phone, pin, menuId: selectedMenu, date, time, memo }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -168,6 +170,22 @@ export default function ReservePage() {
         <div className="bk-form-group">
           <div className="bk-form-label"><Phone /> 전화번호 *</div>
           <input className="bk-form-input" value={phone} onChange={e => handlePhone(e.target.value)} placeholder="010-0000-0000" inputMode="tel" />
+        </div>
+
+        {/* 예약확인 비밀번호 */}
+        <div className="bk-form-group">
+          <div className="bk-form-label"><span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#40BFA3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> 예약확인 비밀번호 *</span></div>
+          <input
+            className="bk-form-input"
+            type="password"
+            value={pin}
+            onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            placeholder="숫자 4자리"
+            inputMode="numeric"
+            maxLength={4}
+            style={{ letterSpacing: 8, textAlign: 'center', fontSize: 18, fontWeight: 700 }}
+          />
+          <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>예약 조회 시 필요한 비밀번호입니다</div>
         </div>
 
         {/* 시술 선택 */}

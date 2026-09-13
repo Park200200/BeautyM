@@ -5,10 +5,13 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(req: NextRequest, { params }: { params: Promise<{ shopSlug: string }> }) {
   const { shopSlug } = await params;
   const body = await req.json();
-  const { name, phone, menuId, date, time, memo } = body;
+  const { name, phone, pin, menuId, date, time, memo } = body;
 
   if (!name?.trim() || !phone?.trim() || !menuId || !date || !time) {
     return NextResponse.json({ error: '필수 항목을 입력해주세요' }, { status: 400 });
+  }
+  if (!pin || pin.length !== 4) {
+    return NextResponse.json({ error: '비밀번호 4자리를 입력해주세요' }, { status: 400 });
   }
 
   const shop = await prisma.shop.findUnique({ where: { slug: shopSlug } });
@@ -59,6 +62,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sho
       status: 'PENDING',
       source: 'WEBSITE',
       memo: memo?.trim() || null,
+      pin: pin,
     },
   });
 

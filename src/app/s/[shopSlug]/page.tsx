@@ -42,6 +42,7 @@ export default function BookingPage() {
   const [selectedCat, setSelectedCat] = useState('ALL');
   const [showCheckModal, setShowCheckModal] = useState(false);
   const [checkPhone, setCheckPhone] = useState('');
+  const [checkPin, setCheckPin] = useState('');
   const [checkResult, setCheckResult] = useState<{ customerName?: string; reservations: any[] } | null>(null);
   const [checking, setChecking] = useState(false);
 
@@ -62,9 +63,10 @@ export default function BookingPage() {
 
   const handleCheckReservation = async () => {
     if (!checkPhone || checkPhone.replace(/-/g, '').length < 10) return;
+    if (!checkPin || checkPin.length !== 4) return;
     setChecking(true);
     try {
-      const res = await fetch(`/api/shops/${shopSlug}/public/reservations?phone=${encodeURIComponent(checkPhone)}`);
+      const res = await fetch(`/api/shops/${shopSlug}/public/reservations?phone=${encodeURIComponent(checkPhone)}&pin=${checkPin}`);
       const data = await res.json();
       setCheckResult(data);
     } catch { setCheckResult({ reservations: [] }); }
@@ -122,7 +124,7 @@ export default function BookingPage() {
             <span className="bk-logo-text">{shop.name}</span>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => { setShowCheckModal(true); setCheckResult(null); setCheckPhone(''); }} className="bk-cta-btn" style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1.5px solid rgba(255,255,255,0.4)' }}>예약확인</button>
+            <button onClick={() => { setShowCheckModal(true); setCheckResult(null); setCheckPhone(''); setCheckPin(''); }} className="bk-cta-btn" style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1.5px solid rgba(255,255,255,0.4)' }}>예약확인</button>
             <Link href={`/s/${shopSlug}/reserve`} className="bk-cta-btn">예약하기</Link>
           </div>
         </div>
@@ -284,21 +286,36 @@ export default function BookingPage() {
               </button>
             </div>
 
-            {/* 전화번호 입력 */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <Phone style={{ width: 14, height: 14, color: '#40BFA3', position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
-                <input
-                  value={checkPhone}
-                  onChange={e => handleCheckPhone(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleCheckReservation()}
-                  placeholder="전화번호 입력"
-                  inputMode="tel"
-                  style={{ width: '100%', padding: '12px 14px 12px 34px', border: '1.5px solid #e5e7eb', borderRadius: 12, fontSize: 14, outline: 'none' }}
-                />
+            {/* 전화번호 + 비밀번호 입력 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <Phone style={{ width: 14, height: 14, color: '#40BFA3', position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+                  <input
+                    value={checkPhone}
+                    onChange={e => handleCheckPhone(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleCheckReservation()}
+                    placeholder="전화번호"
+                    inputMode="tel"
+                    style={{ width: '100%', padding: '12px 14px 12px 34px', border: '1.5px solid #e5e7eb', borderRadius: 12, fontSize: 14, outline: 'none' }}
+                  />
+                </div>
+                <div style={{ position: 'relative', width: 110 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#40BFA3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                  <input
+                    value={checkPin}
+                    onChange={e => setCheckPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    onKeyDown={e => e.key === 'Enter' && handleCheckReservation()}
+                    placeholder="비밀번호"
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    style={{ width: '100%', padding: '12px 14px 12px 30px', border: '1.5px solid #e5e7eb', borderRadius: 12, fontSize: 14, outline: 'none', letterSpacing: 4 }}
+                  />
+                </div>
               </div>
-              <button onClick={handleCheckReservation} disabled={checking} style={{ padding: '0 20px', background: '#40BFA3', color: 'white', border: 'none', borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                <Search style={{ width: 14, height: 14 }} /> 조회
+              <button onClick={handleCheckReservation} disabled={checking} style={{ padding: '10px 20px', background: '#40BFA3', color: 'white', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <Search style={{ width: 15, height: 15 }} /> 예약 조회
               </button>
             </div>
 
