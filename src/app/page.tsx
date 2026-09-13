@@ -326,7 +326,7 @@ export default function LandingPage() {
                     ))}
                   </ul>
                   <Link
-                    href="/auth/register"
+                    href={plan.price === '무료' ? '/auth/register' : `/apply?plan=${plan.name}`}
                     className="mt-6 block w-full border py-2.5 text-center text-sm font-semibold transition-all"
                     style={{
                       borderRadius: theme.buttonRadius,

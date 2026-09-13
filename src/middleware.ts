@@ -12,6 +12,7 @@ const publicPaths = [
   '/api/auth/login',
   '/api/auth/logout',
   '/api/admin/registrations', // 온라인 가입 신청 (공개)
+  '/apply',
 ];
 
 // 정적 파일 패턴

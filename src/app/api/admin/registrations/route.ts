@@ -19,7 +19,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { shopName, ownerName, phone, email, planId, address, memo } = body;
+    const { shopName, ownerName, phone, email, planId, address, bizNumber, memo } = body;
 
     if (!shopName || !ownerName || !phone || !email) {
       return NextResponse.json({ error: '필수 항목을 입력하세요.' }, { status: 400 });
@@ -41,6 +41,7 @@ export async function POST(req: Request) {
         email,
         planId: planId || null,
         address: address || null,
+        bizNumber: bizNumber || null,
         memo: memo || null,
       },
     });
