@@ -223,7 +223,7 @@ export default function CustomerDetailPage() {
       birthday: bd,
       profileImage: customer.user?.profileImage || '',
       gender: customer.user?.gender || 'FEMALE',
-      notifyChannels: customer.notifyChannels ? JSON.parse(customer.notifyChannels) : [],
+      notifyChannels: (() => { try { const nc = customer.notifyChannels; if (Array.isArray(nc)) return nc; if (typeof nc === 'string') return JSON.parse(nc); return []; } catch { return []; } })(),
     });
     setShowEditProfile(true);
   };
@@ -245,7 +245,7 @@ export default function CustomerDetailPage() {
         }),
       });
       if (res.ok) { fetchData(); setShowEditProfile(false); }
-      else { const err = await res.text(); console.error('Save failed:', res.status, err); alert(`저장 실패: ${res.status}`); }
+      else { const err = await res.json().catch(() => ({})); console.error('Save failed:', res.status, err); alert(`저장 실패: ${err.detail || err.error || res.status}`); }
     } catch (e) { console.error(e); alert('저장 중 오류가 발생했습니다.'); }
   };
 

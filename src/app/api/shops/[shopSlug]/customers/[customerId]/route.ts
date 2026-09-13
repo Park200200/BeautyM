@@ -70,7 +70,7 @@ export async function PUT(
         allergies: allergies !== undefined ? allergies : undefined,
         memo: memo !== undefined ? memo : undefined,
         customData: customData !== undefined ? JSON.stringify(customData) : undefined,
-        notifyChannels: notifyChannels !== undefined ? JSON.stringify(notifyChannels) : undefined,
+        notifyChannels: notifyChannels !== undefined ? (typeof notifyChannels === 'string' ? notifyChannels : JSON.stringify(notifyChannels)) : undefined,
       },
       include: { user: true },
     });
@@ -81,8 +81,8 @@ export async function PUT(
     };
 
     return NextResponse.json(parsedUpdated);
-  } catch (error) {
-    console.error('Failed to update customer:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Failed to update customer:', error?.message, error?.code, error?.meta);
+    return NextResponse.json({ error: 'Internal server error', detail: error?.message, code: error?.code }, { status: 500 });
   }
 }
