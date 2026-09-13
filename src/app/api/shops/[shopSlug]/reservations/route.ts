@@ -73,8 +73,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ shopSlug
     select: {
       id: true, customerId: true, menuId: true, staffId: true,
       startTime: true, endTime: true, status: true, source: true, memo: true,
-      customer: { select: { id: true, user: { select: { name: true, phone: true, profileImage: true, birthday: true, gender: true } } } },
-      staff: { select: { user: { select: { name: true } } } },
+      customer: { select: { id: true, createdAt: true, user: { select: { name: true, phone: true, profileImage: true, birthday: true, gender: true } } } },
+      staff: { select: { user: { select: { name: true, profileImage: true } } } },
       menu: {
         select: {
           id: true, name: true, managementFields: true, enablePhotos: true,
