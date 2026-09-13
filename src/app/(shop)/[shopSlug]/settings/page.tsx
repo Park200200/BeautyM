@@ -558,6 +558,11 @@ export default function SettingsPage() {
       {/* 직원 메뉴 */}
       {tab === 'staff-menus' && (() => {
         const adminModules = MODULE_REGISTRY.filter(m => m.target === 'ADMIN');
+        const extraModules = [
+          { id: 'settings', name: '설정', description: '매장 설정, 영업시간, 포인트 등', target: 'ADMIN', icon: '', configFields: [], sortOrder: 90 },
+          { id: 'menu-edit', name: '메뉴 편집', description: '사이드바 메뉴 순서/표시 편집', target: 'ADMIN', icon: '', configFields: [], sortOrder: 91 },
+        ];
+        const allModules = [...adminModules, ...extraModules];
 
         const loadData = async () => {
           const res = await fetch(`/api/shops/${shopSlug}/settings/staff-menus`);
@@ -573,16 +578,16 @@ export default function SettingsPage() {
 
         const staff = smStaff.find(s => s.id === smSelectedStaff);
         const allowed = staff?.allowedModules ? new Set(staff.allowedModules) : null;
-        const allChecked = allowed === null || adminModules.every(m => allowed.has(m.id));
+        const allChecked = allowed === null || allModules.every(m => allowed.has(m.id));
 
         const toggleModule = (moduleId: string) => {
           setSmStaff(prev => prev.map(s => {
             if (s.id !== smSelectedStaff) return s;
-            const current = s.allowedModules || adminModules.map(m => m.id);
+            const current = s.allowedModules || allModules.map(m => m.id);
             const newModules = current.includes(moduleId)
               ? current.filter(id => id !== moduleId)
               : [...current, moduleId];
-            return { ...s, allowedModules: newModules.length === adminModules.length ? null : newModules };
+            return { ...s, allowedModules: newModules.length === allModules.length ? null : newModules };
           }));
         };
 
@@ -624,7 +629,7 @@ export default function SettingsPage() {
                 {/* 직원 선택 */}
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
                   {smStaff.filter(s => s.isActive).map(s => {
-                    const cnt = s.allowedModules ? s.allowedModules.length : adminModules.length;
+                    const cnt = s.allowedModules ? s.allowedModules.length : allModules.length;
                     return (
                       <button key={s.id} onClick={() => setSmSelectedStaff(s.id)}
                         style={{
@@ -664,7 +669,7 @@ export default function SettingsPage() {
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 6 }}>
-                      {adminModules.map(m => {
+                      {allModules.map(m => {
                         const checked = allowed === null || allowed.has(m.id);
                         return (
                           <label key={m.id} onClick={() => toggleModule(m.id)}
