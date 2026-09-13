@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Phone, MapPin, Clock, Scissors, Star, Users, CalendarPlus, ChevronRight, Sparkles } from 'lucide-react';
+import { Phone, MapPin, Clock, Scissors, Star, Users, CalendarPlus, ChevronRight, Sparkles, ClipboardList, X, Search } from 'lucide-react';
 
 type ShopData = {
   shop: {
@@ -40,6 +40,10 @@ export default function BookingPage() {
   const [data, setData] = useState<ShopData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedCat, setSelectedCat] = useState('ALL');
+  const [showCheckModal, setShowCheckModal] = useState(false);
+  const [checkPhone, setCheckPhone] = useState('');
+  const [checkResult, setCheckResult] = useState<{ customerName?: string; reservations: any[] } | null>(null);
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     fetch(`/api/shops/${shopSlug}/public`)
@@ -47,6 +51,36 @@ export default function BookingPage() {
       .then(d => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
   }, [shopSlug]);
+
+  const handleCheckPhone = (val: string) => {
+    const nums = val.replace(/\D/g, '').slice(0, 11);
+    let formatted = nums;
+    if (nums.length > 3 && nums.length <= 7) formatted = `${nums.slice(0,3)}-${nums.slice(3)}`;
+    else if (nums.length > 7) formatted = `${nums.slice(0,3)}-${nums.slice(3,7)}-${nums.slice(7)}`;
+    setCheckPhone(formatted);
+  };
+
+  const handleCheckReservation = async () => {
+    if (!checkPhone || checkPhone.replace(/-/g, '').length < 10) return;
+    setChecking(true);
+    try {
+      const res = await fetch(`/api/shops/${shopSlug}/public/reservations?phone=${encodeURIComponent(checkPhone)}`);
+      const data = await res.json();
+      setCheckResult(data);
+    } catch { setCheckResult({ reservations: [] }); }
+    setChecking(false);
+  };
+
+  const getStatusInfo = (status: string) => {
+    const map: Record<string, { label: string; bg: string; color: string }> = {
+      PENDING: { label: '요청', bg: '#FEF3C7', color: '#92400E' },
+      CONFIRMED: { label: '확정', bg: '#D1FAE5', color: '#065F46' },
+      COMPLETED: { label: '완료', bg: '#DBEAFE', color: '#1E40AF' },
+      CANCELLED: { label: '취소', bg: '#F3F4F6', color: '#6B7280' },
+      NO_SHOW: { label: '노쇼', bg: '#FEE2E2', color: '#DC2626' },
+    };
+    return map[status] || { label: status, bg: '#F3F4F6', color: '#6B7280' };
+  };
 
   if (loading) return (
     <div className="booking-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
@@ -87,7 +121,10 @@ export default function BookingPage() {
             )}
             <span className="bk-logo-text">{shop.name}</span>
           </div>
-          <Link href={`/s/${shopSlug}/reserve`} className="bk-cta-btn">예약하기</Link>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => { setShowCheckModal(true); setCheckResult(null); setCheckPhone(''); }} className="bk-cta-btn" style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1.5px solid rgba(255,255,255,0.4)' }}>예약확인</button>
+            <Link href={`/s/${shopSlug}/reserve`} className="bk-cta-btn">예약하기</Link>
+          </div>
         </div>
       </header>
 
@@ -232,6 +269,84 @@ export default function BookingPage() {
       <Link href={`/s/${shopSlug}/reserve`} className="bk-float-btn">
         <CalendarPlus style={{ width: 18, height: 18 }} /> 온라인 예약
       </Link>
+
+      {/* 예약확인 모달 */}
+      {showCheckModal && (
+        <>
+          <div onClick={() => setShowCheckModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} />
+          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, maxHeight: '85vh', background: 'white', borderRadius: '20px 20px 0 0', zIndex: 201, boxShadow: '0 -10px 40px rgba(0,0,0,0.15)', padding: '20px 20px 32px', overflowY: 'auto', scrollbarWidth: 'none' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1a2e', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <ClipboardList style={{ width: 20, height: 20, color: '#40BFA3' }} /> 예약 확인
+              </div>
+              <button onClick={() => setShowCheckModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+                <X style={{ width: 20, height: 20, color: '#6B7280' }} />
+              </button>
+            </div>
+
+            {/* 전화번호 입력 */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <Phone style={{ width: 14, height: 14, color: '#40BFA3', position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  value={checkPhone}
+                  onChange={e => handleCheckPhone(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleCheckReservation()}
+                  placeholder="전화번호 입력"
+                  inputMode="tel"
+                  style={{ width: '100%', padding: '12px 14px 12px 34px', border: '1.5px solid #e5e7eb', borderRadius: 12, fontSize: 14, outline: 'none' }}
+                />
+              </div>
+              <button onClick={handleCheckReservation} disabled={checking} style={{ padding: '0 20px', background: '#40BFA3', color: 'white', border: 'none', borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                <Search style={{ width: 14, height: 14 }} /> 조회
+              </button>
+            </div>
+
+            {/* 결과 */}
+            {checking && (
+              <div style={{ textAlign: 'center', padding: 20, color: '#6B7280', fontSize: 14 }}>조회 중...</div>
+            )}
+            {checkResult && !checking && (
+              <>
+                {checkResult.reservations.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '30px 0', color: '#9CA3AF' }}>
+                    <ClipboardList style={{ width: 32, height: 32, margin: '0 auto 8px', color: '#D1D5DB' }} />
+                    <div style={{ fontSize: 14 }}>예약 내역이 없습니다</div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {checkResult.customerName && (
+                      <div style={{ fontSize: 13, color: '#374151', fontWeight: 600, marginBottom: 4 }}>
+                        {checkResult.customerName} 님의 예약 내역
+                      </div>
+                    )}
+                    {checkResult.reservations.map((r: any) => {
+                      const st = getStatusInfo(r.status);
+                      const d = new Date(r.startTime);
+                      const dateStr = `${d.getMonth()+1}.${d.getDate()}(${['일','월','화','수','목','금','토'][d.getDay()]})`;
+                      const timeStr = `${d.getHours() >= 12 ? '오후' : '오전'} ${d.getHours() > 12 ? d.getHours()-12 : d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+                      return (
+                        <div key={r.id} style={{ padding: '14px 16px', background: '#FAFAFA', borderRadius: 14, border: '1px solid #f3f4f6' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: st.bg, color: st.color }}>{st.label}</span>
+                            <span style={{ fontSize: 11, color: '#9CA3AF' }}>{dateStr} {timeStr}</span>
+                          </div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1a2e', marginBottom: 4 }}>{r.menu?.name || '-'}</div>
+                          <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#6B7280' }}>
+                            {r.menu?.duration && <span><Clock style={{ width: 10, height: 10 }} /> {r.menu.duration}분</span>}
+                            {r.staff?.user?.name && <span><Users style={{ width: 10, height: 10 }} /> {r.staff.user.name}</span>}
+                            {r.menu?.price != null && <span style={{ color: '#40BFA3', fontWeight: 600 }}>₩{r.menu.price.toLocaleString()}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
