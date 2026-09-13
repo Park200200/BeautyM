@@ -46,6 +46,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // 공개 API (매장 정보/메뉴 조회, 예약 요청)
+  if (pathname.match(/^\/api\/shops\/[^/]+\/public/)) {
+    return NextResponse.next();
+  }
+
   // 세션 쿠키 확인
   const session = request.cookies.get('beautym-session');
 
