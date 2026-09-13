@@ -31,7 +31,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ shop
   });
 
   // 카테고리
-  const categories = await prisma.menuCategory.findMany({
+  const categories = await prisma.category.findMany({
     where: { shopId: shop.id },
     select: { id: true, name: true, sortOrder: true },
     orderBy: { sortOrder: 'asc' },
