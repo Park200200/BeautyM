@@ -31,7 +31,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ shop
     select: {
       id: true, startTime: true, endTime: true, status: true, memo: true,
       menu: { select: { name: true, duration: true, price: true } },
-      staff: { select: { user: { select: { name: true, profileImage: true, phone: true } } } },
+      staff: { select: { jobTitle: true, user: { select: { name: true, profileImage: true, phone: true } } } },
     },
     orderBy: { startTime: 'desc' },
     take: 10,

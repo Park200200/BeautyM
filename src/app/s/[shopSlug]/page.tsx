@@ -369,7 +369,7 @@ export default function BookingPage() {
                                 </div>
                               )}
                               <div>
-                                <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e' }}>{r.staff.user.name} 담당</div>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e' }}>{r.staff.user.name} {r.staff.jobTitle || '담당'}</div>
                                 {r.staff.user.phone && (
                                   <div style={{ fontSize: 11, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
                                     <Phone style={{ width: 10, height: 10 }} />
