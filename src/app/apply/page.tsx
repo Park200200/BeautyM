@@ -19,6 +19,10 @@ function ApplyForm() {
 
   const [form, setForm] = useState({ shopName: '', ownerName: '', phone: '', email: '', address: '', bizNumber: '', memo: '' });
   const [referralCode, setReferralCode] = useState('');
+  const [dealerName, setDealerName] = useState('');
+  const [dealerDiscount, setDealerDiscount] = useState(0);
+  const [codeVerified, setCodeVerified] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -37,6 +41,34 @@ function ApplyForm() {
     if (nums.length > 3 && nums.length <= 5) f = `${nums.slice(0,3)}-${nums.slice(3)}`;
     else if (nums.length > 5) f = `${nums.slice(0,3)}-${nums.slice(3,5)}-${nums.slice(5)}`;
     setForm({ ...form, bizNumber: f });
+  };
+
+  const handleCodeChange = (val: string) => {
+    const code = val.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+    setReferralCode(code);
+    setDealerName('');
+    setDealerDiscount(0);
+    setCodeVerified(false);
+  };
+
+  const verifyCode = async () => {
+    if (!referralCode) return;
+    setVerifying(true);
+    try {
+      const res = await fetch(`/api/admin/dealers/verify?code=${referralCode}`);
+      const data = await res.json();
+      if (data.valid) {
+        setDealerName(data.dealerName);
+        setDealerDiscount(data.discountRate || 0);
+        setCodeVerified(true);
+      } else {
+        setDealerName('');
+        setDealerDiscount(0);
+        setCodeVerified(false);
+        setError('유효하지 않은 할인코드입니다');
+      }
+    } catch { /* ignore */ }
+    setVerifying(false);
   };
 
   const handleSubmit = async () => {
@@ -129,14 +161,29 @@ function ApplyForm() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
               <div style={{ fontSize: 10, fontWeight: 600, color: '#9CA3AF' }}>추천인 할인코드</div>
-              <input
-                value={referralCode}
-                onChange={e => setReferralCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10))}
-                placeholder="코드 입력"
-                style={{ width: 120, padding: '7px 10px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 12, textAlign: 'center', outline: 'none', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' as const }}
-                onFocus={e => (e.target.style.borderColor = plan.color)}
-                onBlur={e => (e.target.style.borderColor = '#e5e7eb')}
-              />
+              {codeVerified ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ padding: '7px 12px', background: '#D1FAE5', borderRadius: 8, fontSize: 12, fontWeight: 700, color: '#065F46' }}>
+                    {dealerName}
+                  </div>
+                  <button onClick={() => { setReferralCode(''); setDealerName(''); setDealerDiscount(0); setCodeVerified(false); }} style={{ padding: '4px 8px', background: '#F3F4F6', border: 'none', borderRadius: 6, fontSize: 10, cursor: 'pointer', color: '#6B7280' }}>변경</button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <input
+                    value={referralCode}
+                    onChange={e => handleCodeChange(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && verifyCode()}
+                    placeholder="코드 입력"
+                    style={{ width: 100, padding: '7px 10px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 12, textAlign: 'center', outline: 'none', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' as const }}
+                    onFocus={e => (e.target.style.borderColor = plan.color)}
+                    onBlur={e => (e.target.style.borderColor = '#e5e7eb')}
+                  />
+                  <button onClick={verifyCode} disabled={!referralCode || verifying} style={{ padding: '7px 10px', background: plan.color, color: 'white', border: 'none', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: !referralCode || verifying ? 0.5 : 1, whiteSpace: 'nowrap' }}>
+                    {verifying ? '...' : '적용'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -148,30 +195,54 @@ function ApplyForm() {
           </div>
 
           {/* 12개월 결제 안내 */}
-          <div style={{ marginTop: 16, padding: '14px 16px', background: '#F9FAFB', borderRadius: 14, border: '1px solid #f3f4f6' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>12개월 결제 시</span>
-              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: '#FEF3C7', color: '#92400E' }}>2개월 무료</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-              <div>
-                <div style={{ fontSize: 11, color: '#9CA3AF', textDecoration: 'line-through' }}>
-                  정가 ₩{(plan.monthly * 12).toLocaleString()}
+          {(() => {
+            const base10 = plan.monthly * 10; // 2개월 무료 적용가
+            const discountedMonthly = dealerDiscount > 0 ? Math.round(plan.monthly * (1 - dealerDiscount / 100)) : plan.monthly;
+            const discounted10 = discountedMonthly * 10;
+            const totalSave = plan.monthly * 12 - discounted10;
+            const totalDiscountPct = Math.round((1 - discounted10 / (plan.monthly * 12)) * 100);
+            return (
+              <div style={{ marginTop: 16, padding: '14px 16px', background: '#F9FAFB', borderRadius: 14, border: `1px solid ${codeVerified ? plan.color + '40' : '#f3f4f6'}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>12개월 결제 시</span>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: '#FEF3C7', color: '#92400E' }}>2개월 무료</span>
+                    {codeVerified && (
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: '#D1FAE5', color: '#065F46' }}>추천 {dealerDiscount}% 추가</span>
+                    )}
+                  </div>
                 </div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: plan.color }}>
-                  ₩{(plan.monthly * 10).toLocaleString()}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: '#9CA3AF', textDecoration: 'line-through' }}>
+                      정가 ₩{(plan.monthly * 12).toLocaleString()}
+                    </div>
+                    {codeVerified && dealerDiscount > 0 && base10 !== discounted10 && (
+                      <div style={{ fontSize: 11, color: '#9CA3AF', textDecoration: 'line-through' }}>
+                        2개월 무료 ₩{base10.toLocaleString()}
+                      </div>
+                    )}
+                    <div style={{ fontSize: 20, fontWeight: 800, color: codeVerified ? '#DC2626' : plan.color }}>
+                      ₩{discounted10.toLocaleString()}
+                    </div>
+                    {codeVerified && (
+                      <div style={{ fontSize: 10, color: '#6B7280' }}>
+                        월 ₩{discountedMonthly.toLocaleString()} × 10개월
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 12, color: '#DC2626', fontWeight: 800 }}>
+                      -{totalDiscountPct}% 할인
+                    </div>
+                    <div style={{ fontSize: 11, color: '#6B7280' }}>
+                      ₩{totalSave.toLocaleString()} 절약
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 11, color: '#DC2626', fontWeight: 700 }}>
-                  -{Math.round((2/12)*100)}% 할인
-                </div>
-                <div style={{ fontSize: 11, color: '#6B7280' }}>
-                  ₩{(plan.monthly * 2).toLocaleString()} 절약
-                </div>
-              </div>
-            </div>
-          </div>
+            );
+          })()}
         </div>
 
         {/* 신청 폼 */}
