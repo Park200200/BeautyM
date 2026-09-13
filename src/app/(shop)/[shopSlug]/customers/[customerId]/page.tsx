@@ -235,8 +235,8 @@ export default function CustomerDetailPage() {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: editProfileForm.name,
-          phone: editProfileForm.phone?.replace(/-/g, '') || '',
-          email: editProfileForm.email,
+          phone: editProfileForm.phone?.replace(/-/g, '') || null,
+          email: editProfileForm.email?.trim() || null,
           memo: editProfileForm.memo,
           birthday,
           gender: editProfileForm.gender || null,
