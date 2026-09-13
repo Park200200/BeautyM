@@ -58,7 +58,7 @@ export default function LandingPage() {
     { icon: <Gift className={iconClass} />, name: '멤버십', desc: '포인트, 쿠폰, 등급 시스템으로 단골 고객을 만드세요.' },
     { icon: <Package className={iconClass} />, name: '재고 관리', desc: '제품 입출고부터 재고 알림까지, 빈틈없는 관리.' },
     { icon: <LayoutDashboard className={iconClass} />, name: '대시보드', desc: '오늘의 예약, 매출, 핵심 지표를 한 화면에서 확인하세요.' },
-    { icon: <Globe className={iconClass} />, name: '고객 웹사이트', desc: '내 매장만의 예약 페이지를 고객에게 제공하세요.' },
+    { icon: <Globe className={iconClass} />, name: '고객 웹사이트', desc: '내 매장만의 예약 페이지를 고객에게 제공하세요.', link: '/s/glow-skin' },
     { icon: <Bell className={iconClass} />, name: '스마트 알림', desc: '카카오 알림톡, SMS로 예약 확인과 마케팅 메시지를 보내세요.' },
   ];
 
@@ -249,7 +249,9 @@ export default function LandingPage() {
                     background: c.surface,
                     borderColor: c.borderLight,
                     boxShadow: theme.cardShadow,
+                    cursor: f.link ? 'pointer' : 'default',
                   }}
+                  onClick={() => f.link && window.open(f.link, '_blank')}
                 >
                   {/* 원형 아이콘 */}
                   <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full transition-transform duration-300 group-hover:scale-110"
