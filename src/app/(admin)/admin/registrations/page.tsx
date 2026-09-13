@@ -82,9 +82,11 @@ export default function RegistrationsPage() {
   };
 
   useEffect(() => { fetchData(); }, []);
+  // 딜러 할인 정보
+  const [dealerInfo, setDealerInfo] = useState<{ name: string; discountRate: number; code: string } | null>(null);
 
   // 승인 모달 열기
-  const handleApprove = (reg: Registration) => {
+  const handleApprove = async (reg: Registration) => {
     const today = new Date().toISOString().slice(0, 10);
     const nextYear = new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().slice(0, 10);
     setApproveModal(reg);
@@ -98,6 +100,20 @@ export default function RegistrationsPage() {
       salesPerson: reg.salesPerson || '',
       memo: reg.memo || '',
     });
+
+    // 메모에서 추천코드 파싱
+    setDealerInfo(null);
+    const codeMatch = reg.memo?.match(/\[추천코드:\s*([A-Z0-9]+)\]/);
+    if (codeMatch) {
+      try {
+        const res = await fetch(`/api/admin/dealers/verify?code=${codeMatch[1]}`);
+        const data = await res.json();
+        if (data.valid) {
+          setDealerInfo({ name: data.dealerName, discountRate: data.discountRate || 0, code: codeMatch[1] });
+          setApproveForm(prev => ({ ...prev, approvalType: '딜러추천' }));
+        }
+      } catch { /* ignore */ }
+    }
   };
 
   // 승인 확정
@@ -614,22 +630,80 @@ export default function RegistrationsPage() {
                 placeholder="내부 메모 (선택)" />
             </div>
 
+            {/* 추천인 할인 정보 */}
+            {dealerInfo && (
+              <div className="rounded-xl p-4" style={{ background: '#FEF3C7', border: '1px solid #FDE68A' }}>
+                <div className="text-xs font-semibold mb-2" style={{ color: '#92400E' }}>추천인 할인 적용</div>
+                <div className="flex justify-between items-center text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold px-2 py-0.5 rounded text-xs" style={{ background: '#FCD34D', color: '#78350F', letterSpacing: 1 }}>{dealerInfo.code}</span>
+                    <span style={{ color: '#374151' }}>{dealerInfo.name}</span>
+                  </div>
+                  <span className="font-bold text-base" style={{ color: '#DC2626' }}>-{dealerInfo.discountRate}%</span>
+                </div>
+              </div>
+            )}
+
             {/* 결제 요약 */}
             {approveForm.planId && (() => {
               const p = plans.find(pl => pl.id === approveForm.planId);
               if (!p) return null;
               const monthly = p.price;
               const isYearly = approveForm.billingCycle === 'yearly';
-              const total = isYearly ? monthly * 10 : monthly;
+              const discount = dealerInfo?.discountRate || 0;
+              const discountedMonthly = discount > 0 ? Math.round(monthly * (1 - discount / 100)) : monthly;
+
+              // 정가 기준
+              const originalTotal = isYearly ? monthly * 12 : monthly;
+              // 2개월 무료 적용 (연결제만)
+              const afterFree = isYearly ? monthly * 10 : monthly;
+              // 딜러할인 적용
+              const finalTotal = isYearly ? discountedMonthly * 10 : discountedMonthly;
+              const totalSave = originalTotal - finalTotal;
+              const totalDiscountPct = originalTotal > 0 ? Math.round((totalSave / originalTotal) * 100) : 0;
+
               return (
-                <div className="rounded-xl p-4" style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
-                  <div className="text-xs font-semibold mb-2" style={{ color: '#065F46' }}>결제 정보 요약</div>
+                <div className="rounded-xl p-4 space-y-3" style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+                  <div className="text-xs font-semibold" style={{ color: '#065F46' }}>결제 정보 요약</div>
+
+                  {/* 플랜/주기 */}
                   <div className="flex justify-between text-sm">
                     <span style={{ color: '#374151' }}>{p.name} — {isYearly ? '연 결제' : `월 결제 (매월 ${approveForm.billingDay}일)`}</span>
-                    <span className="font-bold" style={{ color: '#065F46' }}>₩{total.toLocaleString()}{isYearly ? '/년' : '/월'}</span>
                   </div>
-                  <div className="text-xs mt-1" style={{ color: '#6B7280' }}>
-                    서비스: {approveForm.serviceStart} ~ {approveForm.serviceEnd}
+
+                  {/* 금액 상세 */}
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span style={{ color: '#6B7280' }}>정가</span>
+                      <span style={{ color: '#9CA3AF', textDecoration: totalSave > 0 ? 'line-through' : 'none' }}>₩{originalTotal.toLocaleString()}{isYearly ? '' : '/월'}</span>
+                    </div>
+                    {isYearly && (
+                      <div className="flex justify-between">
+                        <span style={{ color: '#6B7280' }}>2개월 무료 적용</span>
+                        <span style={{ color: '#9CA3AF', textDecoration: discount > 0 ? 'line-through' : 'none' }}>₩{afterFree.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {discount > 0 && (
+                      <div className="flex justify-between">
+                        <span style={{ color: '#DC2626', fontWeight: 600 }}>추천 {discount}% 할인</span>
+                        <span style={{ color: '#DC2626', fontWeight: 600 }}>-₩{(afterFree - finalTotal).toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="border-t pt-1 flex justify-between" style={{ borderColor: '#BBF7D0' }}>
+                      <span className="font-bold" style={{ color: '#065F46' }}>최종 결제금액</span>
+                      <span className="font-bold text-lg" style={{ color: '#065F46' }}>₩{finalTotal.toLocaleString()}{isYearly ? '/년' : '/월'}</span>
+                    </div>
+                    {totalSave > 0 && (
+                      <div className="flex justify-end gap-2 text-xs">
+                        <span className="font-bold" style={{ color: '#DC2626' }}>-{totalDiscountPct}%</span>
+                        <span style={{ color: '#6B7280' }}>₩{totalSave.toLocaleString()} 절약</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 서비스 기간 */}
+                  <div className="text-xs pt-1" style={{ color: '#6B7280', borderTop: '1px solid #BBF7D0' }}>
+                    서비스 기간: {approveForm.serviceStart} ~ {approveForm.serviceEnd}
                   </div>
                 </div>
               );
