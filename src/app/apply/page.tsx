@@ -18,6 +18,7 @@ function ApplyForm() {
   const PlanIcon = plan.icon;
 
   const [form, setForm] = useState({ shopName: '', ownerName: '', phone: '', email: '', address: '', bizNumber: '', memo: '' });
+  const [referralCode, setReferralCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -58,7 +59,7 @@ function ApplyForm() {
           planId: planParam,
           address: form.address.trim() || null,
           bizNumber: form.bizNumber.replace(/-/g, '') || null,
-          memo: form.memo.trim() || null,
+          memo: (referralCode ? `[추천코드: ${referralCode}] ` : '') + (form.memo.trim() || ''),
         }),
       });
       const data = await res.json();
@@ -116,13 +117,26 @@ function ApplyForm() {
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '32px 20px 60px' }}>
         {/* 플랜 소개 카드 */}
         <div style={{ background: 'white', borderRadius: 20, padding: '24px 24px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: 24, border: `2px solid ${plan.color}20` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: `${plan.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <PlanIcon style={{ width: 24, height: 24, color: plan.color }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 14, background: `${plan.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <PlanIcon style={{ width: 24, height: 24, color: plan.color }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: plan.color, textTransform: 'uppercase' as const }}>{plan.name} Plan</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a2e' }}>{plan.price}</div>
+              </div>
             </div>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: plan.color, textTransform: 'uppercase' as const }}>{plan.name} Plan</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a2e' }}>{plan.price}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: '#9CA3AF' }}>추천인 할인코드</div>
+              <input
+                value={referralCode}
+                onChange={e => setReferralCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10))}
+                placeholder="코드 입력"
+                style={{ width: 120, padding: '7px 10px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 12, textAlign: 'center', outline: 'none', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' as const }}
+                onFocus={e => (e.target.style.borderColor = plan.color)}
+                onBlur={e => (e.target.style.borderColor = '#e5e7eb')}
+              />
             </div>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
