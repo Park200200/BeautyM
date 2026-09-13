@@ -81,7 +81,7 @@ export default function StaffPage() {
 
   const openEdit = (s: Staff) => {
     setEditTarget(s);
-    setForm({ name: s.user.name, phone: s.user.phone || '', email: s.user.email || '', specialties: s.specialties || '', role: s.role, jobTitle: s.jobTitle || '' });
+    setForm({ name: s.user.name, phone: fmtPhone(s.user.phone || ''), email: s.user.email || '', specialties: s.specialties || '', role: s.role, jobTitle: s.jobTitle || '' });
     setProfilePhoto(s.user.profileImage || null);
     setError('');
     setShowModal(true);
