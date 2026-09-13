@@ -58,7 +58,7 @@ export default function CustomerDetailPage() {
 
   // 고객 정보 수정 모달
   const [showEditProfile, setShowEditProfile] = useState(false);
-  const [editProfileForm, setEditProfileForm] = useState({ name: '', phone: '', email: '', memo: '', birthday: '', profileImage: '' });
+  const [editProfileForm, setEditProfileForm] = useState({ name: '', phone: '', email: '', memo: '', birthday: '', profileImage: '', gender: '' });
   const [bdYear, setBdYear] = useState('');
   const [bdMonth, setBdMonth] = useState('');
   const [bdDay, setBdDay] = useState('');
@@ -216,6 +216,7 @@ export default function CustomerDetailPage() {
       memo: customer.memo || '',
       birthday: bd,
       profileImage: customer.user?.profileImage || '',
+      gender: customer.user?.gender || '',
     });
     setShowEditProfile(true);
   };
@@ -231,6 +232,7 @@ export default function CustomerDetailPage() {
           email: editProfileForm.email,
           memo: editProfileForm.memo,
           birthday,
+          gender: editProfileForm.gender || null,
           profileImage: editProfileForm.profileImage || null,
         }),
       });
@@ -1435,6 +1437,34 @@ export default function CustomerDetailPage() {
               </label>
               <Input value={editProfileForm.email} onChange={e => setEditProfileForm({ ...editProfileForm, email: e.target.value })}
                 className="rounded-xl" placeholder="email@example.com" />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: c.textLight, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                👤 성별
+              </label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[{ value: 'MALE', label: '남' }, { value: 'FEMALE', label: '여' }].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setEditProfileForm({ ...editProfileForm, gender: editProfileForm.gender === opt.value ? '' : opt.value })}
+                    style={{
+                      flex: 1,
+                      padding: '8px 0',
+                      borderRadius: 10,
+                      border: `1.5px solid ${editProfileForm.gender === opt.value ? c.primary : c.borderLight}`,
+                      background: editProfileForm.gender === opt.value ? c.primaryLight : '#fff',
+                      color: editProfileForm.gender === opt.value ? c.primary : c.textLight,
+                      fontSize: 13,
+                      fontWeight: editProfileForm.gender === opt.value ? 700 : 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: c.textLight, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>

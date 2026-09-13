@@ -42,14 +42,14 @@ export async function PUT(
   
   try {
     const body = await request.json();
-    const { skinType, allergies, memo, customData, name, phone, email, birthday, profileImage } = body;
+    const { skinType, allergies, memo, customData, name, phone, email, birthday, profileImage, gender } = body;
 
     // shopMember에서 userId 가져오기
     const member = await prisma.shopMember.findUnique({ where: { id: customerId }, select: { userId: true } });
     if (!member) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    // User 정보 업데이트 (이름, 전화, 이메일, 생년월일, 프로필사진)
-    if (name !== undefined || phone !== undefined || email !== undefined || birthday !== undefined || profileImage !== undefined) {
+    // User 정보 업데이트 (이름, 전화, 이메일, 생년월일, 프로필사진, 성별)
+    if (name !== undefined || phone !== undefined || email !== undefined || birthday !== undefined || profileImage !== undefined || gender !== undefined) {
       await prisma.user.update({
         where: { id: member.userId },
         data: {
@@ -58,6 +58,7 @@ export async function PUT(
           ...(email !== undefined && { email }),
           ...(birthday !== undefined && { birthday: birthday ? new Date(birthday) : null }),
           ...(profileImage !== undefined && { profileImage }),
+          ...(gender !== undefined && { gender }),
         },
       });
     }
