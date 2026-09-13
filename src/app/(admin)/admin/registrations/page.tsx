@@ -50,6 +50,19 @@ export default function RegistrationsPage() {
     rejectionType: '서류미비', rejectedReason: '', reviewedBy: '',
   });
 
+  // 승인 모달
+  const [approveModal, setApproveModal] = useState<Registration | null>(null);
+  const [approveForm, setApproveForm] = useState({
+    planId: '',
+    billingCycle: 'monthly' as 'monthly' | 'yearly',
+    billingDay: '1',
+    serviceStart: '',
+    serviceEnd: '',
+    approvalType: '정규신청',
+    salesPerson: '',
+    memo: '',
+  });
+
   const fetchData = async () => {
     try {
       const [regRes, planRes] = await Promise.all([
@@ -70,28 +83,51 @@ export default function RegistrationsPage() {
 
   useEffect(() => { fetchData(); }, []);
 
-  // 승인 → 거래처 생성 + 상세페이지로 이동
-  const handleApprove = async (reg: Registration) => {
-    if (!confirm(`"${reg.shopName}"을(를) 승인하시겠습니까?\n승인 후 거래처 상세 페이지에서 구독 설정을 진행합니다.`)) return;
+  // 승인 모달 열기
+  const handleApprove = (reg: Registration) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const nextYear = new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().slice(0, 10);
+    setApproveModal(reg);
+    setApproveForm({
+      planId: reg.planId || '',
+      billingCycle: 'monthly',
+      billingDay: '1',
+      serviceStart: today,
+      serviceEnd: nextYear,
+      approvalType: '정규신청',
+      salesPerson: reg.salesPerson || '',
+      memo: reg.memo || '',
+    });
+  };
+
+  // 승인 확정
+  const submitApprove = async () => {
+    if (!approveModal) return;
     setProcessing(true);
     try {
-      const res = await fetch(`/api/admin/registrations/${reg.id}`, {
+      const res = await fetch(`/api/admin/registrations/${approveModal.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'approve',
-          approvalType: '정규신청',
-          salesPerson: reg.salesPerson || '',
+          approvalType: approveForm.approvalType,
+          salesPerson: approveForm.salesPerson,
           reviewedBy: currentUser,
+          planId: approveForm.planId,
+          billingCycle: approveForm.billingCycle,
+          billingDay: approveForm.billingDay,
+          serviceStart: approveForm.serviceStart,
+          serviceEnd: approveForm.serviceEnd,
+          memo: approveForm.memo,
         }),
       });
       const data = await res.json();
       if (res.ok && data.createdShopId) {
-        setMessage(`"${reg.shopName}" 승인 완료! 거래처 상세로 이동합니다.`);
-        router.push(`/admin/shops/${data.createdShopId}`);
+        setMessage(`"${approveModal.shopName}" 승인 완료!`);
+        setApproveModal(null);
+        fetchData();
       } else {
         setMessage(data.error || '승인 실패');
-        fetchData();
       }
     } catch { setMessage('처리 실패'); }
     setProcessing(false);
@@ -309,8 +345,9 @@ export default function RegistrationsPage() {
               </thead>
               <tbody>
                 {filtered.map((reg) => (
-                  <tr key={reg.id} style={{ borderBottom: `1px solid ${c.borderLight}` }}
+                  <tr key={reg.id} style={{ borderBottom: `1px solid ${c.borderLight}`, cursor: reg.status === 'PENDING' ? 'pointer' : 'default' }}
                     className="transition-colors"
+                    onClick={() => reg.status === 'PENDING' && handleApprove(reg)}
                     onMouseEnter={(e) => (e.currentTarget.style.background = c.surfaceHover)}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
                     <td className="px-4 py-3">
@@ -340,7 +377,7 @@ export default function RegistrationsPage() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       {reg.status === 'PENDING' ? (
-                        <div className="flex items-center justify-center gap-1">
+                        <div className="flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
                           <button onClick={() => handleApprove(reg)} disabled={processing}
                             className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
                             style={{ background: '#22C55E' }}>
@@ -434,6 +471,184 @@ export default function RegistrationsPage() {
                   {processing ? '처리 중...' : '거절 처리'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 승인 모달 */}
+      {approveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-2xl p-6 space-y-5 max-h-[85vh] overflow-y-auto"
+            style={{ background: c.surface, scrollbarWidth: 'none' }}>
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-lg font-bold" style={{ color: c.text }}>가입 승인 설정</h2>
+                <p className="text-sm" style={{ color: c.textLight }}>{approveModal.shopName} — {approveModal.ownerName}</p>
+              </div>
+              <button onClick={() => setApproveModal(null)} className="p-1 rounded-lg" style={{ color: c.textLight }}>
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* 신청 정보 요약 */}
+            <div className="rounded-xl p-4 text-sm space-y-1" style={{ background: c.secondaryLight }}>
+              <div className="flex gap-4">
+                <span style={{ color: c.textLight }}>연락처</span>
+                <span className="font-medium" style={{ color: c.text }}>{approveModal.phone}</span>
+              </div>
+              <div className="flex gap-4">
+                <span style={{ color: c.textLight }}>이메일</span>
+                <span className="font-medium" style={{ color: c.text }}>{approveModal.email}</span>
+              </div>
+              {approveModal.address && (
+                <div className="flex gap-4">
+                  <span style={{ color: c.textLight }}>주소</span>
+                  <span className="font-medium" style={{ color: c.text }}>{approveModal.address}</span>
+                </div>
+              )}
+              {approveModal.memo && (
+                <div className="flex gap-4">
+                  <span style={{ color: c.textLight }}>메모</span>
+                  <span className="font-medium" style={{ color: c.text }}>{approveModal.memo}</span>
+                </div>
+              )}
+            </div>
+
+            {/* 플랜 선택 */}
+            <div>
+              <label className="text-xs font-semibold mb-2 block" style={{ color: c.primary }}>적용 플랜</label>
+              <div className="grid grid-cols-3 gap-2">
+                {plans.map(p => (
+                  <button key={p.id} onClick={() => setApproveForm({ ...approveForm, planId: p.id })}
+                    className="rounded-xl p-3 text-center transition-all border-2"
+                    style={{
+                      borderColor: approveForm.planId === p.id ? c.primary : c.borderLight,
+                      background: approveForm.planId === p.id ? c.primaryLight : 'transparent',
+                    }}>
+                    <div className="text-xs font-bold" style={{ color: approveForm.planId === p.id ? c.primary : c.text }}>{p.name}</div>
+                    <div className="text-xs mt-1" style={{ color: c.textLight }}>₩{p.price.toLocaleString()}/월</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 결제 주기 */}
+            <div>
+              <label className="text-xs font-semibold mb-2 block" style={{ color: c.primary }}>결제 주기</label>
+              <div className="flex gap-2">
+                {[
+                  { id: 'monthly', label: '월 결제' },
+                  { id: 'yearly', label: '연 결제 (2개월 무료)' },
+                ].map(opt => (
+                  <button key={opt.id} onClick={() => setApproveForm({ ...approveForm, billingCycle: opt.id as any })}
+                    className="flex-1 rounded-xl py-2.5 text-sm font-medium border-2 transition-all"
+                    style={{
+                      borderColor: approveForm.billingCycle === opt.id ? c.primary : c.borderLight,
+                      background: approveForm.billingCycle === opt.id ? c.primaryLight : 'transparent',
+                      color: approveForm.billingCycle === opt.id ? c.primary : c.text,
+                    }}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 월 결제일 (월 결제 시) */}
+            {approveForm.billingCycle === 'monthly' && (
+              <div>
+                <label className="text-xs font-semibold mb-1 block" style={{ color: c.primary }}>월 결제일</label>
+                <select value={approveForm.billingDay}
+                  onChange={e => setApproveForm({ ...approveForm, billingDay: e.target.value })}
+                  className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
+                  style={{ borderColor: c.border, color: c.text }}>
+                  {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
+                    <option key={d} value={String(d)}>매월 {d}일</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* 서비스 기간 */}
+            <div>
+              <label className="text-xs font-semibold mb-2 block" style={{ color: c.primary }}>서비스 기간</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] mb-1 block" style={{ color: c.textLight }}>시작일</label>
+                  <input type="date" value={approveForm.serviceStart}
+                    onChange={e => setApproveForm({ ...approveForm, serviceStart: e.target.value })}
+                    className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+                    style={{ borderColor: c.border, color: c.text }} />
+                </div>
+                <div>
+                  <label className="text-[10px] mb-1 block" style={{ color: c.textLight }}>종료일</label>
+                  <input type="date" value={approveForm.serviceEnd}
+                    onChange={e => setApproveForm({ ...approveForm, serviceEnd: e.target.value })}
+                    className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+                    style={{ borderColor: c.border, color: c.text }} />
+                </div>
+              </div>
+            </div>
+
+            {/* 승인 유형 */}
+            <div>
+              <label className="text-xs font-semibold mb-1 block" style={{ color: c.primary }}>승인 유형</label>
+              <select value={approveForm.approvalType}
+                onChange={e => setApproveForm({ ...approveForm, approvalType: e.target.value })}
+                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none"
+                style={{ borderColor: c.border, color: c.text }}>
+                <option value="정규신청">정규신청</option>
+                <option value="딜러추천">딜러추천</option>
+                <option value="프로모션">프로모션</option>
+                <option value="무료체험">무료체험</option>
+              </select>
+            </div>
+
+            {/* 메모 */}
+            <div>
+              <label className="text-xs font-semibold mb-1 block" style={{ color: c.primary }}>관리자 메모</label>
+              <textarea value={approveForm.memo}
+                onChange={e => setApproveForm({ ...approveForm, memo: e.target.value })}
+                className="w-full rounded-lg border px-3 py-2 text-sm outline-none resize-none"
+                style={{ borderColor: c.border, color: c.text }} rows={2}
+                placeholder="내부 메모 (선택)" />
+            </div>
+
+            {/* 결제 요약 */}
+            {approveForm.planId && (() => {
+              const p = plans.find(pl => pl.id === approveForm.planId);
+              if (!p) return null;
+              const monthly = p.price;
+              const isYearly = approveForm.billingCycle === 'yearly';
+              const total = isYearly ? monthly * 10 : monthly;
+              return (
+                <div className="rounded-xl p-4" style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+                  <div className="text-xs font-semibold mb-2" style={{ color: '#065F46' }}>결제 정보 요약</div>
+                  <div className="flex justify-between text-sm">
+                    <span style={{ color: '#374151' }}>{p.name} — {isYearly ? '연 결제' : `월 결제 (매월 ${approveForm.billingDay}일)`}</span>
+                    <span className="font-bold" style={{ color: '#065F46' }}>₩{total.toLocaleString()}{isYearly ? '/년' : '/월'}</span>
+                  </div>
+                  <div className="text-xs mt-1" style={{ color: '#6B7280' }}>
+                    서비스: {approveForm.serviceStart} ~ {approveForm.serviceEnd}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 버튼 */}
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setApproveModal(null)}
+                className="flex-1 rounded-lg border py-2.5 text-sm font-medium"
+                style={{ borderColor: c.border, color: c.text }}>취소</button>
+              <button onClick={() => { setApproveModal(null); setRejectModal(approveModal); setRejectForm({ rejectionType: '서류미비', rejectedReason: '', reviewedBy: currentUser }); }}
+                className="rounded-lg px-4 py-2.5 text-sm font-medium text-white" style={{ background: '#EF4444' }}>
+                불가
+              </button>
+              <button onClick={submitApprove} disabled={processing || !approveForm.planId}
+                className="flex-1 rounded-lg py-2.5 text-sm font-medium text-white disabled:opacity-50"
+                style={{ background: '#22C55E' }}>
+                {processing ? '처리 중...' : '승인 확정'}
+              </button>
             </div>
           </div>
         </div>
