@@ -72,6 +72,7 @@ export function formatTime(date: Date | string): string {
  * 분 → "1시간 30분" 변환
  */
 export function formatDuration(minutes: number): string {
+  if (!minutes || isNaN(minutes) || minutes <= 0) return '-';
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   if (hours > 0 && mins > 0) return `${hours}시간 ${mins}분`;
@@ -84,13 +85,13 @@ export function formatDuration(minutes: number): string {
  */
 export function getStatusLabel(status: string): string {
   const labels: Record<string, string> = {
-    REQUESTED: '예약요청',
-    PENDING: '대기상태',
-    CONFIRMED: '예약확정',
-    IN_PROGRESS: '시술진행',
-    COMPLETED: '시술완료',
-    CANCELLED: '예약취소',
-    NO_SHOW: '당일노쇼',
+    REQUESTED: '요청',
+    PENDING: '요청',
+    CONFIRMED: '확정',
+    IN_PROGRESS: '시술중',
+    COMPLETED: '완료',
+    CANCELLED: '취소',
+    NO_SHOW: '노쇼',
   };
   return labels[status] || status;
 }
