@@ -12,6 +12,7 @@ const publicPaths = [
   '/api/auth/login',
   '/api/auth/logout',
   '/api/admin/registrations', // 온라인 가입 신청 (공개)
+  '/api/admin/registrations/check', // 신청 확인 (공개)
   '/api/admin/dealers/verify', // 할인코드 검증 (공개)
   '/apply',
 ];
