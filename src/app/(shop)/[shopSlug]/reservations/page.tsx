@@ -364,19 +364,19 @@ export default function ReservationsPage() {
         <div onClick={() => setSelectedRes(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9998 }} />
         <div style={mob ? {
           position: 'fixed', bottom: 0, left: 0, right: 0,
-          maxHeight: '85vh', overflowY: 'auto',
+          maxHeight: '85vh', display: 'flex', flexDirection: 'column' as const,
           background: 'white', borderRadius: '20px 20px 0 0', zIndex: 9999,
           boxShadow: '0 -10px 40px rgba(0,0,0,0.15)',
-          padding: '8px 16px 24px',
           animation: 'slideUp .25s ease-out',
         } : {
           position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-          width: 420, maxHeight: '80vh', overflowY: 'auto',
+          width: 420, maxHeight: '80vh', display: 'flex', flexDirection: 'column' as const,
           background: 'white', borderRadius: 16, zIndex: 9999,
-          boxShadow: '0 20px 60px rgba(0,0,0,0.2)', padding: '24px 20px',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
         }}>
+          <div style={{ flexShrink: 0, padding: mob ? '8px 16px 0' : '24px 20px 0' }}>
           {mob && <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 12px' }}><div style={{ width: 36, height: 4, borderRadius: 2, background: '#D1D5DB' }} /></div>}
-          <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
+          <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } } .popup-scroll::-webkit-scrollbar { display: none; }`}</style>
           {/* 박스 1: 상태 + 회차 + 고객 프로필 */}
           <div style={{ padding: '16px', background: `linear-gradient(135deg, ${c.primaryLight}, #f0fdf4)`, borderRadius: 14, marginBottom: 10, border: `1px solid ${c.borderLight}` }}>
             {/* 상태 + 회차 + 출처 */}
@@ -435,7 +435,7 @@ export default function ReservationsPage() {
           </div>
 
           {/* 시술 정보 */}
-          <div style={{ padding: '12px 14px', background: '#F9FAFB', borderRadius: 12, border: '1px solid #f3f4f6', marginBottom: 12 }}>
+          <div style={{ padding: '12px 14px', background: '#F9FAFB', borderRadius: 12, border: '1px solid #f3f4f6', marginBottom: 0 }}>
             <div style={{ fontSize: 10, color: c.textLight, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, marginBottom: 4 }}><Scissors style={{ width: 11, height: 11 }} /> 시술 정보</div>
             <div style={{ fontSize: 14, fontWeight: 700, color: c.text, marginBottom: 4 }}>{selectedRes.menu?.name || '-'}</div>
             <div style={{ display: 'flex', gap: 12, fontSize: 12, color: c.textLight }}>
@@ -443,8 +443,10 @@ export default function ReservationsPage() {
               {selectedRes.menu?.price != null && <span style={{ display: 'flex', alignItems: 'center', gap: 3, background: '#fff', padding: '2px 8px', borderRadius: 6, border: '1px solid #e5e7eb' }}><Coins style={{ width: 11, height: 11 }} /> {selectedRes.menu.price.toLocaleString()}원</span>}
             </div>
           </div>
+          </div>{/* 고정 영역 끝 */}
 
-          {/* 관리 내용 기록 - 완료 상태일 때만 표시 */}
+          {/* 스크롤 영역 */}
+          <div className="popup-scroll" style={{ flex: 1, overflowY: 'auto', padding: mob ? '10px 16px 24px' : '10px 20px 24px', scrollbarWidth: 'none' }}>
           {selectedRes.status === 'COMPLETED' && selectedRes.customerRecord && (() => {
             let mgmt: Record<string, string> = {};
             try { mgmt = typeof selectedRes.customerRecord.managementData === 'string' ? JSON.parse(selectedRes.customerRecord.managementData) : (selectedRes.customerRecord.managementData || {}); } catch {}
@@ -477,16 +479,25 @@ export default function ReservationsPage() {
                 if (mt.treatment?.processSteps) {
                   const steps = typeof mt.treatment.processSteps === 'string' ? JSON.parse(mt.treatment.processSteps) : mt.treatment.processSteps;
                   if (Array.isArray(steps) && steps.length > 0) {
-                    const items = steps.filter((s: any) => mgmt[s.name] !== undefined).map((s: any) => ({ key: s.name, val: mgmt[s.name], unit: s.unit || '' }));
-                    if (items.length > 0) groups.push({ name: mt.treatment.name || '', items });
+                    const tName = mt.treatment.name || '';
+                    const items = steps
+                      .map((s: any) => {
+                        const fullKey = `${tName}__${s.name}`;
+                        const val = mgmt[fullKey] ?? mgmt[s.name];
+                        if (val === undefined) return null;
+                        return { key: s.name, val: String(val), unit: s.unit || '' };
+                      })
+                      .filter(Boolean) as { key: string; val: string; unit: string }[];
+                    if (items.length > 0) groups.push({ name: tName, items });
                   }
                 }
               }
             } catch {}
             // 그룹에 포함되지 않은 필드
-            const grouped = new Set(groups.flatMap(g => g.items.map(i => i.key)));
-            const ungrouped = fields.filter(([k]) => !grouped.has(k));
-            if (ungrouped.length > 0) groups.push({ name: '', items: ungrouped.map(([k, v]) => ({ key: k, val: String(v), unit: unitMap[k] || '' })) });
+            const allUsedKeys = new Set<string>();
+            groups.forEach(g => g.items.forEach(i => { allUsedKeys.add(i.key); allUsedKeys.add(`${g.name}__${i.key}`); }));
+            const ungrouped = fields.filter(([k]) => !allUsedKeys.has(k));
+            if (ungrouped.length > 0) groups.push({ name: '', items: ungrouped.map(([k, v]) => ({ key: k.includes('__') ? k.split('__')[1] : k, val: String(v), unit: '' })) });
 
             return (
               <div style={{ padding: '14px 16px', background: '#F0FDF4', borderRadius: 12, border: '1.5px solid #86EFAC', marginBottom: 12 }}>
@@ -533,6 +544,7 @@ export default function ReservationsPage() {
           )}
 
           <button onClick={() => setSelectedRes(null)} style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: `1px solid ${c.borderLight}`, background: 'white', color: c.text, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>닫기</button>
+          </div>{/* 스크롤 영역 끝 */}
         </div>
       </>,
       document.body
