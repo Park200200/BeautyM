@@ -22,6 +22,7 @@ const staticPaths = [
   '/_next',
   '/favicon.ico',
   '/images',
+  '/portfolio',
   '/manifest.json',
   '/sw.js',
 ];
