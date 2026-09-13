@@ -268,46 +268,83 @@ export default function ReservationsPage() {
           ))}
         </div>
       ) : (
-        /* 데스크톱 테이블 형태 */
-        <div style={{ ...card, overflow: 'hidden' }}>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>날짜/시간</TableHead>
-                <TableHead>고객명</TableHead>
-                <TableHead>시술명</TableHead>
-                <TableHead>담당 관리사</TableHead>
-                <TableHead>소요시간</TableHead>
-                <TableHead>상태</TableHead>
-                <TableHead>출처</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((res) => (
-                <TableRow key={res.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedRes(res)}>
-                  <TableCell className="font-medium">
+        /* 데스크톱 카드 리스트 */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {/* 헤더 */}
+          <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr 1.2fr 1fr 80px 72px 60px', gap: 8, padding: '8px 16px', fontSize: 11, fontWeight: 600, color: c.textLight }}>
+            <span></span>
+            <span>고객</span>
+            <span>시술</span>
+            <span>담당</span>
+            <span style={{ textAlign: 'center' }}>소요</span>
+            <span style={{ textAlign: 'center' }}>상태</span>
+            <span style={{ textAlign: 'center' }}>출처</span>
+          </div>
+          {filtered.map((res) => {
+            const initial = (res.customer?.user?.name || '?')[0];
+            const statusColors: Record<string, string> = {
+              CONFIRMED: '#3B82F6', PENDING: '#F59E0B', COMPLETED: '#10B981',
+              CANCELLED: '#EF4444', NO_SHOW: '#6B7280',
+            };
+            const sc = statusColors[res.status] || c.textLight;
+            return (
+              <div
+                key={res.id}
+                onClick={() => setSelectedRes(res)}
+                style={{
+                  display: 'grid', gridTemplateColumns: '44px 1fr 1.2fr 1fr 80px 72px 60px', gap: 8,
+                  alignItems: 'center', padding: '10px 16px',
+                  background: 'white', borderRadius: 12,
+                  border: `1px solid ${c.borderLight}`,
+                  cursor: 'pointer', transition: 'all .15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.06)'; e.currentTarget.style.borderColor = c.primary + '60'; }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = c.borderLight; }}
+              >
+                {/* 아바타 */}
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${sc}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: sc, flexShrink: 0 }}>
+                  {initial}
+                </div>
+                {/* 고객 + 날짜 */}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{res.customer?.user?.name || '미지정'}</div>
+                  <div style={{ fontSize: 11, color: c.textLight, display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <CalendarDays style={{ width: 10, height: 10 }} />
                     {formatDateTime(res.startTime)}
-                  </TableCell>
-                  <TableCell>{res.customer?.user?.name || '미지정'}</TableCell>
-                  <TableCell>{res.menu?.name || '-'}</TableCell>
-                  <TableCell>{res.staff?.user?.name || '미배정'}</TableCell>
-                  <TableCell className="text-gray-500">
-                    {res.menu ? formatDuration(res.menu.duration) : '-'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(res.status)}>
-                      {getStatusLabel(res.status)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      {res.source === 'WEBSITE' ? '온라인' : '관리자'}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  </div>
+                </div>
+                {/* 시술 */}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{res.menu?.name || '-'}</div>
+                  {res.currentSession && res.totalSessions && (
+                    <div style={{ fontSize: 10, color: c.primary, fontWeight: 600 }}>{res.currentSession}/{res.totalSessions}회차</div>
+                  )}
+                </div>
+                {/* 담당 */}
+                <div style={{ fontSize: 12, color: c.text, display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+                  <UserCog style={{ width: 12, height: 12, color: c.textLight, flexShrink: 0 }} />
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{res.staff?.user?.name || '미배정'}</span>
+                </div>
+                {/* 소요시간 */}
+                <div style={{ textAlign: 'center', fontSize: 12, color: c.textLight, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+                  <Clock style={{ width: 11, height: 11 }} />
+                  {res.menu ? formatDuration(res.menu.duration) : '-'}
+                </div>
+                {/* 상태 */}
+                <div style={{ textAlign: 'center' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: sc, background: `${sc}14`, padding: '3px 10px', borderRadius: 20, border: `1px solid ${sc}30` }}>
+                    {getStatusLabel(res.status)}
+                  </span>
+                </div>
+                {/* 출처 */}
+                <div style={{ textAlign: 'center' }}>
+                  <span style={{ fontSize: 10, color: res.source === 'WEBSITE' ? '#3B82F6' : c.textLight, fontWeight: 600, background: res.source === 'WEBSITE' ? '#EFF6FF' : '#F9FAFB', padding: '2px 8px', borderRadius: 6 }}>
+                    {res.source === 'WEBSITE' ? '온라인' : '매장'}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
       </div>
