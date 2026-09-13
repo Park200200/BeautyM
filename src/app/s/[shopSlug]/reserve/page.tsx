@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, User, Phone, Scissors, CalendarDays, Clock, StickyNote, CheckCircle2, Sparkles } from 'lucide-react';
+import { ArrowLeft, User, Phone, Scissors, CalendarDays, Clock, StickyNote, CheckCircle2, Sparkles, Minus, Plus } from 'lucide-react';
+import DatePicker from '@/components/DatePicker';
 
 type MenuOption = {
   id: string; name: string; price?: number; duration?: number;
@@ -42,6 +43,9 @@ export default function ReservePage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [timePeriod, setTimePeriod] = useState<'AM' | 'PM'>('AM');
 
   useEffect(() => {
     fetch(`/api/shops/${shopSlug}/public`)
@@ -198,27 +202,108 @@ export default function ReservePage() {
           </div>
         </div>
 
-        {/* 날짜 */}
-        <div className="bk-form-group">
-          <div className="bk-form-label"><CalendarDays /> 날짜 *</div>
-          <input className="bk-form-input" type="date" value={date} onChange={e => setDate(e.target.value)} min={today} />
-        </div>
-
-        {/* 시간 */}
-        <div className="bk-form-group">
-          <div className="bk-form-label"><Clock /> 시간 *</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-            {timeSlots.map(slot => (
-              <button key={slot} onClick={() => setTime(slot)} style={{
-                padding: '8px 4px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                border: `1.5px solid ${time === slot ? '#40BFA3' : '#e5e7eb'}`,
-                background: time === slot ? '#F0FDF4' : 'white',
-                color: time === slot ? '#166534' : '#374151',
-                cursor: 'pointer', transition: 'all .15s',
-              }}>
-                {slot}
-              </button>
-            ))}
+        {/* 날짜 + 시간 */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+          <div style={{ position: 'relative' }}>
+            <div className="bk-form-label"><CalendarDays /> 날짜 *</div>
+            <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+              <button type="button" onClick={() => {
+                if (!date) return;
+                const d = new Date(date); d.setDate(d.getDate() - 1);
+                setDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+              }} style={{ width: 28, height: 38, borderRadius: 8, border: '1.5px solid #e5e7eb', background: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700, color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+              <div
+                onClick={() => { setShowDatePicker(!showDatePicker); setShowTimePicker(false); }}
+                className="bk-form-input"
+                style={{ cursor: 'pointer', flex: 1, textAlign: 'center', fontSize: 13, padding: '10px 6px', margin: 0 }}
+              >
+                {date || '날짜 선택'}
+              </div>
+              <button type="button" onClick={() => {
+                const d = date ? new Date(date) : new Date(); d.setDate(d.getDate() + 1);
+                setDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+              }} style={{ width: 28, height: 38, borderRadius: 8, border: '1.5px solid #e5e7eb', background: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700, color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+            </div>
+            {showDatePicker && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 50, marginTop: 4 }}>
+                <DatePicker
+                  inline
+                  value={date || ''}
+                  onChange={(d) => { setDate(typeof d === 'string' ? d : d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : ''); setShowDatePicker(false); }}
+                />
+              </div>
+            )}
+          </div>
+          <div style={{ position: 'relative' }}>
+            <div className="bk-form-label"><Clock /> 시간 *</div>
+            <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+              <button type="button" onClick={() => {
+                if (!time) return;
+                const [hh, mm] = time.split(':').map(Number);
+                let total = hh * 60 + mm - 30; if (total < 600) total = 600;
+                const nh = Math.floor(total / 60), nm = total % 60;
+                setTime(`${String(nh).padStart(2,'0')}:${String(nm).padStart(2,'0')}`);
+              }} style={{ width: 28, height: 38, borderRadius: 8, border: '1.5px solid #e5e7eb', background: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700, color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+              <div
+                onClick={() => { setShowTimePicker(!showTimePicker); setShowDatePicker(false); }}
+                className="bk-form-input"
+                style={{ cursor: 'pointer', flex: 1, textAlign: 'center', fontSize: 13, padding: '10px 6px', margin: 0 }}
+              >
+                {time ? (() => {
+                  const h = parseInt(time.split(':')[0]);
+                  const m = time.split(':')[1];
+                  return `${h >= 12 ? '오후' : '오전'} ${h > 12 ? h - 12 : h === 0 ? 12 : h}:${m}`;
+                })() : '시간 선택'}
+              </div>
+              <button type="button" onClick={() => {
+                const [hh, mm] = time ? time.split(':').map(Number) : [9, 30];
+                let total = hh * 60 + mm + 30; if (total > 1200) total = 1200;
+                const nh = Math.floor(total / 60), nm = total % 60;
+                setTime(`${String(nh).padStart(2,'0')}:${String(nm).padStart(2,'0')}`);
+              }} style={{ width: 28, height: 38, borderRadius: 8, border: '1.5px solid #e5e7eb', background: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700, color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+            </div>
+            {showTimePicker && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, zIndex: 50, marginTop: 4 }}>
+                <div style={{ background: 'white', border: '1.5px solid #e5e7eb', borderRadius: 14, padding: 14, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 240, minWidth: 240 }}>
+                  <div style={{ display: 'flex', gap: 4, marginBottom: 10, padding: 3, borderRadius: 10, background: '#F0FDF4' }}>
+                    {(['AM', 'PM'] as const).map(p => (
+                      <button key={p} type="button" onClick={() => setTimePeriod(p)}
+                        style={{
+                          flex: 1, padding: '6px 0', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                          border: 'none', cursor: 'pointer',
+                          background: timePeriod === p ? '#40BFA3' : 'transparent',
+                          color: timePeriod === p ? 'white' : '#6B7280',
+                        }}>
+                        {p === 'AM' ? '오전' : '오후'}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+                    {Array.from({ length: 12 }).map((_, i) => {
+                      const baseH = timePeriod === 'AM' ? 0 : 12;
+                      return [0, 30].map(m => {
+                        const h = baseH + i;
+                        if (h < 10 || h >= 20) return null;
+                        const slot = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+                        const label = `${h > 12 ? h - 12 : h === 0 ? 12 : h}:${String(m).padStart(2,'0')}`;
+                        return (
+                          <button key={slot} type="button" onClick={() => { setTime(slot); setShowTimePicker(false); }}
+                            style={{
+                              padding: '7px 4px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                              border: `1.5px solid ${time === slot ? '#40BFA3' : '#e5e7eb'}`,
+                              background: time === slot ? '#F0FDF4' : 'white',
+                              color: time === slot ? '#166534' : '#374151',
+                              cursor: 'pointer',
+                            }}>
+                            {label}
+                          </button>
+                        );
+                      });
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
