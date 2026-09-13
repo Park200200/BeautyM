@@ -332,58 +332,60 @@ export default function ReservationsPage() {
         }}>
           {mob && <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 12px' }}><div style={{ width: 36, height: 4, borderRadius: 2, background: '#D1D5DB' }} /></div>}
           <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
-          {/* 헤더 */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: c.text }}>예약 상세</h2>
-            <button onClick={() => setSelectedRes(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.textLight, padding: 4 }}><X style={{ width: 18, height: 18 }} /></button>
-          </div>
-
-          {/* 상태 + 회차 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <span className={getStatusColor(selectedRes.status)} style={{ padding: '4px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>{getStatusLabel(selectedRes.status)}</span>
-            {selectedRes.currentSession && selectedRes.totalSessions && <span style={{ fontSize: 12, fontWeight: 600, color: c.primary, background: c.primaryLight, padding: '3px 10px', borderRadius: 20 }}>회차 {selectedRes.currentSession}/{selectedRes.totalSessions}</span>}
-            <span style={{ marginLeft: 'auto', fontSize: 11, color: c.textLight, display: 'flex', alignItems: 'center', gap: 3 }}><MapPin style={{ width: 11, height: 11 }} /> {selectedRes.source === 'WEBSITE' ? '온라인' : '매장'}</span>
-          </div>
-
-          {/* 고객 카드 - 사진+이름+연락처+입회일 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: `linear-gradient(135deg, ${c.primaryLight}, #f0fdf4)`, borderRadius: 14, marginBottom: 12, border: `1px solid ${c.borderLight}` }}>
-            <div style={{ width: 52, height: 52, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#e5e7eb', border: `2px solid ${c.primary}30` }}>
-              {selectedRes.customer?.user?.profileImage ? (
-                <img src={selectedRes.customer.user.profileImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.primaryLight }}><User style={{ width: 24, height: 24, color: c.primary }} /></div>
-              )}
+          {/* 박스 1: 상태 + 회차 + 고객 프로필 */}
+          <div style={{ padding: '16px', background: `linear-gradient(135deg, ${c.primaryLight}, #f0fdf4)`, borderRadius: 14, marginBottom: 10, border: `1px solid ${c.borderLight}` }}>
+            {/* 상태 + 회차 + 출처 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <span className={getStatusColor(selectedRes.status)} style={{ padding: '4px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>{getStatusLabel(selectedRes.status)}</span>
+              {selectedRes.currentSession && selectedRes.totalSessions && <span style={{ fontSize: 12, fontWeight: 600, color: c.primary, background: 'white', padding: '3px 10px', borderRadius: 20, border: `1px solid ${c.primary}30` }}>회차 {selectedRes.currentSession}/{selectedRes.totalSessions}</span>}
+              <span style={{ marginLeft: 'auto', fontSize: 11, color: c.textLight, display: 'flex', alignItems: 'center', gap: 3 }}><MapPin style={{ width: 11, height: 11 }} /> {selectedRes.source === 'WEBSITE' ? '온라인' : '매장'}</span>
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: c.text }}>{selectedRes.customer?.user?.name || '미지정'}</div>
-              {selectedRes.customer?.user?.phone && (
-                <div style={{ fontSize: 12, color: c.textLight, display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}><PhoneIcon style={{ width: 11, height: 11 }} /> {selectedRes.customer.user.phone}</div>
-              )}
-              {selectedRes.customer?.createdAt && (
-                <div style={{ fontSize: 11, color: c.textLight, display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}><CalendarDays style={{ width: 10, height: 10 }} /> 입회 {new Date(selectedRes.customer.createdAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
-              )}
+            {/* 고객 프로필 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ width: 52, height: 52, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#e5e7eb', border: '2.5px solid white', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                {selectedRes.customer?.user?.profileImage ? (
+                  <img src={selectedRes.customer.user.profileImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white' }}><User style={{ width: 24, height: 24, color: c.primary }} /></div>
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: c.text }}>{selectedRes.customer?.user?.name || '미지정'}</div>
+                {selectedRes.customer?.user?.phone && (
+                  <div style={{ fontSize: 12, color: c.textLight, display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}><PhoneIcon style={{ width: 11, height: 11 }} /> {selectedRes.customer.user.phone}</div>
+                )}
+                {selectedRes.customer?.createdAt && (
+                  <div style={{ fontSize: 11, color: c.textLight, display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}><CalendarDays style={{ width: 10, height: 10 }} /> 입회 {new Date(selectedRes.customer.createdAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* 예약 일시 */}
-          <div style={{ padding: '12px 14px', background: '#F9FAFB', borderRadius: 12, border: '1px solid #f3f4f6', marginBottom: 8 }}>
-            <div style={{ fontSize: 10, color: c.textLight, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, marginBottom: 4 }}><CalendarDays style={{ width: 11, height: 11 }} /> 예약 일시</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: c.text }}>{formatDateTime(selectedRes.startTime)}</div>
-            {selectedRes.endTime && <div style={{ fontSize: 11, color: c.textLight }}>~ {new Date(selectedRes.endTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 종료</div>}
-          </div>
-
-          {/* 담당 관리사 - 고객 카드와 동일 레이아웃 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: '#F9FAFB', borderRadius: 14, marginBottom: 12, border: '1px solid #f3f4f6' }}>
-            <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#e5e7eb', border: `2px solid ${c.primary}30` }}>
-              {selectedRes.staff?.user?.profileImage ? (
-                <img src={selectedRes.staff.user.profileImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.primaryLight }}><UserCog style={{ width: 20, height: 20, color: c.primary }} /></div>
-              )}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 10, color: c.textLight, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}><UserCog style={{ width: 10, height: 10 }} /> 담당 관리사</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: c.text, marginTop: 1 }}>{selectedRes.staff?.user?.name || '미배정'}</div>
+          {/* 박스 2: 예약 일시 + 담당 관리사 */}
+          <div style={{ padding: '14px 16px', background: '#F9FAFB', borderRadius: 14, marginBottom: 10, border: '1px solid #f3f4f6' }}>
+            <div style={{ display: 'flex', gap: 16 }}>
+              {/* 예약 일시 */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 10, color: c.textLight, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, marginBottom: 4 }}><CalendarDays style={{ width: 11, height: 11 }} /> 예약 일시</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: c.text }}>{formatDateTime(selectedRes.startTime)}</div>
+                {selectedRes.endTime && <div style={{ fontSize: 11, color: c.textLight }}>~ {new Date(selectedRes.endTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 종료</div>}
+              </div>
+              {/* 구분선 */}
+              <div style={{ width: 1, background: '#e5e7eb', alignSelf: 'stretch' }} />
+              {/* 담당 관리사 */}
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#e5e7eb', border: `2px solid ${c.primary}20` }}>
+                  {selectedRes.staff?.user?.profileImage ? (
+                    <img src={selectedRes.staff.user.profileImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.primaryLight }}><UserCog style={{ width: 18, height: 18, color: c.primary }} /></div>
+                  )}
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, color: c.textLight, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}><UserCog style={{ width: 10, height: 10 }} /> 담당</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: c.text, marginTop: 1 }}>{selectedRes.staff?.user?.name || '미배정'}</div>
+                </div>
+              </div>
             </div>
           </div>
 
