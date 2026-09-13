@@ -55,7 +55,7 @@ export default function NewReservationPage({ params }: { params: Promise<{ shopS
       fetch(`/api/shops/${shopSlug}/categories`).then(r => r.json()).catch(() => ({ categories: [] })),
     ]).then(([custData, staffData, menuData, catData]) => {
       setCustomers(custData.customers || []);
-      const staffList = staffData.staff || [];
+      const staffList = (staffData.staff || []).filter((s: any) => s.isActive !== false);
       setStaff(staffList);
       // 직원 1명이면 자동 선택
       if (staffList.length === 1) {
