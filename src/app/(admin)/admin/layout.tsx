@@ -8,7 +8,7 @@ import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
 import ThemeSwitcher from '@/components/theme-switcher';
 import {
   LayoutDashboard, Building2, CreditCard, ToggleRight, Megaphone,
-  Users, BarChart3, LogOut, PanelLeftClose, PanelLeftOpen, ClipboardCheck, Menu, X,
+  Users, BarChart3, LogOut, PanelLeftClose, PanelLeftOpen, ClipboardCheck, Menu, X, Handshake,
 } from 'lucide-react';
 
 const ADMIN_MENUS = [
@@ -18,6 +18,7 @@ const ADMIN_MENUS = [
   { id: 'subscriptions', name: '\uAD6C\uB3C5 \uAD00\uB9AC', icon: CreditCard, href: '/admin/subscriptions' },
   { id: 'modules', name: '\uBAA8\uB4C8 \uAD00\uB9AC', icon: ToggleRight, href: '/admin/modules' },
   { id: 'announcements', name: '\uACF5\uC9C0/\uAD11\uACE0', icon: Megaphone, href: '/admin/announcements' },
+  { id: 'dealers', name: '\uB51C\uB7EC \uAD00\uB9AC', icon: Handshake, href: '/admin/dealers' },
   { id: 'users', name: '\uC0AC\uC6A9\uC790 \uAD00\uB9AC', icon: Users, href: '/admin/users' },
   { id: 'stats', name: '\uD1B5\uACC4', icon: BarChart3, href: '/admin/stats' },
 ];

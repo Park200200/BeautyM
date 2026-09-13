@@ -638,3 +638,31 @@ model Portfolio {
 
   shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
 }
+
+// ============================================
+// 딜러 관리
+// ============================================
+
+model Dealer {
+  id            String   @id @default(cuid())
+  name          String   // 딜러명
+  contactName   String?  // 담당자명
+  phone         String?  // 연락처
+  email         String?  // 이메일
+  company       String?  // 소속 회사
+
+  discountCode  String?  @unique // 할인코드
+  discountRate  Float?   @default(0) // 할인율 (%)
+  commissionRate Float?  @default(0) // 수수료율 (%)
+
+  bankName      String?  // 은행명
+  bankAccount   String?  // 계좌번호
+  bankHolder    String?  // 예금주
+
+  terms         String?  // 거래조건 메모
+  memo          String?  // 기타 메모
+  isActive      Boolean  @default(true)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
