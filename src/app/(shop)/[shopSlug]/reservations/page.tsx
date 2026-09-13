@@ -23,7 +23,11 @@ type Reservation = {
   totalSessions?: number;
   customer?: { createdAt?: string; user?: { name: string; phone?: string | null; profileImage?: string | null } } | null;
   staff?: { user?: { name: string; profileImage?: string | null } } | null;
-  menu?: { name: string; duration: number; price?: number; managementFields?: string | null } | null;
+  menu?: {
+    name: string; duration: number; price?: number;
+    managementFields?: string | null;
+    menuTreatments?: { treatment: { name: string; processSteps?: string | null } }[];
+  } | null;
   customerRecord?: { managementData?: string | null; content?: string | null } | null;
 };
 
@@ -437,32 +441,80 @@ export default function ReservationsPage() {
             </div>
           </div>
 
-          {/* 시술 적용 데이터 - 완료 상태일 때만 표시 */}
+          {/* 관리 내용 기록 - 완료 상태일 때만 표시 */}
           {selectedRes.status === 'COMPLETED' && selectedRes.customerRecord && (() => {
             let mgmt: Record<string, string> = {};
             try { mgmt = typeof selectedRes.customerRecord.managementData === 'string' ? JSON.parse(selectedRes.customerRecord.managementData) : (selectedRes.customerRecord.managementData || {}); } catch {}
-            const hasData = Object.keys(mgmt).length > 0;
+            const fields = Object.entries(mgmt).filter(([k]) => !k.startsWith('_'));
+            const mgmtMemo = mgmt._memo || '';
             const hasContent = !!selectedRes.customerRecord.content;
-            if (!hasData && !hasContent) return null;
+            if (fields.length === 0 && !mgmtMemo && !hasContent) return null;
+
+            // processSteps에서 단위 정보 맵핑
+            const unitMap: Record<string, string> = {};
+            try {
+              const mts = selectedRes.menu?.menuTreatments || [];
+              for (const mt of mts) {
+                if (mt.treatment?.processSteps) {
+                  const steps = typeof mt.treatment.processSteps === 'string' ? JSON.parse(mt.treatment.processSteps) : mt.treatment.processSteps;
+                  if (Array.isArray(steps)) steps.forEach((s: any) => { if (s.name) unitMap[s.name] = s.unit || ''; });
+                }
+              }
+              if (selectedRes.menu?.managementFields) {
+                const parsed = typeof selectedRes.menu.managementFields === 'string' ? JSON.parse(selectedRes.menu.managementFields) : selectedRes.menu.managementFields;
+                if (Array.isArray(parsed)) parsed.forEach((s: any) => { if (s.name && !unitMap[s.name]) unitMap[s.name] = s.unit || ''; });
+              }
+            } catch {}
+
+            // 그룹 빌드
+            const groups: { name: string; items: { key: string; val: string; unit: string }[] }[] = [];
+            try {
+              const mts = selectedRes.menu?.menuTreatments || [];
+              for (const mt of mts) {
+                if (mt.treatment?.processSteps) {
+                  const steps = typeof mt.treatment.processSteps === 'string' ? JSON.parse(mt.treatment.processSteps) : mt.treatment.processSteps;
+                  if (Array.isArray(steps) && steps.length > 0) {
+                    const items = steps.filter((s: any) => mgmt[s.name] !== undefined).map((s: any) => ({ key: s.name, val: mgmt[s.name], unit: s.unit || '' }));
+                    if (items.length > 0) groups.push({ name: mt.treatment.name || '', items });
+                  }
+                }
+              }
+            } catch {}
+            // 그룹에 포함되지 않은 필드
+            const grouped = new Set(groups.flatMap(g => g.items.map(i => i.key)));
+            const ungrouped = fields.filter(([k]) => !grouped.has(k));
+            if (ungrouped.length > 0) groups.push({ name: '', items: ungrouped.map(([k, v]) => ({ key: k, val: String(v), unit: unitMap[k] || '' })) });
+
             return (
-              <div style={{ padding: '14px 16px', background: 'linear-gradient(135deg, #EFF6FF, #F0FDF4)', borderRadius: 12, border: '1px solid #BFDBFE', marginBottom: 12 }}>
-                <div style={{ fontSize: 11, color: '#1D4ED8', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>
-                  <ClipboardCheck style={{ width: 13, height: 13 }} /> 시술 적용 데이터
+              <div style={{ padding: '14px 16px', background: '#F0FDF4', borderRadius: 12, border: '1.5px solid #86EFAC', marginBottom: 12 }}>
+                <div style={{ fontSize: 11, color: '#166534', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>
+                  <ClipboardCheck style={{ width: 13, height: 13 }} /> 관리 내용 기록
                 </div>
-                {hasData && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: hasContent ? 10 : 0 }}>
-                    {Object.entries(mgmt).map(([key, val]) => (
-                      <div key={key} style={{ padding: '8px 10px', background: 'white', borderRadius: 8, border: '1px solid #E5E7EB' }}>
-                        <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 600, marginBottom: 2 }}>{key}</div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: '#1F2937' }}>{String(val) || '-'}</div>
+                {groups.map((group, gi) => (
+                  <div key={gi} style={{ marginBottom: gi < groups.length - 1 ? 10 : 0 }}>
+                    {group.name && (
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#15803D', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Scissors style={{ width: 10, height: 10 }} /> {group.name}
+                      </div>
+                    )}
+                    {group.items.map(item => (
+                      <div key={item.key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, paddingLeft: group.name ? 8 : 0 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#374151', minWidth: 80 }}>{item.key}</span>
+                        <span style={{ fontSize: 11, color: '#6B7280' }}>=</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#166534', background: 'white', padding: '2px 10px', borderRadius: 6, border: '1px solid #D1FAE5', minWidth: 40, textAlign: 'center' }}>{item.val}</span>
+                        {item.unit && <span style={{ fontSize: 11, color: '#6B7280' }}>{item.unit}</span>}
                       </div>
                     ))}
                   </div>
+                ))}
+                {mgmtMemo && (
+                  <div style={{ fontSize: 12, color: '#166534', background: '#DCFCE7', borderRadius: 6, padding: '6px 10px', marginTop: 8, display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+                    <StickyNote style={{ width: 11, height: 11, flexShrink: 0, marginTop: 2 }} /> {mgmtMemo}
+                  </div>
                 )}
-                {hasContent && (
-                  <div style={{ padding: '8px 10px', background: 'white', borderRadius: 8, border: '1px solid #E5E7EB' }}>
-                    <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 600, marginBottom: 2, display: 'flex', alignItems: 'center', gap: 3 }}><FileText style={{ width: 10, height: 10 }} /> 시술 기록</div>
-                    <div style={{ fontSize: 12, color: '#1F2937', lineHeight: 1.5 }}>{selectedRes.customerRecord.content}</div>
+                {hasContent && !mgmtMemo && (
+                  <div style={{ fontSize: 12, color: '#166534', background: '#DCFCE7', borderRadius: 6, padding: '6px 10px', marginTop: groups.length > 0 ? 8 : 0, display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+                    <FileText style={{ width: 11, height: 11, flexShrink: 0, marginTop: 2 }} /> {selectedRes.customerRecord.content}
                   </div>
                 )}
               </div>
