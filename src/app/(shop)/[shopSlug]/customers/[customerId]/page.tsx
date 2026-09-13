@@ -29,6 +29,7 @@ export default function CustomerDetailPage() {
   const [customer, setCustomer] = useState<any>(null);
   const [records, setRecords] = useState<any[]>([]);
   const [reservations, setReservations] = useState<any[]>([]);
+  const [notificationLogs, setNotificationLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [activeTab, setActiveTab] = useState('records');
@@ -112,6 +113,11 @@ export default function CustomerDetailPage() {
       if (recRes.ok) setRecords(await recRes.json());
       if (resvRes.ok) { const d = await resvRes.json(); setReservations(d.reservations || []); }
       if (fieldsRes.ok) { const d = await fieldsRes.json(); setCustomTabs(d.fields || []); }
+      // 알림 로그
+      try {
+        const notiRes = await fetch(`/api/shops/${shopSlug}/customers/${customerId}/notifications`);
+        if (notiRes.ok) setNotificationLogs(await notiRes.json());
+      } catch { /* 알림 로그 없어도 무시 */ }
       // 로그인 유저 → staffId 매핑
       if (meRes.ok && staffRes.ok) {
         const me = await meRes.json();
@@ -306,6 +312,7 @@ export default function CustomerDetailPage() {
     { id: 'records', label: '\uC2DC\uC220\uCE74\uB4DC', icon: FileText, count: records.length },
     { id: 'reservations', label: '\uC608\uC57D\uC774\uB825', icon: Calendar, count: reservations.length },
     { id: 'purchases', label: '\uAD6C\uB9E4\uB0B4\uC5ED', icon: ClipboardList, count: purchaseList.length },
+    { id: 'notifications', label: '\uC54C\uB9BC', icon: Bell, count: notificationLogs.length },
     ...sortedTabs.map(t => ({ id: `custom_${t.name}`, label: t.name, icon: t.fields.length === 1 ? MessageSquare : Droplets, count: undefined as number | undefined })),
   ];
 
@@ -1096,6 +1103,60 @@ export default function CustomerDetailPage() {
               <ClipboardList className="w-12 h-12 mx-auto mb-3" style={{ color: c.borderLight }} />
               <p className="text-sm" style={{ color: c.textLight }}>{'\uAD6C\uB9E4 \uB0B4\uC5ED\uC774 \uC5C6\uC2B5\uB2C8\uB2E4'}</p>
               <p className="text-xs mt-1" style={{ color: c.textLight }}>{'\uC2DC\uC220 \uC644\uB8CC \uC2DC \uC790\uB3D9 \uAE30\uB85D\uB429\uB2C8\uB2E4'}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'notifications' && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: c.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Bell style={{ width: 16, height: 16, color: c.primary }} /> 알림 이력
+            </h3>
+            <span style={{ fontSize: 12, color: c.textLight }}>총 {notificationLogs.length}건</span>
+          </div>
+          {notificationLogs.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '48px 0', color: c.textLight }}>
+              <Bell style={{ width: 36, height: 36, margin: '0 auto 12px', opacity: 0.3 }} />
+              <p style={{ fontSize: 13 }}>알림 이력이 없습니다</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {notificationLogs.map((log: any) => {
+                const channelMap: Record<string, { label: string; Icon: typeof Bell; color: string }> = {
+                  KAKAO: { label: '카카오톡', Icon: MessageCircle, color: '#FEE500' },
+                  SMS: { label: 'SMS', Icon: Send, color: '#3B82F6' },
+                  EMAIL: { label: '이메일', Icon: Mail, color: '#6366F1' },
+                  PUSH: { label: '앱 푸시', Icon: Smartphone, color: '#10B981' },
+                  IN_APP: { label: '인앱', Icon: Bell, color: '#F59E0B' },
+                };
+                const ch = channelMap[log.channel] || { label: log.channel, Icon: Bell, color: c.textLight };
+                const statusMap: Record<string, { label: string; color: string; bg: string }> = {
+                  SENT: { label: '발송', color: '#10B981', bg: '#ECFDF5' },
+                  PENDING: { label: '대기', color: '#F59E0B', bg: '#FFFBEB' },
+                  FAILED: { label: '실패', color: '#EF4444', bg: '#FEF2F2' },
+                };
+                const st = statusMap[log.status] || { label: log.status, color: c.textLight, bg: c.secondaryLight };
+                const dt = log.sentAt || log.createdAt;
+                const dateStr = dt ? new Date(dt).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+                return (
+                  <div key={log.id} style={{ padding: '12px 14px', borderRadius: 12, border: `1px solid ${c.borderLight}`, background: '#fff' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ width: 26, height: 26, borderRadius: 8, background: ch.color + '20', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <ch.Icon style={{ width: 14, height: 14, color: ch.color }} />
+                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: c.text }}>{ch.label}</span>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: st.color, background: st.bg, padding: '1px 6px', borderRadius: 6 }}>{st.label}</span>
+                      </div>
+                      <span style={{ fontSize: 11, color: c.textLight }}>{dateStr}</span>
+                    </div>
+                    {log.title && <p style={{ fontSize: 12, fontWeight: 600, color: c.text, marginBottom: 2 }}>{log.title}</p>}
+                    <p style={{ fontSize: 12, color: c.textLight, lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{log.content}</p>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
