@@ -45,12 +45,28 @@ export default function Sidebar() {
   const [sidebarConfig, setSidebarConfig] = useState<SidebarItem[] | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editConfig, setEditConfig] = useState<SidebarItem[]>([]);
+  const [allowedModules, setAllowedModules] = useState<Set<string> | null>(null); // null = 전체 접근
 
   const fetchConfig = useCallback(async () => {
     if (!shopSlug) return;
     try {
-      const res = await fetch(`/api/shops/${shopSlug}/settings/sidebar`);
-      if (res.ok) { const d = await res.json(); setSidebarConfig(d.config); }
+      const [sidebarRes, meRes] = await Promise.all([
+        fetch(`/api/shops/${shopSlug}/settings/sidebar`),
+        fetch(`/api/shops/${shopSlug}/settings/staff-menus`),
+      ]);
+      if (sidebarRes.ok) { const d = await sidebarRes.json(); setSidebarConfig(d.config); }
+      // 현재 로그인 사용자의 allowedModules 가져오기
+      if (meRes.ok) {
+        const d = await meRes.json();
+        const meAuthRes = await fetch('/api/auth/me');
+        if (meAuthRes.ok) {
+          const meData = await meAuthRes.json();
+          const myStaff = (d.staff || []).find((s: any) => s.userId === meData.id);
+          if (myStaff?.allowedModules) {
+            setAllowedModules(new Set(myStaff.allowedModules));
+          }
+        }
+      }
     } catch (e) { console.error(e); }
   }, [shopSlug]);
 
@@ -70,6 +86,8 @@ export default function Sidebar() {
   };
 
   const isVisible = (moduleId: string) => {
+    // 직원별 접근 권한 체크
+    if (allowedModules && !allowedModules.has(moduleId)) return false;
     if (!sidebarConfig) return true;
     const item = sidebarConfig.find(s => s.moduleId === moduleId);
     return item ? item.visible : true;
@@ -197,6 +215,7 @@ export default function Sidebar() {
             {orderedModules.map(module => renderMenuItem(module, { collapsed }))}
           </ul>
           <div className="mt-3 px-2 pt-3" style={{ borderTop: `1px solid ${c.sidebarHover}` }}>
+            {(!allowedModules || allowedModules.has('settings')) && (
             <Link href={`/${shopSlug}/settings`}
               className={cn('flex items-center rounded-lg py-2.5 text-sm transition-all duration-200', collapsed ? 'justify-center px-2' : 'px-3')}
               style={{ background: pathname?.startsWith(`/${shopSlug}/settings`) ? c.sidebarActive : 'transparent', color: pathname?.startsWith(`/${shopSlug}/settings`) ? c.textOnPrimary : c.sidebarText }}
@@ -206,11 +225,13 @@ export default function Sidebar() {
               <Settings className="h-5 w-5 flex-shrink-0" />
               {!collapsed && <span className="ml-3">{'\uC124\uC815'}</span>}
             </Link>
+            )}
           </div>
         </nav>
 
         {!collapsed && (
           <div className="p-4 space-y-3" style={{ borderTop: `1px solid ${c.sidebarHover}` }}>
+            {(!allowedModules || allowedModules.has('menu-edit')) && (
             <button onClick={openEdit}
               className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs transition-colors"
               style={{ color: `${c.sidebarText}80` }}
@@ -218,6 +239,7 @@ export default function Sidebar() {
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <Pencil className="w-3.5 h-3.5" /> {'\uBA54\uB274 \uD3B8\uC9D1'}
             </button>
+            )}
             <ThemeSwitcher />
             <p className="text-xs" style={{ color: `${c.sidebarText}60` }}>&copy; BeautyM</p>
           </div>
@@ -245,11 +267,13 @@ export default function Sidebar() {
               </ul>
             </nav>
             <div className="p-4 space-y-3" style={{ borderTop: `1px solid ${c.sidebarHover}` }}>
+              {(!allowedModules || allowedModules.has('menu-edit')) && (
               <button onClick={() => { toggleSidebar(); setTimeout(openEdit, 300); }}
                 className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs transition-colors"
                 style={{ color: `${c.sidebarText}80` }}>
                 <Pencil className="w-3.5 h-3.5" /> {'\uBA54\uB274 \uD3B8\uC9D1'}
               </button>
+              )}
               <ThemeSwitcher />
               <p className="text-xs" style={{ color: `${c.sidebarText}60` }}>&copy; BeautyM</p>
             </div>

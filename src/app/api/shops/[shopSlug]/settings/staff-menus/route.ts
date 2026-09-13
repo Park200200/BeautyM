@@ -11,6 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ shop
     where: { shopId: shop.id, role: { in: ['OWNER', 'STAFF'] } },
     select: {
       id: true,
+      userId: true,
       role: true,
       isActive: true,
       allowedModules: true,
@@ -22,6 +23,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ shop
   return NextResponse.json({
     staff: staffMembers.map(s => ({
       id: s.id,
+      userId: s.userId,
       name: s.user.name,
       role: s.role,
       isActive: s.isActive,
