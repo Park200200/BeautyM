@@ -22,6 +22,7 @@ function ApplyForm() {
   const [dealerName, setDealerName] = useState('');
   const [dealerDiscount, setDealerDiscount] = useState(0);
   const [codeVerified, setCodeVerified] = useState(false);
+  const [codeError, setCodeError] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -49,11 +50,13 @@ function ApplyForm() {
     setDealerName('');
     setDealerDiscount(0);
     setCodeVerified(false);
+    setCodeError('');
   };
 
   const verifyCode = async () => {
     if (!referralCode) return;
     setVerifying(true);
+    setCodeError('');
     try {
       const res = await fetch(`/api/admin/dealers/verify?code=${referralCode}`);
       const data = await res.json();
@@ -61,13 +64,14 @@ function ApplyForm() {
         setDealerName(data.dealerName);
         setDealerDiscount(data.discountRate || 0);
         setCodeVerified(true);
+        setCodeError('');
       } else {
         setDealerName('');
         setDealerDiscount(0);
         setCodeVerified(false);
-        setError('유효하지 않은 할인코드입니다');
+        setCodeError('유효하지 않은 할인코드입니다');
       }
-    } catch { /* ignore */ }
+    } catch { setCodeError('검증 중 오류가 발생했습니다'); }
     setVerifying(false);
   };
 
@@ -186,6 +190,9 @@ function ApplyForm() {
               )}
             </div>
           </div>
+          {codeError && (
+            <div style={{ textAlign: 'right', fontSize: 11, color: '#DC2626', fontWeight: 600, marginTop: -4, marginBottom: 4 }}>{codeError}</div>
+          )}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {plan.features.map(f => (
               <span key={f} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: `${plan.color}12`, color: plan.color, fontWeight: 600 }}>
