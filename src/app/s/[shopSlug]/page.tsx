@@ -348,6 +348,12 @@ export default function BookingPage() {
                             <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: st.bg, color: st.color }}>{st.label}</span>
                             <span style={{ fontSize: 11, color: '#9CA3AF' }}>{dateStr} {timeStr}</span>
                           </div>
+                          {(r.status === 'PENDING' || r.status === 'REQUESTED') && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', background: '#FEF3C7', borderRadius: 10, marginBottom: 8, fontSize: 12, color: '#92400E', fontWeight: 600 }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                              스케줄 배정중입니다. 확정 후 안내드리겠습니다.
+                            </div>
+                          )}
                           <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1a2e', marginBottom: 4 }}>{r.menu?.name || '-'}</div>
                           <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#6B7280' }}>
                             {r.menu?.duration && <span><Clock style={{ width: 10, height: 10 }} /> {r.menu.duration}분</span>}
