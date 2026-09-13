@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { FileText, Calendar, Droplets, MessageSquare, Plus, Pencil, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Phone, Mail, Clock, Star, User, Sparkles, Shield, ArrowLeft, GripVertical, Trash2, X, Settings, ClipboardList, Camera, ImagePlus, XCircle, Package } from 'lucide-react';
+import { FileText, Calendar, Droplets, MessageSquare, Plus, Pencil, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Phone, Mail, Clock, Star, User, Sparkles, Shield, ArrowLeft, GripVertical, Trash2, X, Settings, ClipboardList, Camera, ImagePlus, XCircle, Package, Bell, MessageCircle, Send, Smartphone } from 'lucide-react';
 import { getStatusLabel, getStatusColor } from '@/lib/utils';
 import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
@@ -1442,10 +1442,10 @@ export default function CustomerDetailPage() {
             </div>
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: c.textLight, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                👤 성별
+                <User style={{ width: 13, height: 13 }} /> 성별
               </label>
               <div style={{ display: 'flex', gap: 8 }}>
-                {[{ value: 'MALE', label: '남', icon: '♂' }, { value: 'FEMALE', label: '여', icon: '♀' }].map(opt => (
+                {[{ value: 'MALE', label: '남' }, { value: 'FEMALE', label: '여' }].map(opt => (
                   <button
                     key={opt.value}
                     type="button"
@@ -1467,17 +1467,27 @@ export default function CustomerDetailPage() {
                       gap: 4,
                     }}
                   >
-                    <span style={{ fontSize: 16 }}>{opt.icon}</span>{opt.label}
+                    {opt.value === 'MALE' ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="14" r="5"/><path d="M19 5l-4.5 4.5"/><path d="M15 5h4v4"/></svg>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="5"/><path d="M12 13v8"/><path d="M9 18h6"/></svg>
+                    )}
+                    {opt.label}
                   </button>
                 ))}
               </div>
             </div>
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: c.textLight, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                🔔 알림 수신
+                <Bell style={{ width: 13, height: 13 }} /> 알림 수신
               </label>
               <div style={{ display: 'flex', gap: 8 }}>
-                {[{ value: 'KAKAO', label: '카카오톡', icon: '💬' }, { value: 'SMS', label: 'SMS', icon: '✉️' }, { value: 'EMAIL', label: '이메일', icon: '📧' }, { value: 'PUSH', label: '앱 푸시', icon: '🔔' }].map(opt => {
+                {[
+                  { value: 'KAKAO', label: '카카오톡', Icon: MessageCircle },
+                  { value: 'SMS', label: 'SMS', Icon: Send },
+                  { value: 'EMAIL', label: '이메일', Icon: Mail },
+                  { value: 'PUSH', label: '앱 푸시', Icon: Smartphone },
+                ].map(opt => {
                   const selected = editProfileForm.notifyChannels.includes(opt.value);
                   return (
                     <button
@@ -1506,7 +1516,7 @@ export default function CustomerDetailPage() {
                         gap: 2,
                       }}
                     >
-                      <span style={{ fontSize: 16 }}>{opt.icon}</span>
+                      <opt.Icon style={{ width: 16, height: 16 }} />
                       {opt.label}
                     </button>
                   );
