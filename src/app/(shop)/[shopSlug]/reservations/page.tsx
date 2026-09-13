@@ -8,8 +8,8 @@ import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { CalendarDays, User, Phone as PhoneIcon, Scissors, Clock, Coins, UserCog, StickyNote, MapPin, X, Plus, Search } from 'lucide-react';
 import { getStatusLabel, getStatusColor, formatDateTime, formatDuration } from '@/lib/utils';
-import { CalendarDays, Plus, Search } from 'lucide-react';
 import Link from 'next/link';
 
 type Reservation = {
@@ -334,7 +334,7 @@ export default function ReservationsPage() {
           <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h2 style={{ fontSize: 16, fontWeight: 700, color: c.text }}>예약 상세 정보</h2>
-            <button onClick={() => setSelectedRes(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: c.textLight, padding: 4 }}>✕</button>
+            <button onClick={() => setSelectedRes(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.textLight, padding: 4 }}><X style={{ width: 18, height: 18 }} /></button>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
             <span className={getStatusColor(selectedRes.status)} style={{ padding: '4px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>{getStatusLabel(selectedRes.status)}</span>
@@ -342,34 +342,34 @@ export default function ReservationsPage() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ padding: '12px 14px', background: '#F9FAFB', borderRadius: 10 }}>
-              <div style={{ fontSize: 11, color: c.textLight, fontWeight: 600 }}>📅 예약 일시</div>
+              <div style={{ fontSize: 11, color: c.textLight, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><CalendarDays style={{ width: 13, height: 13 }} /> 예약 일시</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: c.text }}>{formatDateTime(selectedRes.startTime)}</div>
               {selectedRes.endTime && <div style={{ fontSize: 12, color: c.textLight }}>~ {new Date(selectedRes.endTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 종료</div>}
             </div>
             <div style={{ padding: '12px 14px', background: '#F9FAFB', borderRadius: 10 }}>
-              <div style={{ fontSize: 11, color: c.textLight, fontWeight: 600 }}>👤 고객 정보</div>
+              <div style={{ fontSize: 11, color: c.textLight, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><User style={{ width: 13, height: 13 }} /> 고객 정보</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: c.text }}>{selectedRes.customer?.user?.name || '미지정'}</div>
-              {selectedRes.customer?.user?.phone && <div style={{ fontSize: 12, color: c.textLight }}>📞 {selectedRes.customer.user.phone}</div>}
+              {selectedRes.customer?.user?.phone && <div style={{ fontSize: 12, color: c.textLight, display: 'flex', alignItems: 'center', gap: 3 }}><PhoneIcon style={{ width: 11, height: 11 }} /> {selectedRes.customer.user.phone}</div>}
             </div>
             <div style={{ padding: '12px 14px', background: '#F9FAFB', borderRadius: 10 }}>
-              <div style={{ fontSize: 11, color: c.textLight, fontWeight: 600 }}>💆 시술 정보</div>
+              <div style={{ fontSize: 11, color: c.textLight, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><Scissors style={{ width: 13, height: 13 }} /> 시술 정보</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: c.text }}>{selectedRes.menu?.name || '-'}</div>
               <div style={{ display: 'flex', gap: 12, fontSize: 12, color: c.textLight }}>
-                {selectedRes.menu?.duration && <span>⏱ {formatDuration(selectedRes.menu.duration)}</span>}
-                {selectedRes.menu?.price != null && <span>💰 {selectedRes.menu.price.toLocaleString()}원</span>}
+                {selectedRes.menu?.duration && <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><Clock style={{ width: 11, height: 11 }} /> {formatDuration(selectedRes.menu.duration)}</span>}
+                {selectedRes.menu?.price != null && <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><Coins style={{ width: 11, height: 11 }} /> {selectedRes.menu.price.toLocaleString()}원</span>}
               </div>
             </div>
             <div style={{ padding: '12px 14px', background: '#F9FAFB', borderRadius: 10 }}>
-              <div style={{ fontSize: 11, color: c.textLight, fontWeight: 600 }}>🧑‍⚕️ 담당 관리사</div>
+              <div style={{ fontSize: 11, color: c.textLight, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><UserCog style={{ width: 13, height: 13 }} /> 담당 관리사</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: c.text }}>{selectedRes.staff?.user?.name || '미배정'}</div>
             </div>
             <div style={{ display: 'flex', gap: 12, padding: '10px 14px', background: '#F9FAFB', borderRadius: 10, fontSize: 12 }}>
-              <span style={{ color: c.textLight }}>출처: </span>
+              <span style={{ color: c.textLight, display: 'flex', alignItems: 'center', gap: 3 }}><MapPin style={{ width: 11, height: 11 }} /> 출처: </span>
               <span style={{ fontWeight: 600, color: c.text }}>{selectedRes.source === 'WEBSITE' ? '온라인' : '매장'}</span>
             </div>
             {selectedRes.memo && (
               <div style={{ padding: '12px 14px', background: '#FFFBEB', borderRadius: 10, border: '1px solid #FDE68A' }}>
-                <div style={{ fontSize: 11, color: '#92400E', fontWeight: 600, marginBottom: 4 }}>📝 메모</div>
+                <div style={{ fontSize: 11, color: '#92400E', fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}><StickyNote style={{ width: 13, height: 13 }} /> 메모</div>
                 <div style={{ fontSize: 13, color: '#78350F', lineHeight: 1.5 }}>{selectedRes.memo}</div>
               </div>
             )}
