@@ -8,7 +8,7 @@ import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, User, Phone as PhoneIcon, Scissors, Clock, Coins, UserCog, StickyNote, MapPin, X, Plus, Search, ClipboardCheck, FileText } from 'lucide-react';
+import { CalendarDays, User, Phone as PhoneIcon, Scissors, Clock, Coins, UserCog, StickyNote, MapPin, X, Plus, Search, ClipboardCheck, FileText, ListFilter, CheckCircle2, Clock4, CircleCheck, CircleX, UserX } from 'lucide-react';
 import { getStatusLabel, getStatusColor, formatDateTime, formatDuration } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -32,12 +32,12 @@ type Reservation = {
 };
 
 const STATUS_FILTERS = [
-  { key: 'ALL', label: '전체' },
-  { key: 'CONFIRMED', label: '확정' },
-  { key: 'PENDING', label: '대기' },
-  { key: 'COMPLETED', label: '완료' },
-  { key: 'CANCELLED', label: '취소' },
-  { key: 'NO_SHOW', label: '노쇼' },
+  { key: 'ALL', label: '전체', icon: ListFilter },
+  { key: 'CONFIRMED', label: '확정', icon: CheckCircle2 },
+  { key: 'PENDING', label: '요청', icon: Clock4 },
+  { key: 'COMPLETED', label: '완료', icon: CircleCheck },
+  { key: 'CANCELLED', label: '취소', icon: CircleX },
+  { key: 'NO_SHOW', label: '노쇼', icon: UserX },
 ];
 
 export default function ReservationsPage() {
@@ -127,12 +127,14 @@ export default function ReservationsPage() {
         {STATUS_FILTERS.map((f) => {
           const count = f.key === 'ALL' ? reservations.length : reservations.filter((r) => r.status === f.key).length;
           const isSelected = statusFilter === f.key;
+          const Icon = f.icon;
           return (
             <button
               key={f.key}
               onClick={() => setStatusFilter(f.key)}
               style={{
                 flexShrink: 0,
+                display: 'flex', alignItems: 'center', gap: 4,
                 padding: mob ? '5px 12px' : '6px 14px',
                 borderRadius: 8,
                 fontSize: mob ? 11.5 : 12,
@@ -144,6 +146,7 @@ export default function ReservationsPage() {
                 transition: 'all .15s',
               }}
             >
+              <Icon style={{ width: 13, height: 13 }} />
               {f.label} {count}
             </button>
           );
