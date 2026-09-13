@@ -42,7 +42,7 @@ export async function PUT(
   
   try {
     const body = await request.json();
-    const { skinType, allergies, memo, customData, name, phone, email, birthday, profileImage, gender } = body;
+    const { skinType, allergies, memo, customData, name, phone, email, birthday, profileImage, gender, notifyChannels } = body;
 
     // shopMember에서 userId 가져오기
     const member = await prisma.shopMember.findUnique({ where: { id: customerId }, select: { userId: true } });
@@ -70,6 +70,7 @@ export async function PUT(
         allergies: allergies !== undefined ? allergies : undefined,
         memo: memo !== undefined ? memo : undefined,
         customData: customData !== undefined ? JSON.stringify(customData) : undefined,
+        notifyChannels: notifyChannels !== undefined ? JSON.stringify(notifyChannels) : undefined,
       },
       include: { user: true },
     });

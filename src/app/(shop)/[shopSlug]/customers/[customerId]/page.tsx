@@ -58,7 +58,7 @@ export default function CustomerDetailPage() {
 
   // 고객 정보 수정 모달
   const [showEditProfile, setShowEditProfile] = useState(false);
-  const [editProfileForm, setEditProfileForm] = useState({ name: '', phone: '', email: '', memo: '', birthday: '', profileImage: '', gender: '' });
+  const [editProfileForm, setEditProfileForm] = useState({ name: '', phone: '', email: '', memo: '', birthday: '', profileImage: '', gender: '', notifyChannels: [] as string[] });
   const [bdYear, setBdYear] = useState('');
   const [bdMonth, setBdMonth] = useState('');
   const [bdDay, setBdDay] = useState('');
@@ -217,6 +217,7 @@ export default function CustomerDetailPage() {
       birthday: bd,
       profileImage: customer.user?.profileImage || '',
       gender: customer.user?.gender || '',
+      notifyChannels: customer.notifyChannels ? JSON.parse(customer.notifyChannels) : [],
     });
     setShowEditProfile(true);
   };
@@ -234,6 +235,7 @@ export default function CustomerDetailPage() {
           birthday,
           gender: editProfileForm.gender || null,
           profileImage: editProfileForm.profileImage || null,
+          notifyChannels: editProfileForm.notifyChannels,
         }),
       });
       if (res.ok) { fetchData(); setShowEditProfile(false); }
@@ -1464,6 +1466,42 @@ export default function CustomerDetailPage() {
                     {opt.label}
                   </button>
                 ))}
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: c.textLight, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                🔔 알림 수신
+              </label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[{ value: 'KAKAO', label: '카카오톡' }, { value: 'SMS', label: 'SMS' }, { value: 'PUSH', label: '앱 푸시' }].map(opt => {
+                  const selected = editProfileForm.notifyChannels.includes(opt.value);
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        const channels = selected
+                          ? editProfileForm.notifyChannels.filter(ch => ch !== opt.value)
+                          : [...editProfileForm.notifyChannels, opt.value];
+                        setEditProfileForm({ ...editProfileForm, notifyChannels: channels });
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '8px 0',
+                        borderRadius: 10,
+                        border: `1.5px solid ${selected ? c.primary : c.borderLight}`,
+                        background: selected ? c.primaryLight : '#fff',
+                        color: selected ? c.primary : c.textLight,
+                        fontSize: 12,
+                        fontWeight: selected ? 700 : 500,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <div>
