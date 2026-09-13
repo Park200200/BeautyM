@@ -165,6 +165,20 @@ export default function SettingsPage() {
   const fmtComma = (n: number) => n.toLocaleString();
   const parseComma = (s: string) => Number(s.replace(/,/g, '')) || 0;
 
+  const fmtPhone = (v: string) => {
+    const n = v.replace(/[^0-9]/g, '');
+    if (n.startsWith('02')) {
+      if (n.length <= 2) return n;
+      if (n.length <= 6) return `${n.slice(0,2)}-${n.slice(2)}`;
+      if (n.length <= 10) return `${n.slice(0,2)}-${n.slice(2,6)}-${n.slice(6)}`;
+      return `${n.slice(0,2)}-${n.slice(2,6)}-${n.slice(6,10)}`;
+    }
+    if (n.length <= 3) return n;
+    if (n.length <= 7) return `${n.slice(0,3)}-${n.slice(3)}`;
+    if (n.length <= 11) return `${n.slice(0,3)}-${n.slice(3,7)}-${n.slice(7)}`;
+    return `${n.slice(0,3)}-${n.slice(3,7)}-${n.slice(7,11)}`;
+  };
+
   const tabs = [
     { key: 'general', label: '일반 정보', icon: Store },
     { key: 'business', label: '사업자 정보', icon: Building },
@@ -231,7 +245,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <label style={labelStyle}><Phone style={{ width: 11, height: 11, display: 'inline' }} /> {'전화번호'}</label>
-                <input value={form.phone || ''} onChange={e => updateForm('phone', e.target.value)} style={inputStyle} placeholder="02-1234-5678" />
+                <input value={fmtPhone(form.phone || '')} onChange={e => updateForm('phone', fmtPhone(e.target.value))} style={inputStyle} placeholder="02-1234-5678" />
               </div>
               <div>
                 <label style={labelStyle}><Mail style={{ width: 11, height: 11, display: 'inline' }} /> {'이메일'}</label>
@@ -263,7 +277,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <label style={labelStyle}>{'연락처'}</label>
-                <input value={form.ownerPhone || ''} onChange={e => updateForm('ownerPhone', e.target.value)} style={inputStyle} placeholder="010-0000-0000" />
+                <input value={fmtPhone(form.ownerPhone || '')} onChange={e => updateForm('ownerPhone', fmtPhone(e.target.value))} style={inputStyle} placeholder="010-0000-0000" />
               </div>
             </div>
           </div>
