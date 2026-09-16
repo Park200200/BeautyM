@@ -40,6 +40,26 @@ export default function Sidebar() {
 
   const adminModules = MODULE_REGISTRY.filter((m) => m.target === 'ADMIN');
   const [collapsed, setCollapsed] = useState(false);
+  const [unreadNoticeCount, setUnreadNoticeCount] = useState(0);
+
+  // 공지 읽지않은 수 가져오기
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/notices');
+      if (res.ok) {
+        const notices = await res.json();
+        const readIds: string[] = JSON.parse(localStorage.getItem('beautym_read_notices') || '[]');
+        setUnreadNoticeCount(notices.filter((n: { id: string }) => !readIds.includes(n.id)).length);
+      }
+    } catch { /* */ }
+  }, []);
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const handler = () => fetchUnreadCount();
+    window.addEventListener('notice-read-changed', handler);
+    return () => window.removeEventListener('notice-read-changed', handler);
+  }, [fetchUnreadCount]);
 
   // Sidebar config
   const [sidebarConfig, setSidebarConfig] = useState<SidebarItem[] | null>(null);
@@ -176,8 +196,24 @@ export default function Sidebar() {
           onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = c.sidebarHover; }}
           onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
           title={opts.collapsed ? displayName : undefined}>
-          {(() => { const Icon = ICON_MAP[module.icon]; return Icon ? <Icon className="h-5 w-5 flex-shrink-0" /> : null; })()}
-          {!opts.collapsed && <span className="ml-3">{displayName}</span>}
+          <div className="relative flex-shrink-0">
+            {(() => { const Icon = ICON_MAP[module.icon]; return Icon ? <Icon className="h-5 w-5" /> : null; })()}
+            {module.id === 'shop_notice' && unreadNoticeCount > 0 && opts.collapsed && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-0.5">
+                {unreadNoticeCount}
+              </span>
+            )}
+          </div>
+          {!opts.collapsed && (
+            <span className="ml-3 flex-1 flex items-center justify-between">
+              {displayName}
+              {module.id === 'shop_notice' && unreadNoticeCount > 0 && (
+                <span className="min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1">
+                  {unreadNoticeCount}
+                </span>
+              )}
+            </span>
+          )}
         </Link>
       </li>
     );
