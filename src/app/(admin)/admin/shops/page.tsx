@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
-import { Search, Plus, Eye, X, Upload, FileText, Store, ShoppingBag, Package, Trash2 } from 'lucide-react';
+import { Search, Plus, Eye, X, Upload, FileText, Store, ShoppingBag, Package, Trash2, List, ClipboardList } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 
 interface Shop {
@@ -19,6 +19,14 @@ interface Vendor {
   id: string; name: string; contactName: string; phone: string; email: string;
   category: string; bizNumber: string; bankInfo: string; terms: string; memo: string;
   isActive: boolean; createdAt: string;
+}
+
+interface VendorProduct {
+  id: string; vendorId: string; name: string; description: string; detailDesc: string;
+  category: string; brand: string; spec: string; price: number; discountPrice: number | null;
+  unit: string; sku: string; stock: number; imageUrl: string; tags: string;
+  displayOrder: number; isDisplayed: boolean; isActive: boolean; createdAt: string;
+  vendor: { id: string; name: string; category: string };
 }
 
 export default function ShopsPage() {
@@ -43,6 +51,7 @@ export default function ShopsPage() {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'OVERDUE' | 'INACTIVE'>('ALL');
 
   // 상품판매 states
+  const [productSubTab, setProductSubTab] = useState<'vendors' | 'products'>('vendors');
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [vendorSearch, setVendorSearch] = useState('');
   const [showVendorForm, setShowVendorForm] = useState(false);
@@ -51,6 +60,18 @@ export default function ShopsPage() {
   const [vendorForm, setVendorForm] = useState({
     name: '', contactName: '', phone: '', email: '', category: '',
     bizNumber: '', bankInfo: '', terms: '', memo: '',
+  });
+
+  // 판매 상품 states
+  const [vendorProducts, setVendorProducts] = useState<VendorProduct[]>([]);
+  const [productSearch, setProductSearch] = useState('');
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<VendorProduct | null>(null);
+  const [productLoading, setProductLoading] = useState(false);
+  const [productForm, setProductForm] = useState({
+    vendorId: '', name: '', description: '', detailDesc: '', category: '', brand: '',
+    spec: '', price: '', discountPrice: '', unit: '', sku: '', stock: '0', tags: '',
+    displayOrder: '0', isDisplayed: true,
   });
 
   const fetchVendors = async () => {
@@ -62,7 +83,21 @@ export default function ShopsPage() {
     setVendorLoading(false);
   };
 
-  useEffect(() => { if (subTab === 'product') fetchVendors(); }, [subTab]);
+  const fetchProducts = async () => {
+    setProductLoading(true);
+    try {
+      const res = await fetch('/api/admin/vendor-products');
+      if (res.ok) setVendorProducts(await res.json());
+    } catch { /* */ }
+    setProductLoading(false);
+  };
+
+  useEffect(() => {
+    if (subTab === 'product') {
+      fetchVendors();
+      if (productSubTab === 'products') fetchProducts();
+    }
+  }, [subTab, productSubTab]);
 
   const handleVendorSubmit = async () => {
     try {
@@ -78,14 +113,38 @@ export default function ShopsPage() {
     } catch { /* */ }
   };
 
+  const handleProductSubmit = async () => {
+    try {
+      const url = editingProduct ? `/api/admin/vendor-products/${editingProduct.id}` : '/api/admin/vendor-products';
+      const method = editingProduct ? 'PATCH' : 'POST';
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(productForm) });
+      if (res.ok) {
+        setShowProductForm(false);
+        setEditingProduct(null);
+        setProductForm({ vendorId: '', name: '', description: '', detailDesc: '', category: '', brand: '', spec: '', price: '', discountPrice: '', unit: '', sku: '', stock: '0', tags: '', displayOrder: '0', isDisplayed: true });
+        fetchProducts();
+      }
+    } catch { /* */ }
+  };
+
   const deleteVendor = async (id: string) => {
     if (!confirm('삭제하시겠습니까?')) return;
     await fetch(`/api/admin/vendors/${id}`, { method: 'DELETE' });
     fetchVendors();
   };
 
+  const deleteProduct = async (id: string) => {
+    if (!confirm('삭제하시겠습니까?')) return;
+    await fetch(`/api/admin/vendor-products/${id}`, { method: 'DELETE' });
+    fetchProducts();
+  };
+
   const filteredVendors = vendors.filter(v =>
     !vendorSearch || v.name.includes(vendorSearch) || v.contactName.includes(vendorSearch) || v.category?.includes(vendorSearch)
+  );
+
+  const filteredProducts = vendorProducts.filter(p =>
+    !productSearch || p.name.includes(productSearch) || p.vendor?.name.includes(productSearch) || p.category?.includes(productSearch) || p.sku?.includes(productSearch)
   );
 
   const [form, setForm] = useState({
@@ -443,7 +502,7 @@ export default function ShopsPage() {
                     <td className="px-4 py-3"><span className="rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ background: c.primaryLight, color: c.primary }}>{shop.plan}</span></td>
                     <td className="px-4 py-3 text-center" style={{ color: c.text }}>{shop.memberCount}</td>
                     <td className="px-4 py-3 text-center" style={{ color: c.text }}>{shop.customerCount}</td>
-                    <td className="px-4 py-3 text-center" style={{ color: c.text }}>{shop.moduleCount}/13</td>
+                    <td className="px-4 py-3 text-center" style={{ color: c.text }}>{shop.moduleCount}/14</td>
                     <td className="px-4 py-3 text-center">
                       <span className={`text-xs font-medium ${!shop.isActive ? 'text-orange-500' : shop.status === 'PAST_DUE' ? 'text-red-500' : 'text-green-600'}`}>
                         {'\u25CF'} {!shop.isActive ? '\uBE44\uD65C\uC131' : shop.status === 'PAST_DUE' ? '\uC5F0\uCCB4' : '\uC0AC\uC6A9'}
@@ -475,63 +534,149 @@ export default function ShopsPage() {
       {/* 상품 판매 탭 */}
       {subTab === 'product' && (
         <div className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative max-w-sm flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: c.textLight }} />
-              <input type="text" placeholder="업체명, 담당자, 카테고리 검색..." value={vendorSearch}
-                onChange={e => setVendorSearch(e.target.value)}
-                className="w-full rounded-lg border py-2 pl-10 pr-4 text-sm outline-none"
-                style={{ borderColor: c.border, background: c.surface, color: c.text }} />
-            </div>
-            <button onClick={() => { setEditingVendor(null); setVendorForm({ name: '', contactName: '', phone: '', email: '', category: '', bizNumber: '', bankInfo: '', terms: '', memo: '' }); setShowVendorForm(true); }}
-              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white"
-              style={{ background: c.primary }}>
-              <Plus className="h-4 w-4" /> 업체 등록
-            </button>
+          {/* 서브탭 */}
+          <div className="flex gap-1 border-b" style={{ borderColor: c.borderLight }}>
+            {([
+              { id: 'vendors' as const, label: '업체 목록', icon: List, count: vendors.length },
+              { id: 'products' as const, label: '판매 상품', icon: ClipboardList, count: vendorProducts.length },
+            ]).map(t => (
+              <button key={t.id} onClick={() => setProductSubTab(t.id)}
+                className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors"
+                style={{ borderColor: productSubTab === t.id ? c.primary : 'transparent', color: productSubTab === t.id ? c.primary : c.textLight }}>
+                <t.icon className="h-4 w-4" />
+                {t.label}
+                {t.count > 0 && <span className="text-[10px] ml-1 px-1.5 py-0.5 rounded-full" style={{ background: c.primaryLight, color: c.primary }}>{t.count}</span>}
+              </button>
+            ))}
           </div>
 
-          {vendorLoading ? (
-            <div className="text-center py-16 text-sm" style={{ color: c.textLight }}>로딩 중...</div>
-          ) : filteredVendors.length === 0 ? (
-            <div className="text-center py-16 rounded-xl border" style={{ borderColor: c.borderLight, background: c.surface }}>
-              <ShoppingBag className="mx-auto mb-3 h-10 w-10" style={{ color: c.borderLight }} />
-              <p className="text-sm font-medium" style={{ color: c.textLight }}>등록된 상품 판매 업체가 없습니다</p>
-              <p className="text-xs mt-1" style={{ color: c.borderLight }}>업체 등록 버튼으로 추가해주세요</p>
+          {/* 업체 목록 */}
+          {productSubTab === 'vendors' && (<>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="relative max-w-sm flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: c.textLight }} />
+                <input type="text" placeholder="업체명, 대표자, 카테고리 검색..." value={vendorSearch}
+                  onChange={e => setVendorSearch(e.target.value)}
+                  className="w-full rounded-lg border py-2 pl-10 pr-4 text-sm outline-none"
+                  style={{ borderColor: c.border, background: c.surface, color: c.text }} />
+              </div>
+              <button onClick={() => { setEditingVendor(null); setVendorForm({ name: '', contactName: '', phone: '', email: '', category: '', bizNumber: '', bankInfo: '', terms: '', memo: '' }); setShowVendorForm(true); }}
+                className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white" style={{ background: c.primary }}>
+                <Plus className="h-4 w-4" /> 업체 등록
+              </button>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-              {filteredVendors.map(v => (
-                <div key={v.id} className="rounded-xl border p-4 space-y-3 transition-shadow hover:shadow-md"
-                  style={{ borderColor: c.borderLight, background: c.surface }}>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-bold text-sm" style={{ color: c.text }}>{v.name}</h3>
-                      {v.category && <span className="text-[10px] font-medium px-2 py-0.5 rounded-full mt-1 inline-block" style={{ background: c.primaryLight, color: c.primary }}>{v.category}</span>}
+            {vendorLoading ? (
+              <div className="text-center py-16 text-sm" style={{ color: c.textLight }}>로딩 중...</div>
+            ) : filteredVendors.length === 0 ? (
+              <div className="text-center py-16 rounded-xl border" style={{ borderColor: c.borderLight, background: c.surface }}>
+                <ShoppingBag className="mx-auto mb-3 h-10 w-10" style={{ color: c.borderLight }} />
+                <p className="text-sm font-medium" style={{ color: c.textLight }}>등록된 상품 판매 업체가 없습니다</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {filteredVendors.map(v => (
+                  <div key={v.id} className="rounded-xl border p-4 space-y-3 transition-shadow hover:shadow-md" style={{ borderColor: c.borderLight, background: c.surface }}>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="font-bold text-sm" style={{ color: c.text }}>{v.name}</h3>
+                        {v.category && <span className="text-[10px] font-medium px-2 py-0.5 rounded-full mt-1 inline-block" style={{ background: c.primaryLight, color: c.primary }}>{v.category}</span>}
+                      </div>
+                      <div className="flex gap-1">
+                        <button onClick={() => { setEditingVendor(v); setVendorForm({ name: v.name, contactName: v.contactName || '', phone: v.phone || '', email: v.email || '', category: v.category || '', bizNumber: v.bizNumber || '', bankInfo: v.bankInfo || '', terms: v.terms || '', memo: v.memo || '' }); setShowVendorForm(true); }}
+                          className="text-xs px-2 py-1 rounded" style={{ color: c.primary, background: c.primaryLight }}>수정</button>
+                        <button onClick={() => deleteVendor(v.id)} className="p-1"><Trash2 className="h-3.5 w-3.5" style={{ color: '#EF4444' }} /></button>
+                      </div>
                     </div>
-                    <div className="flex gap-1">
-                      <button onClick={() => { setEditingVendor(v); setVendorForm({ name: v.name, contactName: v.contactName || '', phone: v.phone || '', email: v.email || '', category: v.category || '', bizNumber: v.bizNumber || '', bankInfo: v.bankInfo || '', terms: v.terms || '', memo: v.memo || '' }); setShowVendorForm(true); }}
-                        className="text-xs px-2 py-1 rounded" style={{ color: c.primary, background: c.primaryLight }}>수정</button>
-                      <button onClick={() => deleteVendor(v.id)}
-                        className="p-1"><Trash2 className="h-3.5 w-3.5" style={{ color: '#EF4444' }} /></button>
+                    <div className="space-y-1 text-xs" style={{ color: c.textLight }}>
+                      {v.contactName && <div>대표자: {v.contactName}</div>}
+                      {v.phone && <div>전화: {v.phone}</div>}
+                      {v.email && <div>이메일: {v.email}</div>}
+                      {v.bizNumber && <div>사업자: {v.bizNumber}</div>}
                     </div>
+                    {(v.bankInfo || v.terms) && (
+                      <div className="text-xs p-2 rounded-lg" style={{ background: c.surfaceHover, color: c.textLight }}>
+                        {v.bankInfo && <div>ID: {v.bankInfo}</div>}
+                        {v.terms && <div>PW: {v.terms}</div>}
+                      </div>
+                    )}
+                    {v.memo && <div className="text-[11px] italic" style={{ color: c.borderLight }}>{v.memo}</div>}
                   </div>
-                  <div className="space-y-1 text-xs" style={{ color: c.textLight }}>
-                    {v.contactName && <div>담당자: {v.contactName}</div>}
-                    {v.phone && <div>전화: {v.phone}</div>}
-                    {v.email && <div>이메일: {v.email}</div>}
-                    {v.bizNumber && <div>사업자: {v.bizNumber}</div>}
-                  </div>
-                  {(v.bankInfo || v.terms) && (
-                    <div className="text-xs p-2 rounded-lg" style={{ background: c.surfaceHover, color: c.textLight }}>
-                      {v.bankInfo && <div>계좌: {v.bankInfo}</div>}
-                      {v.terms && <div>거래조건: {v.terms}</div>}
-                    </div>
-                  )}
-                  {v.memo && <div className="text-[11px] italic" style={{ color: c.borderLight }}>{v.memo}</div>}
+                ))}
+              </div>
+            )}
+          </>)}
+
+          {/* 판매 상품 */}
+          {productSubTab === 'products' && (<>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="relative max-w-sm flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: c.textLight }} />
+                <input type="text" placeholder="상품명, 업체명, 코드 검색..." value={productSearch}
+                  onChange={e => setProductSearch(e.target.value)}
+                  className="w-full rounded-lg border py-2 pl-10 pr-4 text-sm outline-none"
+                  style={{ borderColor: c.border, background: c.surface, color: c.text }} />
+              </div>
+              <button onClick={() => { setEditingProduct(null); setProductForm({ vendorId: '', name: '', description: '', detailDesc: '', category: '', brand: '', spec: '', price: '', discountPrice: '', unit: '', sku: '', stock: '0', tags: '', displayOrder: '0', isDisplayed: true }); setShowProductForm(true); }}
+                className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white" style={{ background: c.primary }}>
+                <Plus className="h-4 w-4" /> 상품 등록
+              </button>
+            </div>
+            {productLoading ? (
+              <div className="text-center py-16 text-sm" style={{ color: c.textLight }}>로딩 중...</div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="text-center py-16 rounded-xl border" style={{ borderColor: c.borderLight, background: c.surface }}>
+                <Package className="mx-auto mb-3 h-10 w-10" style={{ color: c.borderLight }} />
+                <p className="text-sm font-medium" style={{ color: c.textLight }}>등록된 판매 상품이 없습니다</p>
+              </div>
+            ) : (
+              <div className="rounded-xl border overflow-hidden" style={{ borderColor: c.borderLight, background: c.surface }}>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${c.borderLight}`, background: c.surfaceHover }}>
+                        <th className="px-4 py-3 text-left font-medium" style={{ color: c.textLight }}>상품명</th>
+                        <th className="px-4 py-3 text-left font-medium" style={{ color: c.textLight }}>업체</th>
+                        <th className="px-4 py-3 text-left font-medium" style={{ color: c.textLight }}>브랜드</th>
+                        <th className="px-4 py-3 text-right font-medium" style={{ color: c.textLight }}>판매가</th>
+                        <th className="px-4 py-3 text-center font-medium" style={{ color: c.textLight }}>재고</th>
+                        <th className="px-4 py-3 text-center font-medium" style={{ color: c.textLight }}>규격</th>
+                        <th className="px-4 py-3 text-center font-medium" style={{ color: c.textLight }}>진열</th>
+                        <th className="px-4 py-3 text-center font-medium" style={{ color: c.textLight }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredProducts.map(p => (
+                        <tr key={p.id} style={{ borderBottom: `1px solid ${c.borderLight}` }} className="transition-colors"
+                          onMouseEnter={e => e.currentTarget.style.background = c.surfaceHover}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                          <td className="px-4 py-3"><p className="font-medium" style={{ color: c.text }}>{p.name}</p>
+                            {p.description && <p className="text-xs truncate max-w-[200px]" style={{ color: c.textLight }}>{p.description}</p>}</td>
+                          <td className="px-4 py-3"><span className="text-xs px-2 py-0.5 rounded-full" style={{ background: c.primaryLight, color: c.primary }}>{p.vendor?.name || '-'}</span></td>
+                          <td className="px-4 py-3 text-xs" style={{ color: c.textLight }}>{p.brand || '-'}</td>
+                          <td className="px-4 py-3 text-right">
+                            {p.discountPrice ? (<><span className="line-through text-xs mr-1" style={{ color: c.textLight }}>{p.price?.toLocaleString()}</span><span className="font-semibold text-red-500">{p.discountPrice.toLocaleString()}원</span></>) : (<span className="font-semibold" style={{ color: c.text }}>{p.price?.toLocaleString()}원</span>)}
+                          </td>
+                          <td className="px-4 py-3 text-center text-xs" style={{ color: p.stock > 0 ? c.text : '#EF4444' }}>{p.stock}</td>
+                          <td className="px-4 py-3 text-center text-xs" style={{ color: c.textLight }}>{p.spec || '-'}</td>
+                          <td className="px-4 py-3 text-center"><span className={`text-xs font-medium ${p.isDisplayed ? 'text-green-600' : 'text-gray-400'}`}>{p.isDisplayed ? 'ON' : 'OFF'}</span></td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="flex items-center gap-1 justify-center">
+                              <button onClick={() => { setEditingProduct(p); setProductForm({ vendorId: p.vendorId, name: p.name, description: p.description || '', detailDesc: p.detailDesc || '', category: p.category || '', brand: p.brand || '', spec: p.spec || '', price: String(p.price || 0), discountPrice: p.discountPrice ? String(p.discountPrice) : '', unit: p.unit || '', sku: p.sku || '', stock: String(p.stock || 0), tags: p.tags || '', displayOrder: String(p.displayOrder || 0), isDisplayed: p.isDisplayed !== false }); setShowProductForm(true); }}
+                                className="text-xs px-2 py-1 rounded" style={{ color: c.primary, background: c.primaryLight }}>수정</button>
+                              <button onClick={() => deleteProduct(p.id)} className="p-1"><Trash2 className="h-3.5 w-3.5" style={{ color: '#EF4444' }} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              ))}
-            </div>
-          )}
+                <div className="px-4 py-3" style={{ borderTop: `1px solid ${c.borderLight}` }}>
+                  <p className="text-sm" style={{ color: c.textLight }}>총 {filteredProducts.length}개 상품</p>
+                </div>
+              </div>
+            )}
+          </>)}
         </div>
       )}
 
@@ -546,16 +691,31 @@ export default function ShopsPage() {
             {([
               { key: 'name', label: '업체명 *', placeholder: '업체명 입력' },
               { key: 'category', label: '카테고리', placeholder: '화장품, 장비, 소모품 등' },
-              { key: 'contactName', label: '담당자', placeholder: '담당자 이름' },
+              { key: 'contactName', label: '대표자', placeholder: '대표자 이름' },
               { key: 'phone', label: '전화번호', placeholder: '010-0000-0000' },
               { key: 'email', label: '이메일', placeholder: 'email@example.com' },
               { key: 'bizNumber', label: '사업자등록번호', placeholder: '000-00-00000' },
-              { key: 'bankInfo', label: '계좌정보', placeholder: '은행명 계좌번호 예금주' },
-              { key: 'terms', label: '거래조건', placeholder: '결제조건, 배송조건 등' },
+              { key: 'bankInfo', label: 'ID', placeholder: '로그인 아이디' },
+              { key: 'terms', label: 'PW', placeholder: '비밀번호' },
             ] as const).map(f => (
               <div key={f.key}>
                 <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>{f.label}</label>
-                <input value={vendorForm[f.key]} onChange={e => setVendorForm({ ...vendorForm, [f.key]: e.target.value })}
+                <input value={vendorForm[f.key]}
+                  onChange={e => {
+                    let val = e.target.value;
+                    if (f.key === 'phone') {
+                      const nums = val.replace(/\D/g, '').slice(0, 11);
+                      if (nums.length <= 3) val = nums;
+                      else if (nums.length <= 7) val = `${nums.slice(0,3)}-${nums.slice(3)}`;
+                      else val = `${nums.slice(0,3)}-${nums.slice(3,7)}-${nums.slice(7)}`;
+                    } else if (f.key === 'bizNumber') {
+                      const nums = val.replace(/\D/g, '').slice(0, 10);
+                      if (nums.length <= 3) val = nums;
+                      else if (nums.length <= 5) val = `${nums.slice(0,3)}-${nums.slice(3)}`;
+                      else val = `${nums.slice(0,3)}-${nums.slice(3,5)}-${nums.slice(5)}`;
+                    }
+                    setVendorForm({ ...vendorForm, [f.key]: val });
+                  }}
                   placeholder={f.placeholder}
                   className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
                   style={{ borderColor: c.border, color: c.text }} />
@@ -576,6 +736,124 @@ export default function ShopsPage() {
                 className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white"
                 style={{ background: vendorForm.name.trim() ? c.primary : c.borderLight }}>
                 {editingVendor ? '수정' : '등록'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 상품 등록/수정 모달 */}
+      {showProductForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }}>
+          <div className="w-full max-w-2xl rounded-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto" style={{ background: c.surface }}>
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-base" style={{ color: c.text }}>{editingProduct ? '상품 수정' : '상품 등록'}</h3>
+              <button onClick={() => setShowProductForm(false)}><X className="h-5 w-5" style={{ color: c.textLight }} /></button>
+            </div>
+            <p className="text-xs font-bold pt-1" style={{ color: c.primary }}>기본 정보</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>업체 *</label>
+                <select value={productForm.vendorId} onChange={e => setProductForm({ ...productForm, vendorId: e.target.value })}
+                  className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: c.border, color: c.text, background: c.surface }}>
+                  <option value="">업체 선택</option>
+                  {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>카테고리</label>
+                <input value={productForm.category} onChange={e => setProductForm({ ...productForm, category: e.target.value })}
+                  placeholder="화장품, 장비, 소모품 등" className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: c.border, color: c.text }} />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>상품명 *</label>
+              <input value={productForm.name} onChange={e => setProductForm({ ...productForm, name: e.target.value })}
+                placeholder="상품명 입력" className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: c.border, color: c.text }} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>브랜드</label>
+                <input value={productForm.brand} onChange={e => setProductForm({ ...productForm, brand: e.target.value })}
+                  placeholder="브랜드명" className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: c.border, color: c.text }} />
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>상품코드 (SKU)</label>
+                <input value={productForm.sku} onChange={e => setProductForm({ ...productForm, sku: e.target.value })}
+                  placeholder="SKU-001" className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: c.border, color: c.text }} />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>간단 설명</label>
+              <input value={productForm.description} onChange={e => setProductForm({ ...productForm, description: e.target.value })}
+                placeholder="한 줄 설명" className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: c.border, color: c.text }} />
+            </div>
+            <div>
+              <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>상세 설명</label>
+              <textarea value={productForm.detailDesc} onChange={e => setProductForm({ ...productForm, detailDesc: e.target.value })}
+                rows={3} placeholder="상세한 상품 설명 (성분, 효능 등)"
+                className="w-full rounded-lg border px-3 py-2 text-sm outline-none resize-none" style={{ borderColor: c.border, color: c.text }} />
+            </div>
+            <p className="text-xs font-bold pt-1" style={{ color: c.primary }}>가격 / 규격</p>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>판매가 (원)</label>
+                <input type="number" value={productForm.price} onChange={e => setProductForm({ ...productForm, price: e.target.value })}
+                  placeholder="0" className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: c.border, color: c.text }} />
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>할인가 (원)</label>
+                <input type="number" value={productForm.discountPrice} onChange={e => setProductForm({ ...productForm, discountPrice: e.target.value })}
+                  placeholder="미입력시 할인 없음" className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: c.border, color: c.text }} />
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>재고수량</label>
+                <input type="number" value={productForm.stock} onChange={e => setProductForm({ ...productForm, stock: e.target.value })}
+                  placeholder="0" className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: c.border, color: c.text }} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>용량/규격</label>
+                <input value={productForm.spec} onChange={e => setProductForm({ ...productForm, spec: e.target.value })}
+                  placeholder="50ml, 100매 등" className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: c.border, color: c.text }} />
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>단위</label>
+                <input value={productForm.unit} onChange={e => setProductForm({ ...productForm, unit: e.target.value })}
+                  placeholder="개, 박스, 세트" className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: c.border, color: c.text }} />
+              </div>
+            </div>
+            <p className="text-xs font-bold pt-1" style={{ color: c.primary }}>진열 설정</p>
+            <div>
+              <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>검색 태그</label>
+              <input value={productForm.tags} onChange={e => setProductForm({ ...productForm, tags: e.target.value })}
+                placeholder="쉼표로 구분 (예: 수분크림, 보습, 건성피부)" className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: c.border, color: c.text }} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>진열 순서</label>
+                <input type="number" value={productForm.displayOrder} onChange={e => setProductForm({ ...productForm, displayOrder: e.target.value })}
+                  placeholder="0" className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: c.border, color: c.text }} />
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>진열 여부</label>
+                <button onClick={() => setProductForm({ ...productForm, isDisplayed: !productForm.isDisplayed })}
+                  className="w-full rounded-lg border px-3 py-2 text-sm text-left flex items-center justify-between"
+                  style={{ borderColor: c.border, color: c.text }}>
+                  <span>{productForm.isDisplayed ? '진열 중 (ON)' : '미진열 (OFF)'}</span>
+                  <span className={`w-3 h-3 rounded-full ${productForm.isDisplayed ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                </button>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-3">
+              <button onClick={() => setShowProductForm(false)}
+                className="flex-1 rounded-lg border py-2.5 text-sm font-semibold"
+                style={{ borderColor: c.border, color: c.textLight }}>취소</button>
+              <button onClick={handleProductSubmit} disabled={!productForm.name.trim() || !productForm.vendorId}
+                className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white"
+                style={{ background: (productForm.name.trim() && productForm.vendorId) ? c.primary : c.borderLight }}>
+                {editingProduct ? '수정' : '등록'}
               </button>
             </div>
           </div>

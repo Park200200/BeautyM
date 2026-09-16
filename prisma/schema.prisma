@@ -682,4 +682,33 @@ model Vendor {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  products    VendorProduct[]
+}
+
+// 거래처 판매 상품
+model VendorProduct {
+  id              String   @id @default(cuid())
+  vendorId        String
+  name            String
+  description     String?   // 간단 설명
+  detailDesc      String?   // 상세 설명 (HTML/긴 텍스트)
+  category        String?   // 화장품, 장비, 소모품 등
+  brand           String?   // 브랜드
+  spec            String?   // 용량/규격 (50ml, 100매 등)
+  price           Float     @default(0) // 판매가
+  discountPrice   Float?    // 할인가
+  unit            String?   // 개, 박스, ml 등
+  sku             String?   // 상품코드
+  stock           Int       @default(0) // 재고수량
+  imageUrl        String?   // 대표 이미지
+  images          String?   // 추가 이미지 (JSON 배열)
+  tags            String?   // 검색 태그 (쉼표 구분)
+  displayOrder    Int       @default(0) // 진열 순서
+  isDisplayed     Boolean   @default(true) // 진열 여부
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  vendor          Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 }
