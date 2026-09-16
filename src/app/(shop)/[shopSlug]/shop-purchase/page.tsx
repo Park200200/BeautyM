@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
-import { ShoppingCart, Search, Package, Plus, Minus, Trash2, CreditCard, Image as ImageIcon } from 'lucide-react';
+import { ShoppingCart, Search, Package, Plus, Minus, Trash2, CreditCard, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -16,6 +16,9 @@ interface Product {
   price: number;
   discountPrice: number | null;
   imageUrl: string;
+  images: string;
+  detailDesc: string;
+  tags: string;
   unit: string;
   isDisplayed: boolean;
   vendor: { name: string };
@@ -39,6 +42,8 @@ export default function ShopPurchasePage() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('전체');
   const [loading, setLoading] = useState(true);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [detailImageIdx, setDetailImageIdx] = useState(0);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -126,7 +131,7 @@ export default function ShopPurchasePage() {
                 return (
                   <div key={product.id} className="rounded-xl border overflow-hidden transition-shadow hover:shadow-md cursor-pointer"
                     style={{ borderColor: inCart ? c.primary : c.borderLight, background: c.surface }}
-                    onClick={() => addToCart(product)}>
+                    onClick={() => { setSelectedProduct(product); setDetailImageIdx(0); }}>
                     <div className="aspect-square relative overflow-hidden">
                       {product.imageUrl ? (
                         <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
@@ -230,6 +235,100 @@ export default function ShopPurchasePage() {
           </div>
         </div>
       </div>
+
+      {/* 상품 상세 모달 */}
+      {selectedProduct && (() => {
+        const sp = selectedProduct;
+        const allImages = [sp.imageUrl, ...(sp.images ? JSON.parse(sp.images) as string[] : [])].filter(Boolean);
+        const inCart = cart.find(ci => ci.product.id === sp.id);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}
+            onClick={() => setSelectedProduct(null)}>
+            <div className="w-full max-w-3xl rounded-2xl overflow-hidden max-h-[90vh] flex flex-col" style={{ background: c.surface }}
+              onClick={e => e.stopPropagation()}>
+              {/* 이미지 슬라이더 */}
+              <div className="relative aspect-[16/9] bg-gray-100 overflow-hidden flex-shrink-0">
+                {allImages.length > 0 ? (
+                  <img src={allImages[detailImageIdx]} alt={sp.name}
+                    className="w-full h-full object-contain" style={{ background: c.surfaceHover }} />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center" style={{ background: c.surfaceHover }}>
+                    <Package className="h-16 w-16" style={{ color: c.borderLight }} />
+                  </div>
+                )}
+                <button onClick={() => setSelectedProduct(null)}
+                  className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 flex items-center justify-center">
+                  <X className="w-5 h-5 text-white" />
+                </button>
+                {allImages.length > 1 && (
+                  <>
+                    <button onClick={() => setDetailImageIdx(i => (i - 1 + allImages.length) % allImages.length)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 flex items-center justify-center">
+                      <ChevronLeft className="w-5 h-5 text-white" />
+                    </button>
+                    <button onClick={() => setDetailImageIdx(i => (i + 1) % allImages.length)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 flex items-center justify-center">
+                      <ChevronRight className="w-5 h-5 text-white" />
+                    </button>
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                      {allImages.map((_, i) => (
+                        <button key={i} onClick={() => setDetailImageIdx(i)}
+                          className={`w-2 h-2 rounded-full transition-all ${i === detailImageIdx ? 'w-5 bg-white' : 'bg-white/50'}`} />
+                      ))}
+                    </div>
+                  </>
+                )}
+                {sp.discountPrice && (
+                  <div className="absolute top-3 left-3 px-2 py-1 rounded-lg text-xs font-bold text-white bg-red-500">
+                    {Math.round((1 - sp.discountPrice / sp.price) * 100)}% OFF
+                  </div>
+                )}
+              </div>
+
+              {/* 상품 정보 */}
+              <div className="p-5 overflow-y-auto flex-1" style={{ maxHeight: '50vh' }}>
+                <div className="text-xs font-medium mb-1" style={{ color: c.primary }}>{sp.brand || sp.vendor?.name}</div>
+                <h2 className="text-lg font-bold mb-1" style={{ color: c.text }}>{sp.name}</h2>
+                {sp.spec && <div className="text-xs mb-2" style={{ color: c.textLight }}>{sp.spec}</div>}
+                <div className="flex items-baseline gap-2 mb-4">
+                  {sp.discountPrice ? (<>
+                    <span className="text-xl font-extrabold text-red-500">{sp.discountPrice.toLocaleString()}원</span>
+                    <span className="text-sm line-through" style={{ color: c.textLight }}>{sp.price.toLocaleString()}원</span>
+                  </>) : (
+                    <span className="text-xl font-extrabold" style={{ color: c.primary }}>{sp.price.toLocaleString()}원</span>
+                  )}
+                </div>
+
+                {sp.description && (
+                  <p className="text-sm mb-3" style={{ color: c.textLight }}>{sp.description}</p>
+                )}
+
+                {sp.detailDesc && (
+                  <div className="rounded-xl p-4 mb-3 text-sm leading-relaxed whitespace-pre-wrap" style={{ background: c.surfaceHover, color: c.text }}>
+                    {sp.detailDesc}
+                  </div>
+                )}
+
+                {sp.tags && (
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    {sp.tags.split(',').map((tag, i) => (
+                      <span key={i} className="px-2 py-0.5 rounded-full text-[10px] font-medium"
+                        style={{ background: c.primaryLight, color: c.primary }}>#{tag.trim()}</span>
+                    ))}
+                  </div>
+                )}
+
+                <button onClick={() => { addToCart(sp); setSelectedProduct(null); }}
+                  className="w-full rounded-xl py-3 text-sm font-bold text-white flex items-center justify-center gap-2"
+                  style={{ background: c.primary }}>
+                  <ShoppingCart className="h-4 w-4" />
+                  {inCart ? `장바구니에 추가 (현재 ${inCart.quantity}개)` : '장바구니에 담기'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
