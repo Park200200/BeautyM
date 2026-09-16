@@ -16,7 +16,7 @@ import {
   PanelLeftClose, PanelLeftOpen, Lock, Settings,
   CalendarCheck, UserRound, ClipboardList, TrendingUp,
   UsersRound, Package, Gift, Camera, LayoutDashboard,
-  Globe, Bell, Building2, BrainCircuit, ShoppingCart,
+  Globe, Bell, Building2, BrainCircuit, ShoppingCart, Megaphone,
   Pencil, X, ChevronUp, ChevronDown, GripVertical, RotateCcw,
   type LucideIcon,
 } from 'lucide-react';
@@ -24,7 +24,7 @@ import {
 const ICON_MAP: Record<string, LucideIcon> = {
   CalendarCheck, UserRound, ClipboardList, TrendingUp,
   UsersRound, Package, Gift, Camera, LayoutDashboard,
-  Globe, Bell, Building2, BrainCircuit, ShoppingCart,
+  Globe, Bell, Building2, BrainCircuit, ShoppingCart, Megaphone,
 };
 
 type SidebarItem = { moduleId: string; name: string; visible: boolean; sortOrder: number };

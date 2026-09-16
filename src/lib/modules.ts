@@ -174,13 +174,22 @@ export const MODULE_REGISTRY: FeatureModuleDefinition[] = [
     configFields: [],
     sortOrder: 13,
   },
+  {
+    id: 'shop_notice',
+    name: '공지안내',
+    description: '본사 공지사항, 이벤트 안내',
+    icon: 'Megaphone',
+    target: 'ADMIN',
+    configFields: [],
+    sortOrder: 14,
+  },
 ];
 
 /**
  * 플랜별 기본 모듈 구성 (신규 가입 시 자동 적용)
  */
 export const PLAN_DEFAULT_MODULES: Record<string, ModuleId[]> = {
-  free: ['reservation', 'customer', 'menu', 'website'],
+  free: ['reservation', 'customer', 'menu', 'website', 'shop_notice'],
   standard: [
     'reservation',
     'customer',
@@ -191,6 +200,7 @@ export const PLAN_DEFAULT_MODULES: Record<string, ModuleId[]> = {
     'dashboard',
     'website',
     'notification',
+    'shop_notice',
   ],
   pro: [
     'reservation',
@@ -205,6 +215,7 @@ export const PLAN_DEFAULT_MODULES: Record<string, ModuleId[]> = {
     'dashboard',
     'website',
     'notification',
+    'shop_notice',
   ],
   enterprise: [
     'reservation',
@@ -221,6 +232,7 @@ export const PLAN_DEFAULT_MODULES: Record<string, ModuleId[]> = {
     'notification',
     'multi_branch',
     'ai_analytics',
+    'shop_notice',
   ],
 };
 
@@ -296,4 +308,5 @@ export const MODULE_ROUTES: Record<ModuleId, string> = {
   notification: '/notifications',
   multi_branch: '/branches',
   ai_analytics: '/analytics',
+  shop_notice: '/shop-notice',
 };

@@ -15,7 +15,7 @@ import { useShopStore } from '@/stores/shop-store';
 import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
 import { useIsMobile } from '@/hooks/useMediaQuery';
-import { Menu, Bell, CalendarDays, Users, Scissors, Receipt, UserCog, Package, CreditCard, Image, LayoutDashboard, Settings, BellRing, Store, List, Plus, Building2, BrainCircuit, ChevronLeft, ChevronRight, Mail, Smartphone, MessageCircle, Send, Clock, Eye, EyeOff, Star, Sparkles, BookOpen, Wallet, UserPlus, PackagePlus, ImagePlus, Award, Gem, BarChart3, ShoppingCart } from 'lucide-react';
+import { Menu, Bell, CalendarDays, Users, Scissors, Receipt, UserCog, Package, CreditCard, Image, LayoutDashboard, Settings, BellRing, Store, List, Plus, Building2, BrainCircuit, ChevronLeft, ChevronRight, Mail, Smartphone, MessageCircle, Send, Clock, Eye, EyeOff, Star, Sparkles, BookOpen, Wallet, UserPlus, PackagePlus, ImagePlus, Award, Gem, BarChart3, ShoppingCart, Megaphone } from 'lucide-react';
 import Link from 'next/link';
 
 const PAGE_MAP: Record<string, { label: string; icon: typeof CalendarDays }> = {
@@ -33,6 +33,7 @@ const PAGE_MAP: Record<string, { label: string; icon: typeof CalendarDays }> = {
   'notifications': { label: '알림', icon: BellRing },
   'branches': { label: '다중 매장', icon: Building2 },
   'analytics': { label: 'AI 분석', icon: BrainCircuit },
+  'shop-notice': { label: '공지안내', icon: Megaphone },
   'settings': { label: '설정', icon: Settings },
 };
 

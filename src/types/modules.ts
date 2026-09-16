@@ -14,7 +14,8 @@ export type ModuleId =
   | 'website'
   | 'notification'
   | 'multi_branch'
-  | 'ai_analytics';
+  | 'ai_analytics'
+  | 'shop_notice';
 
 export type ModuleTarget = 'ADMIN' | 'CUSTOMER';
 
