@@ -7,6 +7,7 @@ export type ModuleId =
   | 'sales'
   | 'staff'
   | 'inventory'
+  | 'shop_purchase'
   | 'membership'
   | 'portfolio'
   | 'dashboard'
