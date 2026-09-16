@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
-import { Search, Plus, Eye, X, Upload, FileText, Store, ShoppingBag, Package, Trash2, List, ClipboardList } from 'lucide-react';
+import { Search, Plus, Eye, X, Upload, FileText, Store, ShoppingBag, Package, Trash2, List, ClipboardList, Image as ImageIcon, ImagePlus } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 
 interface Shop {
@@ -24,7 +24,7 @@ interface Vendor {
 interface VendorProduct {
   id: string; vendorId: string; name: string; description: string; detailDesc: string;
   category: string; brand: string; spec: string; price: number; discountPrice: number | null;
-  unit: string; sku: string; stock: number; imageUrl: string; tags: string;
+  unit: string; sku: string; imageUrl: string; images: string; tags: string;
   displayOrder: number; isDisplayed: boolean; isActive: boolean; createdAt: string;
   vendor: { id: string; name: string; category: string };
 }
@@ -70,9 +70,10 @@ export default function ShopsPage() {
   const [productLoading, setProductLoading] = useState(false);
   const [productForm, setProductForm] = useState({
     vendorId: '', name: '', description: '', detailDesc: '', category: '', brand: '',
-    spec: '', price: '', discountPrice: '', unit: '', sku: '', stock: '0', tags: '',
-    displayOrder: '0', isDisplayed: true,
+    spec: '', price: '', discountPrice: '', unit: '', sku: '', imageUrl: '', images: '',
+    tags: '', displayOrder: '0', isDisplayed: true,
   });
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const fetchVendors = async () => {
     setVendorLoading(true);
@@ -113,6 +114,32 @@ export default function ShopsPage() {
     } catch { /* */ }
   };
 
+  const uploadProductImage = async (file: File, type: 'thumbnail' | 'detail') => {
+    setUploadingImage(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      if (res.ok) {
+        const { url } = await res.json();
+        if (type === 'thumbnail') {
+          setProductForm(prev => ({ ...prev, imageUrl: url }));
+        } else {
+          const current = productForm.images ? JSON.parse(productForm.images) as string[] : [];
+          current.push(url);
+          setProductForm(prev => ({ ...prev, images: JSON.stringify(current) }));
+        }
+      }
+    } catch { /* */ }
+    setUploadingImage(false);
+  };
+
+  const removeDetailImage = (idx: number) => {
+    const current = productForm.images ? JSON.parse(productForm.images) as string[] : [];
+    current.splice(idx, 1);
+    setProductForm(prev => ({ ...prev, images: current.length > 0 ? JSON.stringify(current) : '' }));
+  };
+
   const handleProductSubmit = async () => {
     try {
       const url = editingProduct ? `/api/admin/vendor-products/${editingProduct.id}` : '/api/admin/vendor-products';
@@ -121,7 +148,7 @@ export default function ShopsPage() {
       if (res.ok) {
         setShowProductForm(false);
         setEditingProduct(null);
-        setProductForm({ vendorId: '', name: '', description: '', detailDesc: '', category: '', brand: '', spec: '', price: '', discountPrice: '', unit: '', sku: '', stock: '0', tags: '', displayOrder: '0', isDisplayed: true });
+        setProductForm({ vendorId: '', name: '', description: '', detailDesc: '', category: '', brand: '', spec: '', price: '', discountPrice: '', unit: '', sku: '', imageUrl: '', images: '', tags: '', displayOrder: '0', isDisplayed: true });
         fetchProducts();
       }
     } catch { /* */ }
@@ -616,7 +643,7 @@ export default function ShopsPage() {
                   className="w-full rounded-lg border py-2 pl-10 pr-4 text-sm outline-none"
                   style={{ borderColor: c.border, background: c.surface, color: c.text }} />
               </div>
-              <button onClick={() => { setEditingProduct(null); setProductForm({ vendorId: '', name: '', description: '', detailDesc: '', category: '', brand: '', spec: '', price: '', discountPrice: '', unit: '', sku: '', stock: '0', tags: '', displayOrder: '0', isDisplayed: true }); setShowProductForm(true); }}
+              <button onClick={() => { setEditingProduct(null); setProductForm({ vendorId: '', name: '', description: '', detailDesc: '', category: '', brand: '', spec: '', price: '', discountPrice: '', unit: '', sku: '', imageUrl: '', images: '', tags: '', displayOrder: '0', isDisplayed: true }); setShowProductForm(true); }}
                 className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white" style={{ background: c.primary }}>
                 <Plus className="h-4 w-4" /> 상품 등록
               </button>
@@ -634,11 +661,11 @@ export default function ShopsPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr style={{ borderBottom: `1px solid ${c.borderLight}`, background: c.surfaceHover }}>
+                        <th className="px-4 py-3 text-center font-medium" style={{ color: c.textLight }}>이미지</th>
                         <th className="px-4 py-3 text-left font-medium" style={{ color: c.textLight }}>상품명</th>
                         <th className="px-4 py-3 text-left font-medium" style={{ color: c.textLight }}>업체</th>
                         <th className="px-4 py-3 text-left font-medium" style={{ color: c.textLight }}>브랜드</th>
                         <th className="px-4 py-3 text-right font-medium" style={{ color: c.textLight }}>판매가</th>
-                        <th className="px-4 py-3 text-center font-medium" style={{ color: c.textLight }}>재고</th>
                         <th className="px-4 py-3 text-center font-medium" style={{ color: c.textLight }}>규격</th>
                         <th className="px-4 py-3 text-center font-medium" style={{ color: c.textLight }}>진열</th>
                         <th className="px-4 py-3 text-center font-medium" style={{ color: c.textLight }}></th>
@@ -649,6 +676,13 @@ export default function ShopsPage() {
                         <tr key={p.id} style={{ borderBottom: `1px solid ${c.borderLight}` }} className="transition-colors"
                           onMouseEnter={e => e.currentTarget.style.background = c.surfaceHover}
                           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                          <td className="px-4 py-3 text-center">
+                            {p.imageUrl ? (
+                              <img src={p.imageUrl} alt={p.name} className="w-10 h-10 rounded-lg object-cover mx-auto" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg flex items-center justify-center mx-auto" style={{ background: c.surfaceHover }}><ImageIcon className="w-4 h-4" style={{ color: c.borderLight }} /></div>
+                            )}
+                          </td>
                           <td className="px-4 py-3"><p className="font-medium" style={{ color: c.text }}>{p.name}</p>
                             {p.description && <p className="text-xs truncate max-w-[200px]" style={{ color: c.textLight }}>{p.description}</p>}</td>
                           <td className="px-4 py-3"><span className="text-xs px-2 py-0.5 rounded-full" style={{ background: c.primaryLight, color: c.primary }}>{p.vendor?.name || '-'}</span></td>
@@ -656,12 +690,11 @@ export default function ShopsPage() {
                           <td className="px-4 py-3 text-right">
                             {p.discountPrice ? (<><span className="line-through text-xs mr-1" style={{ color: c.textLight }}>{p.price?.toLocaleString()}</span><span className="font-semibold text-red-500">{p.discountPrice.toLocaleString()}원</span></>) : (<span className="font-semibold" style={{ color: c.text }}>{p.price?.toLocaleString()}원</span>)}
                           </td>
-                          <td className="px-4 py-3 text-center text-xs" style={{ color: p.stock > 0 ? c.text : '#EF4444' }}>{p.stock}</td>
                           <td className="px-4 py-3 text-center text-xs" style={{ color: c.textLight }}>{p.spec || '-'}</td>
                           <td className="px-4 py-3 text-center"><span className={`text-xs font-medium ${p.isDisplayed ? 'text-green-600' : 'text-gray-400'}`}>{p.isDisplayed ? 'ON' : 'OFF'}</span></td>
                           <td className="px-4 py-3 text-center">
                             <div className="flex items-center gap-1 justify-center">
-                              <button onClick={() => { setEditingProduct(p); setProductForm({ vendorId: p.vendorId, name: p.name, description: p.description || '', detailDesc: p.detailDesc || '', category: p.category || '', brand: p.brand || '', spec: p.spec || '', price: String(p.price || 0), discountPrice: p.discountPrice ? String(p.discountPrice) : '', unit: p.unit || '', sku: p.sku || '', stock: String(p.stock || 0), tags: p.tags || '', displayOrder: String(p.displayOrder || 0), isDisplayed: p.isDisplayed !== false }); setShowProductForm(true); }}
+                              <button onClick={() => { setEditingProduct(p); setProductForm({ vendorId: p.vendorId, name: p.name, description: p.description || '', detailDesc: p.detailDesc || '', category: p.category || '', brand: p.brand || '', spec: p.spec || '', price: String(p.price || 0), discountPrice: p.discountPrice ? String(p.discountPrice) : '', unit: p.unit || '', sku: p.sku || '', imageUrl: p.imageUrl || '', images: p.images || '', tags: p.tags || '', displayOrder: String(p.displayOrder || 0), isDisplayed: p.isDisplayed !== false }); setShowProductForm(true); }}
                                 className="text-xs px-2 py-1 rounded" style={{ color: c.primary, background: c.primaryLight }}>수정</button>
                               <button onClick={() => deleteProduct(p.id)} className="p-1"><Trash2 className="h-3.5 w-3.5" style={{ color: '#EF4444' }} /></button>
                             </div>
@@ -795,7 +828,7 @@ export default function ShopsPage() {
                 className="w-full rounded-lg border px-3 py-2 text-sm outline-none resize-none" style={{ borderColor: c.border, color: c.text }} />
             </div>
             <p className="text-xs font-bold pt-1" style={{ color: c.primary }}>가격 / 규격</p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>판매가 (원)</label>
                 <input type="number" value={productForm.price} onChange={e => setProductForm({ ...productForm, price: e.target.value })}
@@ -805,11 +838,6 @@ export default function ShopsPage() {
                 <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>할인가 (원)</label>
                 <input type="number" value={productForm.discountPrice} onChange={e => setProductForm({ ...productForm, discountPrice: e.target.value })}
                   placeholder="미입력시 할인 없음" className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: c.border, color: c.text }} />
-              </div>
-              <div>
-                <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>재고수량</label>
-                <input type="number" value={productForm.stock} onChange={e => setProductForm({ ...productForm, stock: e.target.value })}
-                  placeholder="0" className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: c.border, color: c.text }} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -824,6 +852,54 @@ export default function ShopsPage() {
                   placeholder="개, 박스, 세트" className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: c.border, color: c.text }} />
               </div>
             </div>
+
+            {/* 이미지 */}
+            <p className="text-xs font-bold pt-1" style={{ color: c.primary }}>상품 이미지</p>
+            <div className="grid grid-cols-2 gap-4">
+              {/* 썸네일 */}
+              <div>
+                <label className="text-xs font-medium mb-2 block" style={{ color: c.textLight }}>대표 이미지 (썸네일)</label>
+                <label className="block cursor-pointer">
+                  {productForm.imageUrl ? (
+                    <div className="relative group">
+                      <img src={productForm.imageUrl} alt="썸네일" className="w-full h-32 rounded-lg object-cover border" style={{ borderColor: c.borderLight }} />
+                      <button onClick={(e) => { e.preventDefault(); setProductForm({ ...productForm, imageUrl: '' }); }}
+                        className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-full h-32 rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-1"
+                      style={{ borderColor: c.borderLight }}>
+                      <ImagePlus className="w-6 h-6" style={{ color: c.borderLight }} />
+                      <span className="text-[11px]" style={{ color: c.textLight }}>클릭하여 업로드</span>
+                    </div>
+                  )}
+                  <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) uploadProductImage(f, 'thumbnail'); }} />
+                </label>
+              </div>
+              {/* 상세 이미지 */}
+              <div>
+                <label className="text-xs font-medium mb-2 block" style={{ color: c.textLight }}>상세 이미지 (여러장)</label>
+                <div className="flex gap-2 flex-wrap">
+                  {(productForm.images ? JSON.parse(productForm.images) as string[] : []).map((img, idx) => (
+                    <div key={idx} className="relative group">
+                      <img src={img} alt={`상세${idx + 1}`} className="w-14 h-14 rounded-lg object-cover border" style={{ borderColor: c.borderLight }} />
+                      <button onClick={() => removeDetailImage(idx)}
+                        className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  ))}
+                  <label className="w-14 h-14 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer"
+                    style={{ borderColor: c.borderLight }}>
+                    <Plus className="w-4 h-4" style={{ color: c.borderLight }} />
+                    <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) uploadProductImage(f, 'detail'); }} />
+                  </label>
+                </div>
+              </div>
+            </div>
+            {uploadingImage && <p className="text-xs text-center" style={{ color: c.primary }}>이미지 업로드 중...</p>}
             <p className="text-xs font-bold pt-1" style={{ color: c.primary }}>진열 설정</p>
             <div>
               <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>검색 태그</label>

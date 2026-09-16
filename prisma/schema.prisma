@@ -700,8 +700,7 @@ model VendorProduct {
   discountPrice   Float?    // 할인가
   unit            String?   // 개, 박스, ml 등
   sku             String?   // 상품코드
-  stock           Int       @default(0) // 재고수량
-  imageUrl        String?   // 대표 이미지
+  imageUrl        String?   // 대표 이미지 (썸네일)
   images          String?   // 추가 이미지 (JSON 배열)
   tags            String?   // 검색 태그 (쉼표 구분)
   displayOrder    Int       @default(0) // 진열 순서
