@@ -4,16 +4,21 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
-import { ShoppingCart, Search, Package, Plus, Minus, Trash2, CreditCard } from 'lucide-react';
+import { ShoppingCart, Search, Package, Plus, Minus, Trash2, CreditCard, Image as ImageIcon } from 'lucide-react';
 
 interface Product {
   id: string;
   name: string;
+  description: string;
   brand: string;
   category: string;
+  spec: string;
   price: number;
-  image?: string;
-  stock: number;
+  discountPrice: number | null;
+  imageUrl: string;
+  unit: string;
+  isDisplayed: boolean;
+  vendor: { name: string };
 }
 
 interface CartItem {
@@ -38,10 +43,11 @@ export default function ShopPurchasePage() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const res = await fetch(`/api/shops/${shopSlug}/inventory`);
+        const res = await fetch('/api/admin/vendor-products');
         if (res.ok) {
           const data = await res.json();
-          setProducts(data.products || data || []);
+          // 진열 ON인 상품만 표시
+          setProducts((data || []).filter((p: Product) => p.isDisplayed !== false));
         }
       } catch (e) { console.error(e); }
       setLoading(false);
@@ -76,7 +82,8 @@ export default function ShopPurchasePage() {
     setCart(prev => prev.filter(c => c.product.id !== productId));
   };
 
-  const totalAmount = cart.reduce((sum, c) => sum + c.product.price * c.quantity, 0);
+  const getDisplayPrice = (p: Product) => p.discountPrice || p.price;
+  const totalAmount = cart.reduce((sum, c) => sum + getDisplayPrice(c.product) * c.quantity, 0);
   const totalItems = cart.reduce((sum, c) => sum + c.quantity, 0);
 
   return (
@@ -110,19 +117,19 @@ export default function ShopPurchasePage() {
             <div className="text-center py-20">
               <Package className="mx-auto mb-3 h-10 w-10" style={{ color: c.borderLight }} />
               <p className="text-sm" style={{ color: c.textLight }}>등록된 상품이 없습니다</p>
-              <p className="text-xs mt-1" style={{ color: c.borderLight }}>재고 관리에서 상품을 먼저 등록해주세요</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
               {filtered.map(product => {
                 const inCart = cart.find(c => c.product.id === product.id);
+                const displayPrice = getDisplayPrice(product);
                 return (
                   <div key={product.id} className="rounded-xl border overflow-hidden transition-shadow hover:shadow-md cursor-pointer"
                     style={{ borderColor: inCart ? c.primary : c.borderLight, background: c.surface }}
                     onClick={() => addToCart(product)}>
-                    <div className="aspect-square bg-gray-100 relative overflow-hidden">
-                      {product.image ? (
-                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                    <div className="aspect-square relative overflow-hidden">
+                      {product.imageUrl ? (
+                        <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center" style={{ background: c.surfaceHover }}>
                           <Package className="h-8 w-8" style={{ color: c.borderLight }} />
@@ -132,20 +139,23 @@ export default function ShopPurchasePage() {
                         <div className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
                           style={{ background: c.primary }}>{inCart.quantity}</div>
                       )}
-                      {product.stock <= 0 && (
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                          <span className="text-white text-xs font-bold bg-red-500 px-2 py-1 rounded">품절</span>
+                      {product.discountPrice && (
+                        <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-red-500">
+                          {Math.round((1 - product.discountPrice / product.price) * 100)}%
                         </div>
                       )}
                     </div>
                     <div className="p-3">
-                      <div className="text-[10px] font-medium mb-0.5" style={{ color: c.textLight }}>{product.brand || '미분류'}</div>
+                      <div className="text-[10px] font-medium mb-0.5" style={{ color: c.textLight }}>{product.brand || product.vendor?.name || '미분류'}</div>
                       <div className="text-xs font-bold truncate" style={{ color: c.text }}>{product.name}</div>
-                      <div className="text-sm font-extrabold mt-1" style={{ color: c.primary }}>
-                        ₩{product.price?.toLocaleString() || 0}
-                      </div>
-                      <div className="text-[10px] mt-0.5" style={{ color: product.stock <= 3 ? '#DC2626' : c.textLight }}>
-                        재고 {product.stock}개
+                      {product.spec && <div className="text-[10px] mt-0.5" style={{ color: c.textLight }}>{product.spec}</div>}
+                      <div className="mt-1.5 flex items-baseline gap-1.5">
+                        {product.discountPrice ? (<>
+                          <span className="text-sm font-extrabold text-red-500">{product.discountPrice.toLocaleString()}원</span>
+                          <span className="text-[10px] line-through" style={{ color: c.textLight }}>{product.price.toLocaleString()}</span>
+                        </>) : (
+                          <span className="text-sm font-extrabold" style={{ color: c.primary }}>{product.price.toLocaleString()}원</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -177,15 +187,15 @@ export default function ShopPurchasePage() {
                   {cart.map(item => (
                     <div key={item.product.id} className="flex items-center gap-3 rounded-xl p-2" style={{ background: c.surfaceHover }}>
                       <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0" style={{ background: c.borderLight }}>
-                        {item.product.image ? (
-                          <img src={item.product.image} alt="" className="w-full h-full object-cover" />
+                        {item.product.imageUrl ? (
+                          <img src={item.product.imageUrl} alt="" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center"><Package className="h-4 w-4" style={{ color: c.textLight }} /></div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-bold truncate" style={{ color: c.text }}>{item.product.name}</div>
-                        <div className="text-xs font-semibold" style={{ color: c.primary }}>₩{(item.product.price * item.quantity).toLocaleString()}</div>
+                        <div className="text-xs font-semibold" style={{ color: c.primary }}>{(getDisplayPrice(item.product) * item.quantity).toLocaleString()}원</div>
                       </div>
                       <div className="flex items-center gap-1">
                         <button onClick={(e) => { e.stopPropagation(); updateQty(item.product.id, -1); }}
@@ -207,7 +217,7 @@ export default function ShopPurchasePage() {
                 <div className="p-4" style={{ borderTop: `1px solid ${c.borderLight}` }}>
                   <div className="flex justify-between items-center mb-3">
                     <span className="text-sm font-medium" style={{ color: c.textLight }}>합계</span>
-                    <span className="text-lg font-extrabold" style={{ color: c.text }}>₩{totalAmount.toLocaleString()}</span>
+                    <span className="text-lg font-extrabold" style={{ color: c.text }}>{totalAmount.toLocaleString()}원</span>
                   </div>
                   <button className="w-full rounded-xl py-3 text-sm font-bold text-white flex items-center justify-center gap-2"
                     style={{ background: c.primary }}>
