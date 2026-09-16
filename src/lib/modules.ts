@@ -4,7 +4,7 @@
 import { FeatureModuleDefinition, ModuleId } from '@/types/modules';
 
 /**
- * 13개 기능 모듈 정의
+ * 14개 기능 모듈 정의
  * 본사가 매장별로 ON/OFF하고 세부 설정을 조정할 수 있는 단위
  */
 export const MODULE_REGISTRY: FeatureModuleDefinition[] = [

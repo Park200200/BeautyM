@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useThemeStore } from '@/stores/theme-store';
 import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes';
-import { Search, Plus, Eye, X, Upload, FileText } from 'lucide-react';
+import { Search, Plus, Eye, X, Upload, FileText, Store, ShoppingBag, Package, Trash2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 
 interface Shop {
@@ -15,6 +15,12 @@ interface Shop {
 }
 interface PlanItem { id: string; name: string; price: number; description: string | null; }
 
+interface Vendor {
+  id: string; name: string; contactName: string; phone: string; email: string;
+  category: string; bizNumber: string; bankInfo: string; terms: string; memo: string;
+  isActive: boolean; createdAt: string;
+}
+
 export default function ShopsPage() {
   const [mounted, setMounted] = useState(false);
   const store = useThemeStore();
@@ -23,6 +29,9 @@ export default function ShopsPage() {
   const c = theme.colors;
   const mob = useIsMobile();
 
+  const [subTab, setSubTab] = useState<'beauty' | 'product'>('beauty');
+
+  // 뷰티관리 states
   const [shops, setShops] = useState<Shop[]>([]);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -32,6 +41,52 @@ export default function ShopsPage() {
   const [message, setMessage] = useState('');
   const [uploading, setUploading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'OVERDUE' | 'INACTIVE'>('ALL');
+
+  // 상품판매 states
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [vendorSearch, setVendorSearch] = useState('');
+  const [showVendorForm, setShowVendorForm] = useState(false);
+  const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
+  const [vendorLoading, setVendorLoading] = useState(false);
+  const [vendorForm, setVendorForm] = useState({
+    name: '', contactName: '', phone: '', email: '', category: '',
+    bizNumber: '', bankInfo: '', terms: '', memo: '',
+  });
+
+  const fetchVendors = async () => {
+    setVendorLoading(true);
+    try {
+      const res = await fetch('/api/admin/vendors');
+      if (res.ok) setVendors(await res.json());
+    } catch { /* */ }
+    setVendorLoading(false);
+  };
+
+  useEffect(() => { if (subTab === 'product') fetchVendors(); }, [subTab]);
+
+  const handleVendorSubmit = async () => {
+    try {
+      const url = editingVendor ? `/api/admin/vendors/${editingVendor.id}` : '/api/admin/vendors';
+      const method = editingVendor ? 'PATCH' : 'POST';
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(vendorForm) });
+      if (res.ok) {
+        setShowVendorForm(false);
+        setEditingVendor(null);
+        setVendorForm({ name: '', contactName: '', phone: '', email: '', category: '', bizNumber: '', bankInfo: '', terms: '', memo: '' });
+        fetchVendors();
+      }
+    } catch { /* */ }
+  };
+
+  const deleteVendor = async (id: string) => {
+    if (!confirm('삭제하시겠습니까?')) return;
+    await fetch(`/api/admin/vendors/${id}`, { method: 'DELETE' });
+    fetchVendors();
+  };
+
+  const filteredVendors = vendors.filter(v =>
+    !vendorSearch || v.name.includes(vendorSearch) || v.contactName.includes(vendorSearch) || v.category?.includes(vendorSearch)
+  );
 
   const [form, setForm] = useState({
     shopName: '', phone: '', ownerName: '', ownerEmail: '', ownerPhone: '',
@@ -134,6 +189,23 @@ export default function ShopsPage() {
 
   return (
     <div className="space-y-6">
+      {/* 서브탭 */}
+      <div className="flex gap-1 p-1 rounded-xl" style={{ background: c.surfaceHover }}>
+        {([
+          { id: 'beauty' as const, label: '뷰티 관리', icon: Store },
+          { id: 'product' as const, label: '상품 판매', icon: ShoppingBag },
+        ]).map(tab => (
+          <button key={tab.id} onClick={() => setSubTab(tab.id)}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all"
+            style={{ background: subTab === tab.id ? c.surface : 'transparent', color: subTab === tab.id ? c.primary : c.textLight,
+              boxShadow: subTab === tab.id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
+            <tab.icon className="h-4 w-4" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {subTab === 'beauty' && (<>
       {/* 상단 */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 flex-1">
@@ -395,6 +467,117 @@ export default function ShopsPage() {
           </div>
           <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: `1px solid ${c.borderLight}` }}>
             <p className="text-sm" style={{ color: c.textLight }}>{'\uCD1D'} {filtered.length}{'\uAC1C \uB9E4\uC7A5'}</p>
+          </div>
+        </div>
+      )}
+      </>)}
+
+      {/* 상품 판매 탭 */}
+      {subTab === 'product' && (
+        <div className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative max-w-sm flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: c.textLight }} />
+              <input type="text" placeholder="업체명, 담당자, 카테고리 검색..." value={vendorSearch}
+                onChange={e => setVendorSearch(e.target.value)}
+                className="w-full rounded-lg border py-2 pl-10 pr-4 text-sm outline-none"
+                style={{ borderColor: c.border, background: c.surface, color: c.text }} />
+            </div>
+            <button onClick={() => { setEditingVendor(null); setVendorForm({ name: '', contactName: '', phone: '', email: '', category: '', bizNumber: '', bankInfo: '', terms: '', memo: '' }); setShowVendorForm(true); }}
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white"
+              style={{ background: c.primary }}>
+              <Plus className="h-4 w-4" /> 업체 등록
+            </button>
+          </div>
+
+          {vendorLoading ? (
+            <div className="text-center py-16 text-sm" style={{ color: c.textLight }}>로딩 중...</div>
+          ) : filteredVendors.length === 0 ? (
+            <div className="text-center py-16 rounded-xl border" style={{ borderColor: c.borderLight, background: c.surface }}>
+              <ShoppingBag className="mx-auto mb-3 h-10 w-10" style={{ color: c.borderLight }} />
+              <p className="text-sm font-medium" style={{ color: c.textLight }}>등록된 상품 판매 업체가 없습니다</p>
+              <p className="text-xs mt-1" style={{ color: c.borderLight }}>업체 등록 버튼으로 추가해주세요</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+              {filteredVendors.map(v => (
+                <div key={v.id} className="rounded-xl border p-4 space-y-3 transition-shadow hover:shadow-md"
+                  style={{ borderColor: c.borderLight, background: c.surface }}>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-bold text-sm" style={{ color: c.text }}>{v.name}</h3>
+                      {v.category && <span className="text-[10px] font-medium px-2 py-0.5 rounded-full mt-1 inline-block" style={{ background: c.primaryLight, color: c.primary }}>{v.category}</span>}
+                    </div>
+                    <div className="flex gap-1">
+                      <button onClick={() => { setEditingVendor(v); setVendorForm({ name: v.name, contactName: v.contactName || '', phone: v.phone || '', email: v.email || '', category: v.category || '', bizNumber: v.bizNumber || '', bankInfo: v.bankInfo || '', terms: v.terms || '', memo: v.memo || '' }); setShowVendorForm(true); }}
+                        className="text-xs px-2 py-1 rounded" style={{ color: c.primary, background: c.primaryLight }}>수정</button>
+                      <button onClick={() => deleteVendor(v.id)}
+                        className="p-1"><Trash2 className="h-3.5 w-3.5" style={{ color: '#EF4444' }} /></button>
+                    </div>
+                  </div>
+                  <div className="space-y-1 text-xs" style={{ color: c.textLight }}>
+                    {v.contactName && <div>담당자: {v.contactName}</div>}
+                    {v.phone && <div>전화: {v.phone}</div>}
+                    {v.email && <div>이메일: {v.email}</div>}
+                    {v.bizNumber && <div>사업자: {v.bizNumber}</div>}
+                  </div>
+                  {(v.bankInfo || v.terms) && (
+                    <div className="text-xs p-2 rounded-lg" style={{ background: c.surfaceHover, color: c.textLight }}>
+                      {v.bankInfo && <div>계좌: {v.bankInfo}</div>}
+                      {v.terms && <div>거래조건: {v.terms}</div>}
+                    </div>
+                  )}
+                  {v.memo && <div className="text-[11px] italic" style={{ color: c.borderLight }}>{v.memo}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 업체 등록/수정 모달 */}
+      {showVendorForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }}>
+          <div className="w-full max-w-lg rounded-2xl p-6 space-y-4 max-h-[80vh] overflow-y-auto" style={{ background: c.surface }}>
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-base" style={{ color: c.text }}>{editingVendor ? '업체 수정' : '업체 등록'}</h3>
+              <button onClick={() => setShowVendorForm(false)}><X className="h-5 w-5" style={{ color: c.textLight }} /></button>
+            </div>
+            {([
+              { key: 'name', label: '업체명 *', placeholder: '업체명 입력' },
+              { key: 'category', label: '카테고리', placeholder: '화장품, 장비, 소모품 등' },
+              { key: 'contactName', label: '담당자', placeholder: '담당자 이름' },
+              { key: 'phone', label: '전화번호', placeholder: '010-0000-0000' },
+              { key: 'email', label: '이메일', placeholder: 'email@example.com' },
+              { key: 'bizNumber', label: '사업자등록번호', placeholder: '000-00-00000' },
+              { key: 'bankInfo', label: '계좌정보', placeholder: '은행명 계좌번호 예금주' },
+              { key: 'terms', label: '거래조건', placeholder: '결제조건, 배송조건 등' },
+            ] as const).map(f => (
+              <div key={f.key}>
+                <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>{f.label}</label>
+                <input value={vendorForm[f.key]} onChange={e => setVendorForm({ ...vendorForm, [f.key]: e.target.value })}
+                  placeholder={f.placeholder}
+                  className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+                  style={{ borderColor: c.border, color: c.text }} />
+              </div>
+            ))}
+            <div>
+              <label className="text-xs font-medium mb-1 block" style={{ color: c.textLight }}>메모</label>
+              <textarea value={vendorForm.memo} onChange={e => setVendorForm({ ...vendorForm, memo: e.target.value })}
+                rows={2} placeholder="특이사항 메모"
+                className="w-full rounded-lg border px-3 py-2 text-sm outline-none resize-none"
+                style={{ borderColor: c.border, color: c.text }} />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button onClick={() => setShowVendorForm(false)}
+                className="flex-1 rounded-lg border py-2.5 text-sm font-semibold"
+                style={{ borderColor: c.border, color: c.textLight }}>취소</button>
+              <button onClick={handleVendorSubmit} disabled={!vendorForm.name.trim()}
+                className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white"
+                style={{ background: vendorForm.name.trim() ? c.primary : c.borderLight }}>
+                {editingVendor ? '수정' : '등록'}
+              </button>
+            </div>
           </div>
         </div>
       )}

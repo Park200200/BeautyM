@@ -666,3 +666,20 @@ model Dealer {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
+
+// 상품 판매 업체 (거래처 - 상품판매)
+model Vendor {
+  id          String   @id @default(cuid())
+  name        String
+  contactName String?
+  phone       String?
+  email       String?
+  category    String?
+  bizNumber   String?
+  bankInfo    String?
+  terms       String?
+  memo        String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
