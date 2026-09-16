@@ -53,7 +53,8 @@ export default function ShopNoticePage() {
 
   useEffect(() => {
     fetch('/api/admin/notices').then(r => r.json()).then(data => {
-      setNotices(data);
+      const all = (data || []).filter((n: any) => n.status === '게시중');
+      setNotices(all.map((n: any) => ({ ...n, date: n.date || new Date(n.createdAt).toISOString().slice(0, 10) })));
       setLoading(false);
     }).catch(() => setLoading(false));
     refreshReadIds();

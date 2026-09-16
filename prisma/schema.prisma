@@ -711,3 +711,16 @@ model VendorProduct {
 
   vendor          Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 }
+
+model Notice {
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  category    String   @default("공지")  // 공지, 이벤트, 배송, 시스템, 광고
+  target      String   @default("전체")  // 전체, Free, Standard, Pro, Enterprise
+  status      String   @default("게시중") // 게시중, 예약, 종료
+  isImportant Boolean  @default(false)
+  viewCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
