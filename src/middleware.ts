@@ -23,6 +23,7 @@ const staticPaths = [
   '/favicon.ico',
   '/images',
   '/portfolio',
+  '/products',
   '/manifest.json',
   '/sw.js',
 ];
